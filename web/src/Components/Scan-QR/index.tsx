@@ -5,6 +5,8 @@ const QrCodeScanner = () => {
     const [scanResult, setScanResult] = useState<string>('');
 
     const handleScan = (detectedCodes: IDetectedBarcode[]) => {
+
+        console.log("detectedCodes==>", detectedCodes);
         if (detectedCodes.length > 0) {
             // Process the first detected code
             setScanResult(detectedCodes[0].rawValue || '');
