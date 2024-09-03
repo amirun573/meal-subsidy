@@ -32,13 +32,13 @@ const Navbar = ({ role }: any) => {
   ];
 
   let rolePathSignUp = "customer";
-  if (status === "authenticated") {
-    menuList.push({
-      id: 4,
-      name: "App",
-      link: `/app`,
-    });
-  }
+  // if (status === "authenticated") {
+  //   menuList.push({
+  //     id: 4,
+  //     name: "App",
+  //     link: `/app`,
+  //   });
+  // }
 
   if (role) {
     if (role === RoleList.ADMIN) rolePathSignUp = "ADMIN";
