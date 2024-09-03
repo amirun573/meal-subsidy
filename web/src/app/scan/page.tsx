@@ -10,7 +10,7 @@ const ScanPage = () => {
 
     return (
         <>
-            <Navbar />
+            {/* <Navbar /> */}
             <MainContent />
             <div>
                 <QrCodeScanner />
