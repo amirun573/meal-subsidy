@@ -5,7 +5,6 @@ const QrCodeScanner = () => {
     const [scanResult, setScanResult] = useState<string>('');
 
     const handleScan = (detectedCodes: IDetectedBarcode[]) => {
-
         console.log("detectedCodes==>", detectedCodes);
         if (detectedCodes.length > 0) {
             // Process the first detected code
@@ -26,20 +25,32 @@ const QrCodeScanner = () => {
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            height: '100vh',
-            padding: '0 20px', // Add some padding to prevent the content from touching the edges on small screens
+            height: '70vh',
+            padding: '0 20px',
         }}>
             <div style={{
-                width: '100%',
-                maxWidth: '600px', // Maximum width for larger screens
-                boxSizing: 'border-box', // Ensure padding and border are included in the element's total width and height
+                width: '100%', // Adjust to occupy full width
+                height: 'auto',
+                maxWidth: '800px', // Set a larger maximum width
+                aspectRatio: '1.5', // Maintain aspect ratio for the scanner
+                boxSizing: 'border-box',
+                position: 'relative', // Required to position video properly
             }}>
                 <h1 style={{ textAlign: 'center' }}>Scanner Employee QR Here</h1>
-                <Scanner
-                    onScan={handleScan}
-                    onError={handleError}
-                    constraints={{ facingMode: 'environment' }}
-                />
+
+                {/* Wrapper div to control the size of the scanner */}
+                <div style={{ width: '100%', height: '100%' }}>
+                    <Scanner
+                        onScan={handleScan}
+                        onError={handleError}
+                        constraints={{
+                            facingMode: 'environment', // Use the back camera
+                            width: { ideal: 1280 },    // Set ideal width for the video stream
+                            height: { ideal: 720 },    // Set ideal height for the video stream
+                        }}
+                    />
+                </div>
+
                 {scanResult && <p style={{ textAlign: 'center' }}>Employee ID: {scanResult}</p>}
             </div>
         </div>
