@@ -142,20 +142,68 @@ const ChartComponent = () => {
         <>
             <Navbar />
             <MainContent />
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: 'white' }}>
-                <div style={{ width: '90vw', height: '70vh', position: 'relative' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'absolute', top: '-40px', left: '10px', right: '10px' }}>
-                        <select onChange={handleRangeChange} style={{ backgroundColor: 'gray', color: 'black' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: 'white', padding: '20px' }}>
+                <div style={{ width: '100%', maxWidth: '1200px', height: 'auto', position: 'relative', padding: '20px', boxSizing: 'border-box' }}>
+                    {/* Dropdown Menu */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <select onChange={handleRangeChange} style={{ padding: '10px', backgroundColor: 'gray', color: 'black', border: 'none', borderRadius: '5px' }}>
                             <option value="yearly">Yearly</option>
                             <option value="monthly" selected>Monthly</option>
                             <option value="weekly">Weekly</option>
                             <option value="daily">Daily</option>
                         </select>
+                        {/* Uncomment if you want to include the DownloadSelection */}
                         {/* <DownloadSelection /> */}
                     </div>
-                    <Bar ref={chartRef} data={chartData.monthly} options={{ responsive: true, maintainAspectRatio: false }} />
+
+                    {/* Bar Chart */}
+                    <div style={{ width: '100%', height: 'auto', flexGrow: '1', position: 'relative', aspectRatio: '2 / 1' }}>
+                        <Bar ref={chartRef} data={chartData.monthly} options={{ responsive: true, maintainAspectRatio: false }} />
+                    </div>
+
+                    {/* Table */}
+                    <div style={{ marginTop: '70px', overflowX: 'auto' }}>
+                        <p className='text-black mb-2'><strong>Today Transactions</strong></p>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: 'white', color: 'black', marginTop: '2%' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '1px solid black' }}>
+                                    <th style={{ padding: '10px', textAlign: 'left' }}>No</th>
+                                    <th style={{ padding: '10px', textAlign: 'left' }}>Name</th>
+                                    <th style={{ padding: '10px', textAlign: 'left' }}>Credited (RM)</th>
+                                    <th style={{ padding: '10px', textAlign: 'left' }}>Date</th>
+
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style={{ borderBottom: '1px solid black' }}>
+                                    <td style={{ padding: '10px' }}>1</td>
+                                    <td style={{ padding: '10px' }}>Amirun</td>
+                                    <td style={{ padding: '10px' }}>5</td>
+                                    <td style={{ padding: '10px' }}>2024/08/23</td>
+
+                                </tr>
+                                <tr style={{ borderBottom: '1px solid black' }}>
+                                    <td style={{ padding: '10px' }}>1</td>
+                                    <td style={{ padding: '10px' }}>Aqmar</td>
+                                    <td style={{ padding: '10px' }}>5</td>
+                                    <td style={{ padding: '10px' }}>2024/08/23</td>
+
+                                </tr>
+
+                                <tr style={{ borderBottom: '1px solid black' }}>
+                                    <td style={{ padding: '10px' }}>1</td>
+                                    <td style={{ padding: '10px' }}>Ahmad</td>
+                                    <td style={{ padding: '10px' }}>5</td>
+                                    <td style={{ padding: '10px' }}>2024/08/23</td>
+
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
+
+
         </>
     );
 };
