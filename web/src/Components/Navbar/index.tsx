@@ -21,20 +21,16 @@ const Navbar = ({ role }: any) => {
   };
 
   const menuList: NavBarInterface[] = [
-    {
-      id: 1,
-      name: "Home",
-      link: "/",
-    },
+
     {
       id: 2,
-      name: "About Us",
-      link: "#about-us",
+      name: "Scan QR Code",
+      link: "/scan",
     },
     {
       id: 3,
-      name: "Services",
-      link: "#services",
+      name: "Report",
+      link: "/report",
     },
   ];
 
@@ -57,13 +53,13 @@ const Navbar = ({ role }: any) => {
           <button
             onClick={toggleNavbar}
             type="button"
-            className="inline-flex items-center p-1 w-8 h-8 justify-center text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
+            className="inline-flex items-center p-1.5 w-9 h-9 justify-center text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
             aria-expanded={isOpen ? "true" : "false"}
             aria-controls="navbar-default"
           >
             {/* <span className="sr-only">Open main menu</span> */}
             <svg
-              className="w-4 h-4"
+              className="w-5 h-5"
               aria-hidden="true"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
@@ -77,6 +73,7 @@ const Navbar = ({ role }: any) => {
               />
             </svg>
           </button>
+
 
           <div
             className={`w-full md:flex md:items-center md:w-auto ${isOpen ? "block" : "hidden"}`}
