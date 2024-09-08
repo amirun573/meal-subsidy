@@ -1,17 +1,21 @@
 import React, { useState, useCallback } from 'react';
 import { Scanner, IDetectedBarcode } from '@yudiel/react-qr-scanner';
-import _ from 'lodash'; // Import lodash to use the throttle function
+import _ from 'lodash';
 
-const QrCodeScanner = () => {
+interface QrCodeScannerProps {
+    onScanResult: (result: string) => void;  // Callback prop
+}
+
+const QrCodeScanner: React.FC<QrCodeScannerProps> = ({ onScanResult }) => {
     const [scanResult, setScanResult] = useState<string>('');
 
-    // Throttle scan handling to avoid processing too often
     const handleScan = useCallback(_.throttle((detectedCodes: IDetectedBarcode[]) => {
-        console.log("detectedCodes==>", detectedCodes);
         if (detectedCodes.length > 0) {
-            setScanResult(detectedCodes[0].rawValue || '');
+            const result = detectedCodes[0].rawValue || '';
+            setScanResult(result);
+            onScanResult(result);  // Pass the result back to the parent component
         }
-    }, 500), []);  // Adjust the delay in ms (500ms in this case)
+    }, 500), [onScanResult]);
 
     const handleError = (error: unknown) => {
         if (error instanceof Error) {
@@ -51,7 +55,7 @@ const QrCodeScanner = () => {
                     />
                 </div>
 
-                {scanResult && <p style={{ textAlign: 'center' }}>Employee ID: {scanResult}</p>}
+                {/* {scanResult && <p style={{ textAlign: 'center' }}>Employee ID: {scanResult}</p>} */}
             </div>
         </div>
     );
