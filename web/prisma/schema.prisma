@@ -6,12 +6,97 @@
 
 generator client {
   provider = "prisma-client-js"
-    previewFeatures = ["interactiveTransactions"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+
+model Role {
+  role_id        Int       @id @default(autoincrement())
+  role_code String    @unique()
+  name      String
+  user      User[]
+  uuid             String?   @default(uuid())
+  active           Boolean  @default(true)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  deleted_at DateTime?
+}
+
+model User {
+  user_id                   Int               @id @default(autoincrement())
+  username                  String            @unique
+  email                     String            @unique
+  password_hash             String
+  active                    Boolean           @default(false)
+  uuid                      String?           @default(uuid())
+  created_at                DateTime          @default(now())
+  updated_at                DateTime          @updatedAt
+  user_details              User_Details?     // Relation to User_Details model
+  role                      Role?             @relation(fields: [role_id], references: [role_id], onDelete: Cascade)
+  role_id                   Int?
+  is_email_verified         Boolean           @default(false)
+  email_verification_token  String?
+  deleted_at                DateTime?
+  is_acc_verify             Boolean           @default(false)
+
+}
+
+model Country {
+  country_id          Int            @id @default(autoincrement())
+  country_code        String         @unique()
+  country_name                String
+  region_id           Int
+  region              Region         @relation(fields: [region_id], references: [region_id], onDelete: Cascade)
+  currency            String?
+  currency_code       String?
+  active              Boolean        @default(true)
+  uuid                String?        @default(uuid())
+  created_at          DateTime       @default(now())
+  updated_at          DateTime       @updatedAt
+  country_phone_code  String?
+  deleted_at          DateTime?
+
+  user_details        User_Details[]
+
+}
+
+model User_Details {
+  user_details_id           Int               @id @default(autoincrement())
+  name                      String
+  first_name                String
+  last_name                 String
+  mobile_phone              String?
+  img_profile               String
+  user                      User              @relation(fields: [user_id], references: [user_id]) // Removed onDelete here
+  user_id                   Int               @unique
+  active                    Boolean           @default(true)
+  uuid                      String?           @default(uuid())
+  created_at                DateTime          @default(now())
+  updated_at                DateTime          @updatedAt
+  country                   Country?          @relation(fields: [country_id], references: [country_id], onDelete: Cascade)
+  country_id                Int?
+  privacy_policy_term_condition Boolean       @default(false)
+  deleted_at                DateTime?
+  id_number                 String?
+  id_image                  String?
+}
+
+model Region {
+  region_id Int       @id @default(autoincrement())
+  region_code      String     @unique()
+  region_name      String
+  countries Country[]
+  active           Boolean  @default(true)
+  uuid             String?   @default(uuid())
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  deleted_at DateTime?
+
+}
+
 
 
