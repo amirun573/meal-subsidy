@@ -17,7 +17,7 @@ datasource db {
 model Role {
   role_id        Int       @id @default(autoincrement())
   role_code      String    @unique
-  name           String
+  role_name           String
   user           User[]    // One-to-many relationship with User
   uuid           String?   @default(uuid())
   active         Boolean   @default(true)
@@ -79,7 +79,7 @@ model UserDetails {
   first_name                String
   last_name                 String
   mobile_phone              String?
-  img_profile               String
+  img_profile               String?
   user                      User              @relation(fields: [user_id], references: [user_id])
   user_id                   Int               @unique
   active                    Boolean           @default(true)

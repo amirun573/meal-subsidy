@@ -5,6 +5,7 @@ import { RoleList } from "@/_Common/enum/role.enum";
 import { GetLocalStorageDetails } from "@/_Common/function/Authentication";
 import { UserDetailsLocalStorage } from "@/_Common/interface/auth.interface";
 import { GetRoleFromId } from "@/_Common/function/Role";
+import { DisplayAlert } from '../../_Common/function/Error';
 // Define an interface for your props
 interface NavbarProps {
   role: RoleList; // Use the appropriate type for the role
@@ -28,6 +29,19 @@ const Navbar = () => {
   const [userDetails, setUserDetails] = useState<UserDetailsLocalStorage>();
   const [role, setRole] = useState<RoleList>(RoleList.EMPLOYEE);
 
+  const menuList: NavBarInterface[] = [
+
+    {
+      id: 2,
+      name: "Scan QR Code",
+      link: "/scan",
+    },
+    // {
+    //   id: 3,
+    //   name: "Report",
+    //   link: "/report",
+    // },
+  ];
 
   useEffect(() => {
     const GetUserDetailsLocalStorage = async (): Promise<UserDetailsLocalStorage | boolean> => {
@@ -46,7 +60,7 @@ const Navbar = () => {
           console.log("details==>", details);
 
           if (!details || typeof details === 'boolean') {
-            throw Error("No Value or Invalid Data");
+            return;
           }
 
           // Now it's safe to destructure since 'details' is guaranteed to be UserDetailsLocalStorage
@@ -75,6 +89,8 @@ const Navbar = () => {
           setRole(role);
         } catch (error) {
           console.error(error);
+          DisplayAlert(error);
+
         }
       }
     };
@@ -82,25 +98,6 @@ const Navbar = () => {
     fetchUserDetails(); // Call the async function only once
   }, []); // Empty dependency array ensures it runs only once
 
-
-
-
-
-  const menuList: NavBarInterface[] = [
-
-    {
-      id: 2,
-      name: "Scan QR Code",
-      link: "/scan",
-    },
-    // {
-    //   id: 3,
-    //   name: "Report",
-    //   link: "/report",
-    // },
-  ];
-
-  let rolePathSignUp = "customer";
 
 
 
@@ -152,6 +149,39 @@ const Navbar = () => {
                   </Link>
                 </li>
               ))}
+              <div>
+                {!userDetails ? (
+                  <button
+                    // onClick={handleSignIn}
+                    style={{
+                      padding: '10px 20px',
+                      fontSize: '16px',
+                      backgroundColor: '#007bff',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '5px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Sign In
+                  </button>
+                ) : (
+                  <button
+                    // onClick={handleLogout}
+                    style={{
+                      padding: '10px 20px',
+                      fontSize: '16px',
+                      backgroundColor: '#dc3545',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '5px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Logout
+                  </button>
+                )}
+              </div>
             </ul>
             <div className="flex items-center space-x-4 mt-4"></div>
           </div>
