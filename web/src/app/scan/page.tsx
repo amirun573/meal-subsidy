@@ -53,6 +53,7 @@ const ScanPage = () => {
 
     const calculatedFinalPrice = totalPrice - discount - availableCredit;
 
+    //Future Focus
     const playSound = () => {
         const audio = new Audio('/path/to/click.mp3'); // Specify the path to your sound file
         audio.play();
