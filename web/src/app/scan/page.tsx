@@ -38,15 +38,28 @@ const ScanPage = () => {
         }
     };
 
+    const handleEmployeeID = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        try {
+            const employeeID = String(event.target.value); // Ensure numeric value
+
+            if (employeeID) {
+                console.log("employee ID: ", employeeID);
+            }
+
+        } catch (error) {
+            alert(error);
+        }
+    }
+
     const calculatedFinalPrice = totalPrice - discount - availableCredit;
 
-    useEffect(() => {
-        if (employeeId) {
-            console.log(`Employee ID is set: ${employeeId}`);
-            // You can perform any action here when employeeId has a value.
-            // For example, making an API call or updating some other state.
-        }
-    }, [employeeId]); // This effect will run whenever employeeId changes.
+    // useEffect(() => {
+    //     if (employeeId) {
+    //         console.log(`Employee ID is set: ${employeeId}`);
+    //         // You can perform any action here when employeeId has a value.
+    //         // For example, making an API call or updating some other state.
+    //     }
+    // }, [employeeId]); // This effect will run whenever employeeId changes.
 
     return (
         <>
@@ -109,6 +122,7 @@ const ScanPage = () => {
                             border: '1px solid #ccc',
                             color: 'black'
                         }}
+                        onChange={handleEmployeeID}
                     />
                 </div>
 
