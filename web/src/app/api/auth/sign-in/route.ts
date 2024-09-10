@@ -5,6 +5,7 @@ import { StatusAPICode } from "../../../../_Common/enum/status-api-code.enum";
 import { User } from "@prisma/client";
 import { JWTDecodeInterface } from "@/_Common/interface/auth.interface";
 import { JWTDecode, hashPassword } from "../model/auth.model";
+import { HashingPasswordService } from "../service/auth.service";
 
 const APIAuth: StatusAPICode[] = [];
 
@@ -56,20 +57,7 @@ export async function GET(req: any, res: any) {
           throw Error("No Password Sent");
         }
 
-
-        const hashingPassword_4Save = await hashPassword(hashingPasswordRequest);
-
-        if (!hashingPassword_4Save) {
-          statusCode = 400;
-          throw Error("Failed To Hashing Password");
-        }
-
-
-
-        return NextResponse.json({
-          statusCode: 200,
-          passwordHashing: hashingPassword_4Save,
-        });
+        return HashingPasswordService({ password: hashingPasswordRequest });
       }
 
       default: {

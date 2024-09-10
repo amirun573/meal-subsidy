@@ -93,11 +93,11 @@ const Navbar = () => {
       name: "Scan QR Code",
       link: "/scan",
     },
-    {
-      id: 3,
-      name: "Report",
-      link: "/report",
-    },
+    // {
+    //   id: 3,
+    //   name: "Report",
+    //   link: "/report",
+    // },
   ];
 
   let rolePathSignUp = "customer";

@@ -6,7 +6,7 @@ import { MainContent } from '@/Components/Main';
 import axios from "axios";
 import { encrypt } from '@/_Common/function/Hashing';
 import { StatusAPICode } from '@/_Common/enum/status-api-code.enum';
-
+import { PasswordPassValidation } from '../../_Common/validation/hashing.validation';
 const PasswordHashing = () => {
 
 
@@ -19,6 +19,8 @@ const PasswordHashing = () => {
             const passwordTemp: string = String(event.target.value); // Ensure numeric value
 
             if (passwordTemp) {
+
+                await PasswordPassValidation({ password: passwordTemp });
 
                 const passwordHashingRequest = await axios.get(`/api/auth/sign-in?${StatusAPICode.code}=${StatusAPICode.hashing_password}&hashingPasswordRequest=${passwordTemp}`);
 
