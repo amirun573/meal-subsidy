@@ -3,9 +3,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "../../../../../libs/prisma";
 import { StatusAPICode } from "../../../../_Common/enum/status-api-code.enum";
 import { User } from "@prisma/client";
-import { JWTDecodeInterface } from "@/_Common/interface/auth.interface";
+import { JWTDecodeInterface, SignInRequest } from "@/_Common/interface/auth.interface";
 import { JWTDecode, hashPassword } from "../model/auth.model";
-import { HashingPasswordService } from "../service/auth.service";
+import { HashingPasswordService, SignInService } from "../service/auth.service";
+import { GetBodyData } from "@/_Common/function/Authentication";
 
 const APIAuth: StatusAPICode[] = [];
 
@@ -79,6 +80,46 @@ export async function GET(req: any, res: any) {
 
 export async function POST(req: any, res: any) {
   try {
+    let body: any = await GetBodyData(req);
+
+    if (!body) {
+      throw Error("Body Not Found");
+    }
+
+    const { code } = body;
+
+    if (!code || typeof parseInt(code) !== "number") {
+      throw Error("Code Not Found");
+    }
+
+    const token: JWTDecodeInterface | boolean = await JWTDecode(req);
+    let user: User | null = null;
+
+    if (APIAuth.find((item) => item === parseInt(code))) {
+      if (!token) {
+        throw Error("No Token Found");
+      }
+      user = (token as JWTDecodeInterface).user;
+    }
+
+    if (code && typeof parseInt(code) === "number") {
+      switch (parseInt(code) as StatusAPICode) {
+        case StatusAPICode.sign_in_request: {
+          const data: SignInRequest = body as SignInRequest;
+
+          if (!data) {
+            throw Error("No Data Detected");
+          }
+
+          return SignInService(data)
+          //return WriteAddToCart(data, user);
+        }
+
+        default: {
+          throw Error("No Code Found");
+        }
+      }
+    }
   } catch (error: any) {
     return NextResponse.json(
       {

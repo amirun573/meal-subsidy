@@ -6,6 +6,7 @@ import { GetLocalStorageDetails } from "@/_Common/function/Authentication";
 import { UserDetailsLocalStorage } from "@/_Common/interface/auth.interface";
 import { GetRoleFromId } from "@/_Common/function/Role";
 import { DisplayAlert } from '../../_Common/function/Error';
+import { HandleUnAuthorized } from "@/_Common/function/LocalStorage";
 // Define an interface for your props
 interface NavbarProps {
   role: RoleList; // Use the appropriate type for the role
@@ -49,6 +50,7 @@ const Navbar = () => {
         return await GetLocalStorageDetails(); // Assuming this returns a Promise
       } catch (error) {
         console.error(error);
+        HandleUnAuthorized(error);
         return false;
       }
     };
@@ -66,13 +68,14 @@ const Navbar = () => {
           // Now it's safe to destructure since 'details' is guaranteed to be UserDetailsLocalStorage
           const {
             email,
-            username,
+            employee_id,
             accessToken,
+            refreshToken,
             role_id,
             uuid,
             country_code,
             is_acc_verify,
-            profile_image,
+            // profile_image,
             currency_code
           }: UserDetailsLocalStorage = details;
 
@@ -83,7 +86,7 @@ const Navbar = () => {
           }
 
           setUserDetails({
-            email, username, accessToken, role_id, uuid, country_code, is_acc_verify, profile_image, currency_code
+            email, employee_id, accessToken, role_id, uuid, country_code, is_acc_verify, currency_code, refreshToken
           });
 
           setRole(role);
@@ -99,6 +102,9 @@ const Navbar = () => {
   }, []); // Empty dependency array ensures it runs only once
 
 
+  const HandleLogOut = async () => {
+    HandleUnAuthorized('');
+  }
 
 
   return (
@@ -167,7 +173,7 @@ const Navbar = () => {
                   </button>
                 ) : (
                   <button
-                    // onClick={handleLogout}
+                    onClick={HandleLogOut}
                     style={{
                       padding: '10px 20px',
                       fontSize: '16px',

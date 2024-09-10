@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
 import * as yup from "yup";
-import { hashPassword } from "../model/auth.model";
+import { comparePassword, hashPassword } from "../model/auth.model";
 import { PasswordPassValidation } from "@/_Common/validation/hashing.validation";
+import {
+  SignInRequest,
+  UserDetailsLocalStorage,
+} from "@/_Common/interface/auth.interface";
+import { SignInFunctionValidation } from "@/_Common/validation/auth.validation";
+import { GetUserSingle } from "../../user/model/user.model";
+import jwt from "jsonwebtoken";
+import { encrypt } from "@/_Common/function/Hashing";
 
 export async function HashingPasswordService(data: { password: string }) {
   let message: string = "";
@@ -21,6 +29,102 @@ export async function HashingPasswordService(data: { password: string }) {
     return NextResponse.json({
       statusCode: 200,
       passwordHashing: hashingPassword_4Save,
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        message: error.message || message,
+      },
+      {
+        status: error.statusCode || status,
+      }
+    );
+  }
+}
+
+export async function SignInService(data: SignInRequest) {
+  let message: string = "";
+  let status: number = 500;
+  try {
+    const { email, password } = data;
+
+    await SignInFunctionValidation(data);
+
+    const user = await GetUserSingle({
+      where: {
+        email,
+      },
+      select: {
+        email: true,
+        employee_id: true,
+        role_id: true,
+        uuid: true,
+        password_hash: true,
+        is_acc_verify: true,
+        UserDetails: {
+          select: {
+            country: {
+              select: {
+                country_code: true,
+                currency_code: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      status = 400;
+      throw Error("No Email Been Found.");
+    }
+
+    if (
+      !user?.email ||
+      !user?.role_id ||
+      !user?.uuid ||
+      !user?.is_acc_verify ||
+      !user?.employee_id ||
+      !user?.password_hash
+    ) {
+      status = 400;
+      throw Error("User is missing");
+    }
+
+    const checkPassword = await comparePassword(password, user.password_hash);
+
+    //console.log("checkPassword===>", checkPassword);
+
+    if (!checkPassword) {
+      status = 400;
+      throw Error("Wrong Password");
+    }
+
+    const options = { expiresIn: "1h" }; // Token expiration time
+
+    const accessToken = jwt.sign(
+      user,
+      process.env.JWT_SECRET_KEY || "",
+      options
+    );
+
+    const refreshToken = jwt.sign(user, process.env.JWT_SECRET_KEY || "");
+
+    const userDetails: UserDetailsLocalStorage = {
+      email: user.email,
+      employee_id: user.employee_id, // Assuming this is a typo and it should be `username`
+      accessToken,
+      refreshToken,
+      role_id: user.role_id,
+      uuid: user.uuid,
+      country_code: (user as any)?.UserDetails?.country?.country_code || "", // Provide default value to avoid `undefined`
+      is_acc_verify: user.is_acc_verify,
+      currency_code: (user as any)?.UserDetails?.country?.currency_code || "", // Provide default value to avoid `undefined`
+    };
+
+
+    return NextResponse.json({
+      userDetails,
     });
   } catch (error: any) {
     return NextResponse.json(

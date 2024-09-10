@@ -1,7 +1,7 @@
 import crypto, { createHmac } from "crypto";
 
-const secretKey = process.env.HASHING_SECRET_KEY || "";
-const iv = process.env.Initialization_Vector || "";
+const secretKey = process.env.HASHING_SECRET_KEY || "FbQWh2UagAphNkbNS887u5m3Hx34RGnD";
+const iv = process.env.Initialization_Vector || "eb2bcebb999407286caea729998e7fa0c089178f8ca43857e73ea3ff66dbe1852af24a4b0199be9192798a3f8ad6d6475db3621cfacf38dcb0fba5d77d73aaf5";
 const encryption_method = process.env.ENCRYPTION_METHOD || "aes-256-cbc";
 const key = crypto
   .createHash("sha512")
