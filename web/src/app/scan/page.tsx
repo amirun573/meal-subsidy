@@ -53,6 +53,11 @@ const ScanPage = () => {
 
     const calculatedFinalPrice = totalPrice - discount - availableCredit;
 
+    const playSound = () => {
+        const audio = new Audio('/path/to/click.mp3'); // Specify the path to your sound file
+        audio.play();
+    };
+
     // useEffect(() => {
     //     if (employeeId) {
     //         console.log(`Employee ID is set: ${employeeId}`);
@@ -122,6 +127,9 @@ const ScanPage = () => {
                             border: '1px solid #ccc',
                             color: 'black'
                         }}
+                        // onClick={playSound}  // Play sound on mouse click
+                        // onFocus={playSound}  // Play sound on focus (e.g., when the user tabs into the field)
+                        // onKeyDown={playSound} // Play sound when a key is pressed
                         onChange={handleEmployeeID}
                     />
                 </div>
