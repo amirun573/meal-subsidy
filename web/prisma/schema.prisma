@@ -16,14 +16,14 @@ datasource db {
 
 model Role {
   role_id        Int       @id @default(autoincrement())
-  role_code String    @unique()
-  name      String
-  user      User[]
-  uuid             String?   @default(uuid())
-  active           Boolean  @default(true)
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-  deleted_at DateTime?
+  role_code      String    @unique
+  name           String
+  user           User[]    // One-to-many relationship with User
+  uuid           String?   @default(uuid())
+  active         Boolean   @default(true)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+  deleted_at     DateTime?
 }
 
 model User {
@@ -35,18 +35,20 @@ model User {
   uuid                      String?           @default(uuid())
   created_at                DateTime          @default(now())
   updated_at                DateTime          @updatedAt
-  user_details              User_Details?     // Relation to User_Details model
+  UserDetails              UserDetails?     // Relation to UserDetails model
   role                      Role?             @relation(fields: [role_id], references: [role_id], onDelete: Cascade)
   role_id                   Int?
+
+  // Relation to RoleFeature (acts as a bridge between User and Role)
+  user_features             UserFeatures[]     // One-to-many relationship with RoleFeature
+  
   is_email_verified         Boolean           @default(false)
   email_verification_token  String?
   deleted_at                DateTime?
   is_acc_verify             Boolean           @default(false)
-
   subsidies                 Subsidy[]         // One-to-many relationship with Subsidy
   subsidy_credits           SubsidyCredit[]   // One-to-many relationship with SubsidyCredit
   subsidy_transactions      SubsidyTransaction[] // One-to-many relationship with SubsidyTransaction
-
   department                Department?       @relation(fields: [department_id], references: [department_id], onDelete: Cascade)
   department_id             Int?              @unique
 }
@@ -67,12 +69,12 @@ model Country {
   country_phone_code  String?
   deleted_at          DateTime?
 
-  user_details        User_Details[]
+  UserDetails        UserDetails[]
 
 }
 
-model User_Details {
-  user_details_id           Int               @id @default(autoincrement())
+model UserDetails {
+  UserDetails_id           Int               @id @default(autoincrement())
   name                      String
   first_name                String
   last_name                 String
@@ -202,6 +204,41 @@ model Department {
   deleted_at      DateTime?
 
   users           User[]      // One-to-many relationship with User
+}
+
+model Feature {
+  feature_id      Int       @id @default(autoincrement())
+  feature_code    String    @unique
+  feature_name    String
+  description     String?
+  
+  uuid            String?   @default(uuid())
+  active          Boolean   @default(true)
+  created_at      DateTime  @default(now()) 
+  updated_at      DateTime  @default(now())
+  deleted_at      DateTime?
+
+  // Relation to UserFeatures (each feature can be associated with many users)
+  user_features   UserFeatures[]
+}
+
+
+model UserFeatures {
+  UserFeatures_id  Int       @id @default(autoincrement())
+  
+  // Relation to User
+  user            User      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  user_id         Int
+
+  // Relation to Feature
+  feature         Feature   @relation(fields: [feature_id], references: [feature_id], onDelete: Cascade)
+  feature_id      Int
+
+  uuid            String?   @default(uuid())
+  active          Boolean   @default(true)
+  created_at      DateTime  @default(now()) 
+  updated_at      DateTime  @default(now())
+  deleted_at      DateTime?
 }
 
 

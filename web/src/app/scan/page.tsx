@@ -1,15 +1,15 @@
 "use client";
 import Navbar from '@/Components/Navbar';
 import QrCodeScanner from '@/Components/Scan-QR';
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { MainContent } from '@/Components/Main';
 
 const ScanPage = () => {
     const [employeeId, setEmployeeId] = useState<string>('');
     const [showScannerModal, setShowScannerModal] = useState<boolean>(false);
     const [totalPrice, setTotalPrice] = useState<number>(0);
-    const [availableCredit, setAvailableCredit] = useState<number>(50); // Example available credit
-    const [discount, setDiscount] = useState<number>(5); // Example discount
+    const [availableCredit, setAvailableCredit] = useState<number>(0); // Example available credit
+    const [discount, setDiscount] = useState<number>(0); // Example discount
 
     // Callback function to get scan result
     const handleScanResult = (result: string) => {
@@ -39,6 +39,14 @@ const ScanPage = () => {
     };
 
     const calculatedFinalPrice = totalPrice - discount - availableCredit;
+
+    useEffect(() => {
+        if (employeeId) {
+            console.log(`Employee ID is set: ${employeeId}`);
+            // You can perform any action here when employeeId has a value.
+            // For example, making an API call or updating some other state.
+        }
+    }, [employeeId]); // This effect will run whenever employeeId changes.
 
     return (
         <>
@@ -76,23 +84,6 @@ const ScanPage = () => {
                     />
                 </div>
 
-                <div style={{ textAlign: 'center', marginTop: '20px' }}>
-                    <button
-                        onClick={handleToggleScannerModal}
-                        style={{
-                            padding: '10px 20px',
-                            fontSize: '16px',
-                            backgroundColor: '#007bff',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '5px',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        Open QR Scanner
-                    </button>
-                </div>
-
                 <div style={{ textAlign: 'center', margin: '20px 0' }}>
                     <label
                         htmlFor='employeeID'
@@ -119,6 +110,53 @@ const ScanPage = () => {
                             color: 'black'
                         }}
                     />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '20px' }}>
+                    <button
+                        onClick={handleToggleScannerModal}
+                        style={{
+                            padding: '10px 20px',
+                            fontSize: '16px',
+                            backgroundColor: '#007bff',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '5px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Open QR Scanner
+                    </button>
+
+                    <button
+                        // onClick={handleAnotherAction}
+                        style={{
+                            padding: '10px 20px',
+                            fontSize: '16px',
+                            backgroundColor: '#28a745',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '5px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Submit
+                    </button>
+
+                    {/* <button
+                        // onClick={handleThirdAction}
+                        style={{
+                            padding: '10px 20px',
+                            fontSize: '16px',
+                            backgroundColor: '#ffc107',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '5px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Third Button
+                    </button> */}
                 </div>
 
                 {/* Table */}

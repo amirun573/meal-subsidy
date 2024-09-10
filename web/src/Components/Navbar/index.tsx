@@ -1,7 +1,10 @@
+"use client";
 import Link from "next/link";
-import { useState } from "react";
-import { RoleList } from "@/_Common/role.enum";
-
+import { useEffect, useState } from "react";
+import { RoleList } from "@/_Common/enum/role.enum";
+import { GetLocalStorageDetails } from "@/_Common/function/Authentication";
+import { UserDetailsLocalStorage } from "@/_Common/interface/auth.interface";
+import { GetRoleFromId } from "@/_Common/function/Role";
 // Define an interface for your props
 interface NavbarProps {
   role: RoleList; // Use the appropriate type for the role
@@ -13,12 +16,75 @@ interface NavBarInterface {
   link: string;
 }
 
-const Navbar = ({ role }: any) => {
+
+
+const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleNavbar = () => {
     setIsOpen(!isOpen);
   };
+
+  const [userDetails, setUserDetails] = useState<UserDetailsLocalStorage>();
+  const [role, setRole] = useState<RoleList>(RoleList.EMPLOYEE);
+
+
+  useEffect(() => {
+    const GetUserDetailsLocalStorage = async (): Promise<UserDetailsLocalStorage | boolean> => {
+      try {
+        return await GetLocalStorageDetails(); // Assuming this returns a Promise
+      } catch (error) {
+        console.error(error);
+        return false;
+      }
+    };
+
+    const fetchUserDetails = async () => {
+      if (typeof window !== 'undefined') {
+        try {
+          const details = await GetUserDetailsLocalStorage();
+          console.log("details==>", details);
+
+          if (!details || typeof details === 'boolean') {
+            throw Error("No Value or Invalid Data");
+          }
+
+          // Now it's safe to destructure since 'details' is guaranteed to be UserDetailsLocalStorage
+          const {
+            email,
+            username,
+            accessToken,
+            role_id,
+            uuid,
+            country_code,
+            is_acc_verify,
+            profile_image,
+            currency_code
+          }: UserDetailsLocalStorage = details;
+
+          const role = GetRoleFromId(role_id); // This will return RoleList.SUPER_ADMIN, etc.
+
+          if (!role) {
+            throw Error("No Role Detected");
+          }
+
+          setUserDetails({
+            email, username, accessToken, role_id, uuid, country_code, is_acc_verify, profile_image, currency_code
+          });
+
+          setRole(role);
+        } catch (error) {
+          console.error(error);
+        }
+      }
+    };
+
+    fetchUserDetails(); // Call the async function only once
+  }, []); // Empty dependency array ensures it runs only once
+
+
+
+
 
   const menuList: NavBarInterface[] = [
 
@@ -36,10 +102,7 @@ const Navbar = ({ role }: any) => {
 
   let rolePathSignUp = "customer";
 
-  // Adjust role-based navigation
-  if (role === RoleList.ADMIN) {
-    rolePathSignUp = "ADMIN";
-  }
+
 
   return (
     <div>
