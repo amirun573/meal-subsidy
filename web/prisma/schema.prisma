@@ -28,7 +28,7 @@ model Role {
 
 model User {
   user_id                   Int               @id @default(autoincrement())
-  username                  String            @unique
+  employee_id               String            @unique
   email                     String            @unique
   password_hash             String
   active                    Boolean           @default(false)
@@ -43,7 +43,14 @@ model User {
   deleted_at                DateTime?
   is_acc_verify             Boolean           @default(false)
 
+  subsidies                 Subsidy[]         // One-to-many relationship with Subsidy
+  subsidy_credits           SubsidyCredit[]   // One-to-many relationship with SubsidyCredit
+  subsidy_transactions      SubsidyTransaction[] // One-to-many relationship with SubsidyTransaction
+
+  department                Department?       @relation(fields: [department_id], references: [department_id], onDelete: Cascade)
+  department_id             Int?              @unique
 }
+
 
 model Country {
   country_id          Int            @id @default(autoincrement())
@@ -71,7 +78,7 @@ model User_Details {
   last_name                 String
   mobile_phone              String?
   img_profile               String
-  user                      User              @relation(fields: [user_id], references: [user_id]) // Removed onDelete here
+  user                      User              @relation(fields: [user_id], references: [user_id])
   user_id                   Int               @unique
   active                    Boolean           @default(true)
   uuid                      String?           @default(uuid())
@@ -83,6 +90,8 @@ model User_Details {
   deleted_at                DateTime?
   id_number                 String?
   id_image                  String?
+
+
 }
 
 model Region {
@@ -97,6 +106,104 @@ model Region {
   deleted_at DateTime?
 
 }
+
+model SubsidyType {
+  subsidy_type_id  Int      @id @default(autoincrement())
+  subsidy_type_name             String   @unique // Example: "Housing", "Education", etc.
+  price            Float @default(0)
+  description      String?  // Optional description of the subsidy type
+  active           Boolean  @default(true)
+  uuid             String?   @default(uuid())
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  deleted_at DateTime?
+
+  subsidies        Subsidy[]  // One-to-many relationship with Subsidy
+}
+
+
+model Subsidy {
+  subsidy_id        Int          @id @default(autoincrement())
+  subsidy_type      SubsidyType?  @relation(fields: [subsidy_type_id], references: [subsidy_type_id], onDelete: SetNull)
+  subsidy_type_id   Int
+  applicable        Boolean      @default(false)
+  start_date        DateTime?
+  end_date          DateTime?
+  active            Boolean      @default(true)
+  uuid              String?      @default(uuid())
+  created_at        DateTime     @default(now())
+  updated_at        DateTime     @updatedAt
+  deleted_at        DateTime?
+
+  user              User         @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  user_id           Int
+
+  subsidy_credits   SubsidyCredit[]  // One-to-many relationship with SubsidyCredit
+}
+
+
+model SubsidyCredit {
+  subsidy_credit_id  Int       @id @default(autoincrement())
+  user               User?     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  user_id            Int
+  subsidy            Subsidy?  @relation(fields: [subsidy_id], references: [subsidy_id], onDelete: Cascade)
+  subsidy_id         Int
+  credit_amount      Float     // Amount credited to the user
+  credited_at        DateTime  @default(now()) // The date/time of the credit
+  active             Boolean   @default(true)
+  uuid               String?   @default(uuid())
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  deleted_at         DateTime?
+
+  subsidy_transactions SubsidyTransaction[]  // One-to-many relationship with SubsidyTransaction
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+
+model SubsidyTransaction {
+  transaction_id     Int            @id @default(autoincrement())
+  subsidy_credit     SubsidyCredit  @relation(fields: [subsidy_credit_id], references: [subsidy_credit_id], onDelete: Cascade)
+  subsidy_credit_id  Int
+  user               User           @relation(fields: [user_id], references: [user_id], onDelete: Cascade) // Link to User
+  user_id            Int
+  transaction_type   TransactionType @default(DEBIT) // Default set to 'DEBIT'
+  amount             Float           // The amount for this transaction
+  transaction_status TransactionStatus @default(FAILED) // Default set to 'FAILED'
+  transaction_at     DateTime        @default(now()) // When the transaction was made
+  note               String?         // Optional note or description about the transaction
+  active             Boolean         @default(true)
+  uuid               String?         @default(uuid())
+  created_at         DateTime        @default(now())
+  updated_at         DateTime        @updatedAt
+  deleted_at         DateTime?
+}
+
+
+
+model Department {
+  department_id   Int         @id @default(autoincrement())
+  department_code String      @unique
+  department_name String
+  active          Boolean     @default(true)
+  uuid            String?     @default(uuid())
+  created_at      DateTime    @default(now())
+  updated_at      DateTime    @updatedAt
+  deleted_at      DateTime?
+
+  users           User[]      // One-to-many relationship with User
+}
+
 
 
 
