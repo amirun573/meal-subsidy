@@ -38,4 +38,16 @@ INSERT INTO Feature (
   '/report',      -- feature_link
 );
 
+INSERT INTO Feature (
+  feature_code,
+  feature_name,
+  description,
+  feature_link,
+) VALUES (
+  'employee_details',                  -- feature_code
+  'Employee Details',           -- feature_name
+  'Show Details of Employee.',   -- description
+  '/employee-details',      -- feature_link
+);
+
 

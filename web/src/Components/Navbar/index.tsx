@@ -15,6 +15,7 @@ interface NavBarInterface {
   id: string;
   name: string;
   link: string;
+  description: string;
 }
 
 
@@ -34,6 +35,7 @@ const Navbar = () => {
       id: 'scan',
       name: "Scan QR Code",
       link: "/scan",
+      description: 'Scan to Get Credit For Meal Subsidy.'
     },
   ]);
 
@@ -68,7 +70,6 @@ const Navbar = () => {
             uuid,
             country_code,
             is_acc_verify,
-            // profile_image,
             currency_code,
             features,
           }: UserDetailsLocalStorage = details;
@@ -85,32 +86,47 @@ const Navbar = () => {
 
           setRole(role);
 
+          const menuArray: NavBarInterface[] = [];
 
-          features.map((feature, index) => {
-
-            if (feature?.feature_name && feature?.feature_link && feature?.feature_code) {
+          // Iterate over the features array
+          features.forEach((feature) => {
+            if (feature?.feature_name && feature?.feature_link && feature?.feature_code && feature?.description) {
               const menu: NavBarInterface = {
                 id: feature?.feature_code,
                 name: feature?.feature_name,
                 link: feature?.feature_link,
-              }
+                description: feature?.description,
+              };
 
-              setMenuList([...menuList, menu]);
-
+              // Add to menuArray only if it doesn't exist in the current menuList
+              menuArray.push(menu);
             }
+          });
 
-          })
+          // Update the state while ensuring no duplicates are added
+          setMenuList((prevMenuList) => {
+            // Create a new list by merging the existing menuList and menuArray, removing duplicates
+            const mergedMenu = [
+              ...prevMenuList,
+              ...menuArray.filter(
+                (newMenu) => !prevMenuList.some((existingMenu) => existingMenu.id === newMenu.id)
+              ),
+            ];
 
+            // Return the updated menu list
+            return mergedMenu;
+          });
 
         } catch (error) {
           console.error(error);
           DisplayAlert(error);
-
         }
       }
     };
 
-    fetchUserDetails(); // Call the async function only once
+    // Immediately invoke the fetchUserDetails function
+    fetchUserDetails();
+
   }, []); // Empty dependency array ensures it runs only once
 
 
