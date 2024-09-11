@@ -157,7 +157,8 @@ const Navbar = () => {
               ))}
               <div>
                 {!userDetails ? (
-                  <button
+                  <a
+                  href="/auth/sign-in"
                     // onClick={handleSignIn}
                     style={{
                       padding: '10px 20px',
@@ -170,7 +171,7 @@ const Navbar = () => {
                     }}
                   >
                     Sign In
-                  </button>
+                  </a>
                 ) : (
                   <button
                     onClick={HandleLogOut}

@@ -15,6 +15,7 @@ function Login() {
     const [email, setEmail] = useState<string>('');
     const [password, setPassword] = useState<string>('');
     const [userDetails, setUserDetails] = useState<UserDetailsLocalStorage>();
+    const [loading, setLoading] = useState<boolean>(false);
 
     const HandleEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         try {
@@ -55,6 +56,7 @@ function Login() {
     }
 
     const HandleSignInSubmit = async () => {
+        setLoading(true);
         try {
 
             await SignInFunctionValidation({ email, password });
@@ -74,9 +76,11 @@ function Login() {
             const saveUserDetails = await SetUserDetailsLocalStoage(SignInRequest.data?.userDetails as UserDetailsLocalStorage);
 
 
-            if(!saveUserDetails){
+            if (!saveUserDetails) {
                 throw Error("Failed To Saved In Client Side");
             }
+
+            window.location.href = '/';
 
             return;
 
@@ -84,6 +88,8 @@ function Login() {
         } catch (error) {
             console.error(error);
             DisplayAlert(error);
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -138,9 +144,28 @@ function Login() {
                             <button
                                 onClick={HandleSignInSubmit}
                                 type="button"
-                                className="w-full flex justify-center rounded-md bg-indigo-600 py-2 px-4 text-sm font-semibold text-white hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className={`w-full flex justify-center rounded-md py-2 px-4 text-sm font-semibold text-white ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500'
+                                    }`}
+                                disabled={loading}
                             >
-                                Sign in
+                                {loading ? (
+                                    <div className="flex items-center space-x-2">
+                                        <svg
+                                            className="animate-spin h-5 w-5 text-white"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                        >
+                                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.2" />
+                                            <path d="M4 12a8 8 0 018-8v0a8 8 0 018 8h0a8 8 0 01-8 8h0a8 8 0 01-8-8z" />
+                                        </svg>
+                                        <span>Loading...</span>
+                                    </div>
+                                ) : (
+                                    'Sign in'
+                                )}
                             </button>
                         </div>
                     </form>
