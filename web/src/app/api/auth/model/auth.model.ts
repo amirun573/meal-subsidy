@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { JWTDecodeInterface } from "@/_Common/interface/auth.interface";
 import { User } from "@prisma/client";
 import { compare, hash } from "bcrypt";
+import { GetUserSingle } from "../../user/model/user.model";
 
 // import { getUserByEmail } from "../users/model/users.model";
 export async function JWTDecode(
@@ -33,42 +34,43 @@ export async function JWTDecode(
           if (decodedToken && decodedToken?.exp) {
             // Token is valid
 
-            // const user = await getUserByEmail({
-            //   email: decodedToken.email,
-            //   select: {
-            //     user_id: true,
-            //     email: true,
-            //     active: true,
-            //     uuid: true,
-            //     user_details: {
-            //       select: {
-            //         name: true,
-            //         mobile_phone: true,
-            //         location_name: true,
-            //         country: {
-            //           select: {
-            //             country_id: true,
-            //             name: true,
-            //             currency_code: true,
-            //           },
-            //         },
-            //       },
-            //     },
-            //     role: {
-            //       select: {
-            //         role_id: true,
-            //         role_code: true,
-            //         active: true,
-            //       },
-            //     },
-            //   },
-            // });
+            const user = await GetUserSingle({
+              where: {
+                email: decodedToken.email,
+              },
+              select: {
+                user_id: true,
+                email: true,
+                active: true,
+                uuid: true,
+                UserDetails: {
+                  select: {
+                    name: true,
+                    mobile_phone: true,
+                    country: {
+                      select: {
+                        country_id: true,
+                        country_name: true,
+                        currency_code: true,
+                      },
+                    },
+                  },
+                },
+                role: {
+                  select: {
+                    role_id: true,
+                    role_code: true,
+                    active: true,
+                  },
+                },
+              },
+            });
 
-            // if (!user || !user.active) {
-            //   return false;
-            // }
+            if (!user || !user.active) {
+              return false;
+            }
 
-            // decodedToken.user = user;
+            decodedToken.user = user;
             return decodedToken as JWTDecodeInterface;
           } else {
             // Token is invalid
@@ -126,7 +128,6 @@ export async function JWTDecode(
     return false;
   }
 }
-
 
 export async function hashPassword(password: string): Promise<string | null> {
   try {

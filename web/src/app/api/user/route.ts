@@ -11,7 +11,7 @@ import { GetBodyData } from "@/_Common/function/Authentication";
 import { JWTDecode } from "../auth/model/auth.model";
 import { SignInService } from "../auth/service/auth.service";
 import { UserPaginationService } from "./service/user.service";
-const APIAuth: StatusAPICode[] = [];
+const APIAuth: StatusAPICode[] = [StatusAPICode.GET_EMPLOYEE_DETAILS];
 
 export async function GET(req: any, res: any) {
   let statusCode: number = 500;
@@ -31,8 +31,8 @@ export async function GET(req: any, res: any) {
       const token: JWTDecodeInterface | boolean = await JWTDecode(req);
 
       if (!token) {
-        statusCode = 400;
-        throw Error("No Token Found");
+        statusCode = 401;
+        throw Error("Unauthorized. Please Login");
       }
       tokenDetails = token as JWTDecodeInterface;
 
@@ -56,15 +56,13 @@ export async function GET(req: any, res: any) {
 
         const filter: string | null = url.searchParams.get("filter");
 
+
+        console.log("Page==>", page);
         if (!page) {
           statusCode = 400;
-          throw Error("No Password Sent.");
+          throw Error("No Page Sent.");
         }
 
-        if (typeof parseInt(page) === "number") {
-          statusCode = 400;
-          throw Error("Password in wrong Format.");
-        }
 
         return UserPaginationService({
           page: parseInt(page),
