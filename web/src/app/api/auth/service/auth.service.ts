@@ -10,6 +10,8 @@ import { SignInFunctionValidation } from "@/_Common/validation/auth.validation";
 import { GetUserSingle } from "../../user/model/user.model";
 import jwt from "jsonwebtoken";
 import { encrypt } from "@/_Common/function/Hashing";
+import { Feature, UserFeatures } from "@prisma/client";
+import { GetUserFeatures } from "../../feature/model/feature.model";
 
 export async function HashingPasswordService(data: { password: string }) {
   let message: string = "";
@@ -55,6 +57,7 @@ export async function SignInService(data: SignInRequest) {
         email,
       },
       select: {
+        user_id: true,
         email: true,
         employee_id: true,
         role_id: true,
@@ -100,7 +103,38 @@ export async function SignInService(data: SignInRequest) {
       throw Error("Wrong Password");
     }
 
-    const options = { expiresIn: "1h" }; // Token expiration time
+    const UserFeatures: Partial<UserFeatures>[] = await GetUserFeatures({
+      where: {
+        user_id: user.user_id,
+        active: true,
+      },
+      select: {
+        feature: {
+          select: {
+            uuid: true,
+            feature_code: true,
+            feature_name: true,
+            description: true,
+            feature_link: true,
+          },
+        },
+      },
+    });
+
+    const features: Partial<Feature>[] = [];
+
+    if (UserFeatures.length > 0) {
+      UserFeatures.map((userFeatures) => {
+        const feature: Partial<Feature> = (userFeatures as any)
+          ?.feature as Partial<Feature>;
+
+        if (feature) {
+          features.push(feature);
+        }
+      });
+    }
+
+    const options = { expiresIn: "10h" }; // Token expiration time
 
     const accessToken = jwt.sign(
       user,
@@ -117,11 +151,11 @@ export async function SignInService(data: SignInRequest) {
       refreshToken,
       role_id: user.role_id,
       uuid: user.uuid,
+      features,
       country_code: (user as any)?.UserDetails?.country?.country_code || "", // Provide default value to avoid `undefined`
       is_acc_verify: user.is_acc_verify,
       currency_code: (user as any)?.UserDetails?.country?.currency_code || "", // Provide default value to avoid `undefined`
     };
-
 
     return NextResponse.json({
       userDetails,

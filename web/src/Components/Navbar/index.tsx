@@ -2,18 +2,17 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { RoleList } from "@/_Common/enum/role.enum";
-import { GetLocalStorageDetails } from "@/_Common/function/Authentication";
 import { UserDetailsLocalStorage } from "@/_Common/interface/auth.interface";
 import { GetRoleFromId } from "@/_Common/function/Role";
 import { DisplayAlert } from '../../_Common/function/Error';
-import { HandleUnAuthorized } from "@/_Common/function/LocalStorage";
+import { HandleUnAuthorized, GetLocalStorageDetails } from "@/_Common/function/LocalStorage";
 // Define an interface for your props
 interface NavbarProps {
   role: RoleList; // Use the appropriate type for the role
 }
 
 interface NavBarInterface {
-  id: number;
+  id: string;
   name: string;
   link: string;
 }
@@ -30,19 +29,13 @@ const Navbar = () => {
   const [userDetails, setUserDetails] = useState<UserDetailsLocalStorage>();
   const [role, setRole] = useState<RoleList>(RoleList.EMPLOYEE);
 
-  const menuList: NavBarInterface[] = [
-
+  const [menuList, setMenuList] = useState<NavBarInterface[]>([
     {
-      id: 2,
+      id: 'scan',
       name: "Scan QR Code",
       link: "/scan",
     },
-    // {
-    //   id: 3,
-    //   name: "Report",
-    //   link: "/report",
-    // },
-  ];
+  ]);
 
   useEffect(() => {
     const GetUserDetailsLocalStorage = async (): Promise<UserDetailsLocalStorage | boolean> => {
@@ -76,7 +69,8 @@ const Navbar = () => {
             country_code,
             is_acc_verify,
             // profile_image,
-            currency_code
+            currency_code,
+            features,
           }: UserDetailsLocalStorage = details;
 
           const role = GetRoleFromId(role_id); // This will return RoleList.SUPER_ADMIN, etc.
@@ -86,10 +80,28 @@ const Navbar = () => {
           }
 
           setUserDetails({
-            email, employee_id, accessToken, role_id, uuid, country_code, is_acc_verify, currency_code, refreshToken
+            email, employee_id, accessToken, role_id, uuid, country_code, is_acc_verify, currency_code, refreshToken, features
           });
 
           setRole(role);
+
+
+          features.map((feature, index) => {
+
+            if (feature?.feature_name && feature?.feature_link && feature?.feature_code) {
+              const menu: NavBarInterface = {
+                id: feature?.feature_code,
+                name: feature?.feature_name,
+                link: feature?.feature_link,
+              }
+
+              setMenuList([...menuList, menu]);
+
+            }
+
+          })
+
+
         } catch (error) {
           console.error(error);
           DisplayAlert(error);
@@ -158,7 +170,7 @@ const Navbar = () => {
               <div>
                 {!userDetails ? (
                   <a
-                  href="/auth/sign-in"
+                    href="/auth/sign-in"
                     // onClick={handleSignIn}
                     style={{
                       padding: '10px 20px',

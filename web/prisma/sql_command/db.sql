@@ -26,3 +26,16 @@ VALUES (
     '+60'
 );
 
+INSERT INTO Feature (
+  feature_code,
+  feature_name,
+  description,
+  feature_link,
+) VALUES (
+  'report',                  -- feature_code
+  'Report',           -- feature_name
+  'Report will show the usage for credit.',   -- description
+  '/report',      -- feature_link
+);
+
+

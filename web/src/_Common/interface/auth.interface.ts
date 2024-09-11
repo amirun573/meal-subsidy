@@ -1,5 +1,5 @@
 import { RoleList } from "../enum/role.enum";
-import { User } from "@prisma/client";
+import { Feature, User, UserFeatures } from "@prisma/client";
 
 export interface UserDetailsLocalStorage {
   email: string;
@@ -12,6 +12,7 @@ export interface UserDetailsLocalStorage {
   is_acc_verify: boolean;
   // profile_image: string;
   currency_code: string;
+  features: Partial<Feature>[]
 }
 
 export interface JWTDecodeInterface {
