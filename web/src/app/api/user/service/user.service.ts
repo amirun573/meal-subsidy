@@ -3,7 +3,7 @@ import {
   UserPaginationRequest,
 } from "@/_Common/interface/user.interface";
 import {
-  ScanEmployeeID,
+  ScanEmployeeIDValidation,
   UserPaginationValidation,
 } from "@/_Common/validation/user.validation";
 import { NextResponse } from "next/server";
@@ -150,7 +150,7 @@ export async function ScanCheckEmployeeIDService(data: ScanCheckEmployeeID) {
 
     const employee_id = decrypt(employeeID || "");
 
-    await ScanEmployeeID({ employeeID: employee_id });
+    await ScanEmployeeIDValidation({ employeeID: employee_id });
 
     const user = await GetUserSingle({
       where: {

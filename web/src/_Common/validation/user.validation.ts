@@ -9,7 +9,7 @@ const PaginationEmployeeValidation = yup.object().shape({
   filter: yup.string().optional(),
 });
 
-const ScanCheckEmployeeID = yup.object().shape({
+const ScanCheckEmployeeIDValidation = yup.object().shape({
   employeeID: yup.string().required("Employee ID Required"),
 });
 
@@ -17,6 +17,6 @@ export function UserPaginationValidation(data: UserPaginationRequest) {
   return PaginationEmployeeValidation.validate(data);
 }
 
-export function ScanEmployeeID(data: ScanCheckEmployeeID) {
-  return ScanCheckEmployeeID.validate(data);
+export function ScanEmployeeIDValidation(data: ScanCheckEmployeeID) {
+  return ScanCheckEmployeeIDValidation.validate(data);
 }

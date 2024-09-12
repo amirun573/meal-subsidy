@@ -7,7 +7,7 @@ import Spinner from '../../Components/Spinner/';
 import axios from 'axios';
 import { StatusAPICode } from '@/_Common/enum/status-api-code.enum';
 import { DisplayAlert } from '@/_Common/function/Error';
-import { ScanEmployeeID } from '@/_Common/validation/user.validation';
+import { ScanEmployeeIDValidation } from '@/_Common/validation/user.validation';
 import { encrypt } from '@/_Common/function/Hashing';
 const ScanPage = () => {
     const [employeeId, setEmployeeId] = useState<string>('');
@@ -53,7 +53,7 @@ const ScanPage = () => {
                 setEmployeeId(employeeID);
 
 
-                await ScanEmployeeID({ employeeID });
+                await ScanEmployeeIDValidation({ employeeID });
                 // Make sure to await the API call
                 const employeeIDCheckRequest = await axios.get(`/api/user?${StatusAPICode.code}=${StatusAPICode.GET_CHECK_EMPLOYEE_ID}&employeeID=${encrypt(employeeID)}`);
 
