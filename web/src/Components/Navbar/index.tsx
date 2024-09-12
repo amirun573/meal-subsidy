@@ -1,45 +1,138 @@
+"use client";
 import Link from "next/link";
-import { useState } from "react";
-import { RoleList } from "@/_Common/role.enum";
-
+import { useEffect, useState } from "react";
+import { RoleList } from "@/_Common/enum/role.enum";
+import { UserDetailsLocalStorage } from "@/_Common/interface/auth.interface";
+import { GetRoleFromId } from "@/_Common/function/Role";
+import { DisplayAlert } from '../../_Common/function/Error';
+import { HandleUnAuthorized, GetLocalStorageDetails } from "@/_Common/function/LocalStorage";
 // Define an interface for your props
 interface NavbarProps {
   role: RoleList; // Use the appropriate type for the role
 }
 
 interface NavBarInterface {
-  id: number;
+  id: string;
   name: string;
   link: string;
+  description: string;
 }
 
-const Navbar = ({ role }: any) => {
+
+
+const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleNavbar = () => {
     setIsOpen(!isOpen);
   };
 
-  const menuList: NavBarInterface[] = [
+  const [userDetails, setUserDetails] = useState<UserDetailsLocalStorage>();
+  const [role, setRole] = useState<RoleList>(RoleList.EMPLOYEE);
 
+  const [menuList, setMenuList] = useState<NavBarInterface[]>([
     {
-      id: 2,
+      id: 'scan',
       name: "Scan QR Code",
       link: "/scan",
+      description: 'Scan to Get Credit For Meal Subsidy.'
     },
-    {
-      id: 3,
-      name: "Report",
-      link: "/report",
-    },
-  ];
+  ]);
 
-  let rolePathSignUp = "customer";
+  useEffect(() => {
+    const GetUserDetailsLocalStorage = async (): Promise<UserDetailsLocalStorage | boolean> => {
+      try {
+        return await GetLocalStorageDetails(); // Assuming this returns a Promise
+      } catch (error) {
+        console.error(error);
+        HandleUnAuthorized(error);
+        return false;
+      }
+    };
 
-  // Adjust role-based navigation
-  if (role === RoleList.ADMIN) {
-    rolePathSignUp = "ADMIN";
+    const fetchUserDetails = async () => {
+      if (typeof window !== 'undefined') {
+        try {
+          const details = await GetUserDetailsLocalStorage();
+
+          if (!details || typeof details === 'boolean') {
+            return;
+          }
+
+          // Now it's safe to destructure since 'details' is guaranteed to be UserDetailsLocalStorage
+          const {
+            email,
+            employee_id,
+            accessToken,
+            refreshToken,
+            role_id,
+            uuid,
+            country_code,
+            is_acc_verify,
+            currency_code,
+            features,
+          }: UserDetailsLocalStorage = details;
+
+          const role = GetRoleFromId(role_id); // This will return RoleList.SUPER_ADMIN, etc.
+
+          if (!role) {
+            throw Error("No Role Detected");
+          }
+
+          setUserDetails({
+            email, employee_id, accessToken, role_id, uuid, country_code, is_acc_verify, currency_code, refreshToken, features
+          });
+
+          setRole(role);
+
+          const menuArray: NavBarInterface[] = [];
+
+          // Iterate over the features array
+          features.forEach((feature) => {
+            if (feature?.feature_name && feature?.feature_link && feature?.feature_code && feature?.description) {
+              const menu: NavBarInterface = {
+                id: feature?.feature_code,
+                name: feature?.feature_name,
+                link: feature?.feature_link,
+                description: feature?.description,
+              };
+
+              // Add to menuArray only if it doesn't exist in the current menuList
+              menuArray.push(menu);
+            }
+          });
+
+          // Update the state while ensuring no duplicates are added
+          setMenuList((prevMenuList) => {
+            // Create a new list by merging the existing menuList and menuArray, removing duplicates
+            const mergedMenu = [
+              ...prevMenuList,
+              ...menuArray.filter(
+                (newMenu) => !prevMenuList.some((existingMenu) => existingMenu.id === newMenu.id)
+              ),
+            ];
+
+            // Return the updated menu list
+            return mergedMenu;
+          });
+
+        } catch (error) {
+          console.error(error);
+          DisplayAlert(error);
+        }
+      }
+    };
+
+    // Immediately invoke the fetchUserDetails function
+    fetchUserDetails();
+
+  }, []); // Empty dependency array ensures it runs only once
+
+
+  const HandleLogOut = async () => {
+    HandleUnAuthorized('');
   }
+
 
   return (
     <div>
@@ -89,6 +182,40 @@ const Navbar = ({ role }: any) => {
                   </Link>
                 </li>
               ))}
+              <div>
+                {!userDetails ? (
+                  <a
+                    href="/auth/sign-in"
+                    // onClick={handleSignIn}
+                    style={{
+                      padding: '10px 20px',
+                      fontSize: '16px',
+                      backgroundColor: '#007bff',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '5px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Sign In
+                  </a>
+                ) : (
+                  <button
+                    onClick={HandleLogOut}
+                    style={{
+                      padding: '10px 20px',
+                      fontSize: '16px',
+                      backgroundColor: '#dc3545',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '5px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Logout
+                  </button>
+                )}
+              </div>
             </ul>
             <div className="flex items-center space-x-4 mt-4"></div>
           </div>

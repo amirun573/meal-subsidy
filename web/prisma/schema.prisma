@@ -1,0 +1,247 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model Role {
+  role_id        Int       @id @default(autoincrement())
+  role_code      String    @unique
+  role_name           String
+  user           User[]    // One-to-many relationship with User
+  uuid           String?   @default(uuid())
+  active         Boolean   @default(true)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+  deleted_at     DateTime?
+}
+
+model User {
+  user_id                   Int               @id @default(autoincrement())
+  employee_id               String            @unique
+  email                     String            @unique
+  password_hash             String
+  active                    Boolean           @default(false)
+  uuid                      String?           @default(uuid())
+  created_at                DateTime          @default(now())
+  updated_at                DateTime          @updatedAt
+  UserDetails              UserDetails?     // Relation to UserDetails model
+  role                      Role?             @relation(fields: [role_id], references: [role_id], onDelete: Cascade)
+  role_id                   Int?
+
+  // Relation to RoleFeature (acts as a bridge between User and Role)
+  user_features             UserFeatures[]     // One-to-many relationship with RoleFeature
+  
+  is_email_verified         Boolean           @default(false)
+  email_verification_token  String?
+  deleted_at                DateTime?
+  is_acc_verify             Boolean           @default(false)
+  subsidies                 Subsidy[]         // One-to-many relationship with Subsidy
+  subsidy_credits           SubsidyCredit[]   // One-to-many relationship with SubsidyCredit
+  subsidy_transactions      SubsidyTransaction[] // One-to-many relationship with SubsidyTransaction
+  department                Department?       @relation(fields: [department_id], references: [department_id], onDelete: Cascade)
+  department_id             Int?              @unique
+}
+
+
+model Country {
+  country_id          Int            @id @default(autoincrement())
+  country_code        String         @unique()
+  country_name                String
+  region_id           Int
+  region              Region         @relation(fields: [region_id], references: [region_id], onDelete: Cascade)
+  currency            String?
+  currency_code       String?
+  active              Boolean        @default(true)
+  uuid                String?        @default(uuid())
+  created_at          DateTime       @default(now())
+  updated_at          DateTime       @updatedAt
+  country_phone_code  String?
+  deleted_at          DateTime?
+
+  UserDetails        UserDetails[]
+
+}
+
+model UserDetails {
+  UserDetails_id           Int               @id @default(autoincrement())
+  name                      String
+  first_name                String
+  last_name                 String
+  mobile_phone              String?
+  img_profile               String?
+  user                      User              @relation(fields: [user_id], references: [user_id])
+  user_id                   Int               @unique
+  active                    Boolean           @default(true)
+  uuid                      String?           @default(uuid())
+  created_at                DateTime          @default(now())
+  updated_at                DateTime          @updatedAt
+  country                   Country?          @relation(fields: [country_id], references: [country_id], onDelete: Cascade)
+  country_id                Int?
+  privacy_policy_term_condition Boolean       @default(false)
+  deleted_at                DateTime?
+  id_number                 String?
+  id_image                  String?
+
+
+}
+
+model Region {
+  region_id Int       @id @default(autoincrement())
+  region_code      String     @unique()
+  region_name      String
+  countries Country[]
+  active           Boolean  @default(true)
+  uuid             String?   @default(uuid())
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  deleted_at DateTime?
+
+}
+
+model SubsidyType {
+  subsidy_type_id  Int      @id @default(autoincrement())
+  subsidy_type_code             String   @unique @default("meal") // Example: "Housing", "Education", etc.
+  subsidy_type_name             String
+  price            Float @default(0)
+  description      String?  // Optional description of the subsidy type
+  active           Boolean  @default(true)
+  uuid             String?   @default(uuid())
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  deleted_at DateTime?
+
+  subsidies        Subsidy[]  // One-to-many relationship with Subsidy
+}
+
+
+model Subsidy {
+  subsidy_id        Int          @id @default(autoincrement())
+  subsidy_type      SubsidyType?  @relation(fields: [subsidy_type_id], references: [subsidy_type_id], onDelete: SetNull)
+  subsidy_type_id   Int
+  applicable        Boolean      @default(false)
+  start_date        DateTime?
+  end_date          DateTime?
+  active            Boolean      @default(true)
+  uuid              String?      @default(uuid())
+  created_at        DateTime     @default(now())
+  updated_at        DateTime     @updatedAt
+  deleted_at        DateTime?
+
+  user              User         @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  user_id           Int
+
+  subsidy_credits   SubsidyCredit[]  // One-to-many relationship with SubsidyCredit
+}
+
+
+model SubsidyCredit {
+  subsidy_credit_id  Int       @id @default(autoincrement())
+  user               User?     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  user_id            Int
+  subsidy            Subsidy?  @relation(fields: [subsidy_id], references: [subsidy_id], onDelete: Cascade)
+  subsidy_id         Int
+  credit_amount      Float     // Amount credited to the user
+  credited_at        DateTime  @default(now()) // The date/time of the credit
+  active             Boolean   @default(true)
+  uuid               String?   @default(uuid())
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  deleted_at         DateTime?
+
+  subsidy_transactions SubsidyTransaction[]  // One-to-many relationship with SubsidyTransaction
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+
+model SubsidyTransaction {
+  transaction_id     Int            @id @default(autoincrement())
+  subsidy_credit     SubsidyCredit  @relation(fields: [subsidy_credit_id], references: [subsidy_credit_id], onDelete: Cascade)
+  subsidy_credit_id  Int
+  user               User           @relation(fields: [user_id], references: [user_id], onDelete: Cascade) // Link to User
+  user_id            Int
+  transaction_type   TransactionType @default(DEBIT) // Default set to 'DEBIT'
+  amount             Float           // The amount for this transaction
+  transaction_status TransactionStatus @default(FAILED) // Default set to 'FAILED'
+  transaction_at     DateTime        @default(now()) // When the transaction was made
+  note               String?         // Optional note or description about the transaction
+  active             Boolean         @default(true)
+  uuid               String?         @default(uuid())
+  created_at         DateTime        @default(now())
+  updated_at         DateTime        @updatedAt
+  deleted_at         DateTime?
+}
+
+
+
+model Department {
+  department_id   Int         @id @default(autoincrement())
+  department_code String      @unique
+  department_name String
+  active          Boolean     @default(true)
+  uuid            String?     @default(uuid())
+  created_at      DateTime    @default(now())
+  updated_at      DateTime    @updatedAt
+  deleted_at      DateTime?
+
+  users           User[]      // One-to-many relationship with User
+}
+
+model Feature {
+  feature_id      Int       @id @default(autoincrement())
+  feature_code    String    @unique
+  feature_name    String
+  description     String?
+  feature_link    String?
+  uuid            String?   @default(uuid())
+  active          Boolean   @default(true)
+  created_at      DateTime  @default(now()) 
+  updated_at      DateTime  @default(now())
+  deleted_at      DateTime?
+
+  // Relation to UserFeatures (each feature can be associated with many users)
+  user_features   UserFeatures[]
+}
+
+
+model UserFeatures {
+  UserFeatures_id  Int       @id @default(autoincrement())
+  
+  // Relation to User
+  user            User      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  user_id         Int
+
+  // Relation to Feature
+  feature         Feature   @relation(fields: [feature_id], references: [feature_id], onDelete: Cascade)
+  feature_id      Int
+
+  uuid            String?   @default(uuid())
+  active          Boolean   @default(true)
+  created_at      DateTime  @default(now()) 
+  updated_at      DateTime  @default(now())
+  deleted_at      DateTime?
+}
+
+
+
+
