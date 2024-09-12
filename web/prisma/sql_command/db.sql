@@ -50,4 +50,12 @@ INSERT INTO Feature (
   '/employee-details',      -- feature_link
 );
 
+INSERT INTO SubsidyType(
+  subsidy_type_name,
+  price,
+) VALUES (
+  'Meal Subsidy',
+  5,
+)
+
 

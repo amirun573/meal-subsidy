@@ -4,6 +4,7 @@ import { StatusAPICode } from "@/_Common/enum/status-api-code.enum";
 import { GetLocalStorageDetails, HandleUnAuthorized } from "@/_Common/function/LocalStorage";
 import { UserDetailsLocalStorage } from "@/_Common/interface/auth.interface";
 import { UserPaginationValidation } from "@/_Common/validation/user.validation";
+import { User } from "@prisma/client";
 import axios from "axios";
 import { Modal } from "flowbite-react";
 import { Suspense, useEffect, useState } from "react";
@@ -28,7 +29,7 @@ const EmployeeDetails = () => {
     const [openModalAddBooking, setOpenModalAddBooking] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
 
-    const GetBooking = async () => {
+    const GetEmployee = async () => {
         try {
 
             const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
@@ -48,6 +49,30 @@ const EmployeeDetails = () => {
                     Authorization: `Bearer ${userDetailsLocalStorage?.accessToken}`
                 }
             });
+
+            if (!requestBooking.data?.totalItems || !requestBooking.data?.employees) {
+                throw Error("Failed To Retrieve Data");
+            }
+
+            const users: User[] = requestBooking.data?.employees as User[];
+
+            const employeeDetailsResponse: EmployeeDetails[] = [];
+            users.map(user => {
+
+                const employee: EmployeeDetails = {
+                    name: (user as any)?.UserDetails?.name,
+                    employee_id: user.employee_id,
+                    department: (user as any)?.department?.department_name,
+                    is_meal_subsidiry_active: true,
+                    meal_subsidiry_uuid: '',
+                    uuid: user?.uuid || '',
+                }
+
+                employeeDetailsResponse.push(employee);
+            });
+
+            setEmployeeDetails(employeeDetailsResponse);
+
             setTotalItems(requestBooking.data?.totalItems as number);
             // setBooking(requestBooking.data?.booking as Partial<Booking[]>);
         } catch (error: any) {
@@ -62,7 +87,7 @@ const EmployeeDetails = () => {
         setCurrentPage(page);
 
         // Fetch data for the new page using the page number and other parameters as needed
-        GetBooking();
+        GetEmployee();
     };
 
     const handleUpdateBooking = (uuid: string) => {
@@ -299,7 +324,7 @@ const EmployeeDetails = () => {
 
         // Call handler right away so state gets updated with initial window size
         handleResize();
-        GetBooking();
+        GetEmployee();
     }, []);
 
     const HandleUserAction = () => {

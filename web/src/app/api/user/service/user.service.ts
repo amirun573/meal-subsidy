@@ -53,6 +53,18 @@ export async function UserPaginationService(data: UserPaginationRequest) {
             name: true,
           },
         },
+        department: {
+          select: {
+            department_code: true,
+            uuid: true,
+            department_name: true,
+          }
+        },
+        // subsidies: {
+        //   select: {
+
+        //   }
+        // }
       },
       orderBy: { field: "created_at", direction: "desc" },
     });
