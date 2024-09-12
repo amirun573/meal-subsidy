@@ -51,9 +51,11 @@ INSERT INTO Feature (
 );
 
 INSERT INTO SubsidyType(
+  subsidy_type_code,
   subsidy_type_name,
   price,
 ) VALUES (
+  'meal',
   'Meal Subsidy',
   5,
 )

@@ -1,10 +1,14 @@
 "use client";
 import Navbar from "@/Components/Navbar";
 import { StatusAPICode } from "@/_Common/enum/status-api-code.enum";
+import { SubsidyTypeCode } from "@/_Common/enum/subsidy-type.enum";
+import { DisplayAlert } from "@/_Common/function/Error";
 import { GetLocalStorageDetails, HandleUnAuthorized } from "@/_Common/function/LocalStorage";
 import { UserDetailsLocalStorage } from "@/_Common/interface/auth.interface";
+import { SubsidyEmployeeUpdate } from "@/_Common/interface/subsidy.interface";
+import { EmployeeUpdateSubsidyValidation } from "@/_Common/validation/subsidy.validation";
 import { UserPaginationValidation } from "@/_Common/validation/user.validation";
-import { User } from "@prisma/client";
+import { Subsidy, User } from "@prisma/client";
 import axios from "axios";
 import { Modal } from "flowbite-react";
 import { Suspense, useEffect, useState } from "react";
@@ -50,30 +54,36 @@ const EmployeeDetails = () => {
                 }
             });
 
-            if (!requestBooking.data?.totalItems || !requestBooking.data?.employees) {
-                throw Error("Failed To Retrieve Data");
+            const employeeDetailsResponse: EmployeeDetails[] = [];
+
+
+            if (requestBooking.data?.employees) {
+                const users: User[] = requestBooking.data?.employees as User[];
+
+                users.map(user => {
+
+                    const subsidies = ((user as any)?.subsidies as Subsidy[]).find(subsidy => (subsidy as any).subsidy_type?.subsidy_type_code === SubsidyTypeCode.meal);
+
+                    const employee: EmployeeDetails = {
+                        name: (user as any)?.UserDetails?.name,
+                        employee_id: user.employee_id,
+                        department: (user as any)?.department?.department_name,
+                        is_meal_subsidiry_active: subsidies?.applicable as boolean || false,
+                        meal_subsidiry_uuid: subsidies?.uuid || '',
+                        uuid: user?.uuid || '',
+                    }
+
+                    employeeDetailsResponse.push(employee);
+                });
+
+
             }
 
-            const users: User[] = requestBooking.data?.employees as User[];
-
-            const employeeDetailsResponse: EmployeeDetails[] = [];
-            users.map(user => {
-
-                const employee: EmployeeDetails = {
-                    name: (user as any)?.UserDetails?.name,
-                    employee_id: user.employee_id,
-                    department: (user as any)?.department?.department_name,
-                    is_meal_subsidiry_active: true,
-                    meal_subsidiry_uuid: '',
-                    uuid: user?.uuid || '',
-                }
-
-                employeeDetailsResponse.push(employee);
-            });
-
-            setEmployeeDetails(employeeDetailsResponse);
+            setEmployeeDetails(employeeDetailsResponse.length > 0 ? employeeDetailsResponse : []);
 
             setTotalItems(requestBooking.data?.totalItems as number);
+
+
             // setBooking(requestBooking.data?.booking as Partial<Booking[]>);
         } catch (error: any) {
             console.error(error);
@@ -331,6 +341,57 @@ const EmployeeDetails = () => {
         setOpenModalAddBooking(true)
     }
 
+    const handleCheckboxChange = async (e: any, index: number) => {
+        try {
+            const isChecked: boolean = e.target.checked;
+
+
+
+            // Update the specific item in the array using the index
+            const updatedEmployees = [...employeesDetails];
+            updatedEmployees[index] = {
+                ...updatedEmployees[index],
+                is_meal_subsidiry_active: isChecked,
+            };
+
+            const employee: EmployeeDetails = (updatedEmployees[index]);
+
+            const body: SubsidyEmployeeUpdate = {
+                uuid: employee.uuid,
+                applicable: isChecked,
+                [StatusAPICode.code]: StatusAPICode.UPDATE_APPLICABLE_SUBSIDY,
+                subsidy_uuid: employee.meal_subsidiry_uuid
+            }
+
+            await EmployeeUpdateSubsidyValidation(body);
+
+            
+            const updateSubsidyEmployee = await axios.put(`/api/subsidy`, body,
+                {
+                    headers: {
+                        Authorization: `Bearer ${userDetailLocal?.accessToken}`,
+                    }
+                }
+            );
+
+
+            // Update the state with the modified array
+            setEmployeeDetails(updatedEmployees);
+
+            // Optionally log or handle other logic
+            console.log(`Checkbox at index ${index} is now: ${isChecked}`);
+
+            // Make an API call to update the value
+
+            return;
+
+        } catch (error) {
+            console.error(error);
+            DisplayAlert(error);
+        }
+    }
+
+
 
     return (<>
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: 'white', padding: '20px' }}>
@@ -386,9 +447,15 @@ const EmployeeDetails = () => {
                                                 <td className="px-6 py-4">
                                                     {item.department}
                                                 </td>
-                                                <td className="px-6 py-4">
-                                                    {item.is_meal_subsidiry_active}
+                                                <td className="px-6 py-4 flex justify-center items-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={item.is_meal_subsidiry_active}
+                                                        onChange={(e) => handleCheckboxChange(e, index)}
+                                                    />
                                                 </td>
+
+
                                                 <td className="px-6 py-4">
                                                     <button
                                                         className="bg-blue-500 text-white px-4 py-2 rounded"

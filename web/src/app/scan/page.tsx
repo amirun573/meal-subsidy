@@ -3,13 +3,19 @@ import Navbar from '@/Components/Navbar';
 import QrCodeScanner from '@/Components/Scan-QR';
 import { Suspense, useEffect, useState } from 'react';
 import { MainContent } from '@/Components/Main';
-
+import Spinner from '../../Components/Spinner/';
+import axios from 'axios';
+import { StatusAPICode } from '@/_Common/enum/status-api-code.enum';
+import { DisplayAlert } from '@/_Common/function/Error';
+import { ScanEmployeeID } from '@/_Common/validation/user.validation';
+import { encrypt } from '@/_Common/function/Hashing';
 const ScanPage = () => {
     const [employeeId, setEmployeeId] = useState<string>('');
     const [showScannerModal, setShowScannerModal] = useState<boolean>(false);
     const [totalPrice, setTotalPrice] = useState<number>(0);
     const [availableCredit, setAvailableCredit] = useState<number>(0); // Example available credit
     const [discount, setDiscount] = useState<number>(0); // Example discount
+    const [loading, setLoading] = useState(false);
 
     // Callback function to get scan result
     const handleScanResult = (result: string) => {
@@ -39,17 +45,38 @@ const ScanPage = () => {
     };
 
     const handleEmployeeID = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        setLoading(true);
         try {
-            const employeeID = String(event.target.value); // Ensure numeric value
+            const employeeID = String(event.target.value); // Ensure value is string
 
             if (employeeID) {
-                console.log("employee ID: ", employeeID);
+                setEmployeeId(employeeID);
+
+
+                await ScanEmployeeID({ employeeID });
+                // Make sure to await the API call
+                const employeeIDCheckRequest = await axios.get(`/api/user?${StatusAPICode.code}=${StatusAPICode.GET_CHECK_EMPLOYEE_ID}&employeeID=${encrypt(employeeID)}`);
+
+                // Process employeeIDCheckRequest response as necessary
+            } else {
+                setEmployeeId('');
             }
 
         } catch (error) {
-            alert(error);
+            console.error("Error occurred:", error);
+            DisplayAlert(error); // Make sure this doesn't block code execution
+        } finally {
+            // This should always execute regardless of error
+            setLoading(false);
         }
-    }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            handleEmployeeID(e as unknown as React.ChangeEvent<HTMLInputElement>);
+        }
+    };
+
 
     const calculatedFinalPrice = totalPrice - discount - availableCredit;
 
@@ -72,6 +99,7 @@ const ScanPage = () => {
             <Navbar />
             <MainContent />
             <div>
+                {loading && <Spinner />}
 
                 <div style={{ textAlign: 'center', margin: '20px 0' }}>
                     <label
@@ -128,11 +156,10 @@ const ScanPage = () => {
                             border: '1px solid #ccc',
                             color: 'black'
                         }}
-                        // onClick={playSound}  // Play sound on mouse click
-                        // onFocus={playSound}  // Play sound on focus (e.g., when the user tabs into the field)
-                        // onKeyDown={playSound} // Play sound when a key is pressed
-                        onChange={handleEmployeeID}
+                        onChange={(e) => setEmployeeId(e.target.value)}
+                        onKeyDown={handleKeyDown} // Trigger action when Enter is pressed
                     />
+
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '20px' }}>

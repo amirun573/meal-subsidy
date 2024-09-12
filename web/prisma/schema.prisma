@@ -111,7 +111,8 @@ model Region {
 
 model SubsidyType {
   subsidy_type_id  Int      @id @default(autoincrement())
-  subsidy_type_name             String   @unique // Example: "Housing", "Education", etc.
+  subsidy_type_code             String   @unique @default("meal") // Example: "Housing", "Education", etc.
+  subsidy_type_name             String
   price            Float @default(0)
   description      String?  // Optional description of the subsidy type
   active           Boolean  @default(true)

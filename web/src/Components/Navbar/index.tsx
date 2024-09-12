@@ -54,7 +54,6 @@ const Navbar = () => {
       if (typeof window !== 'undefined') {
         try {
           const details = await GetUserDetailsLocalStorage();
-          console.log("details==>", details);
 
           if (!details || typeof details === 'boolean') {
             return;
