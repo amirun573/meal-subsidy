@@ -58,6 +58,22 @@ INSERT INTO SubsidyType(
   'meal',
   'Meal Subsidy',
   5,
-)
+);
+
+INSERT INTO ROLE(
+  role_code,
+  role_name
+) VALUES (
+  'super_admin',
+  'Super Admin'
+);
+
+INSERT INTO ROLE(
+  role_code,
+  role_name
+) VALUES (
+  'employee',
+  'Employee'
+);
 
 

@@ -1,13 +1,16 @@
 import {
+  CreateUpdateUser,
   ScanCheckEmployeeID,
   UserPaginationRequest,
 } from "@/_Common/interface/user.interface";
 import {
+  CreateUpdateEmployeeValidation,
   ScanEmployeeIDValidation,
   UserPaginationValidation,
 } from "@/_Common/validation/user.validation";
 import { NextResponse } from "next/server";
 import {
+  CreateUserNUserDetailsCascade,
   GetTotalUser,
   GetUserPagination,
   GetUserSingle,
@@ -15,6 +18,27 @@ import {
 import { PaginationData } from "../../../../_Common/interface/pagination.interface";
 import { SubsidyTypeCode } from "@/_Common/enum/subsidy-type.enum";
 import { decrypt } from "@/_Common/function/Hashing";
+import {
+  Country,
+  Department,
+  Role,
+  Subsidy,
+  SubsidyType,
+  User,
+  UserDetails,
+} from "@prisma/client";
+import { GetRoleSingle } from "../../role/model/role.model";
+import { RoleCode } from "@/_Common/enum/role.enum";
+import {
+  GetDepartmentLists,
+  GetDepartmentSingle,
+} from "../../department/model/department.model";
+import {
+  CreateSubsidy_4User,
+  GetSubsidySingle,
+  GetSubsidyTypeSingle,
+} from "../../subsidy/model/subsidy.model";
+import { hashPassword } from "../../auth/model/auth.model";
 
 export async function UserPaginationService(data: UserPaginationRequest) {
   let message: string = "";
@@ -86,6 +110,7 @@ export async function UserPaginationService(data: UserPaginationRequest) {
         active: true,
         created_at: true,
         employee_id: true,
+        email: true,
         UserDetails: {
           select: {
             name: true,
@@ -173,6 +198,125 @@ export async function ScanCheckEmployeeIDService(data: ScanCheckEmployeeID) {
     console.log("user==>", user);
     return NextResponse.json({
       message: "",
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        message: error.message || message,
+      },
+      {
+        status: error.statusCode || status,
+      }
+    );
+  }
+}
+
+export async function CreateEmployee(data: CreateUpdateUser) {
+  let message: string = "";
+  let status: number = 500;
+  try {
+    await CreateUpdateEmployeeValidation(data);
+
+    const {
+      first_name,
+      last_name,
+      employee_id,
+      department_name,
+      email,
+      password,
+      confirmPassword,
+    } = data;
+
+    if (!password || !confirmPassword) {
+      status = 400;
+      throw Error("Password Need To Create Employee");
+    }
+
+    const hashpassword: string | null = await hashPassword(password);
+
+    if (!hashpassword) {
+      status = 400;
+      throw Error("Password is Empty");
+    }
+
+    const role: Partial<Role> = (await GetRoleSingle({
+      where: {
+        role_code: RoleCode.employee,
+      },
+    })) as Partial<Role>;
+
+    if (!role) {
+      status = 400;
+      throw Error("Role not Found");
+    }
+
+    const department: Partial<Department> = (await GetDepartmentSingle({
+      where: {
+        department_name,
+      },
+    })) as Partial<Department>;
+
+    if (!department) {
+      status = 400;
+      throw Error("Department not Found");
+    }
+
+    const subsidyType: Partial<SubsidyType> = (await GetSubsidyTypeSingle({
+      where: {
+        subsidy_type_code: SubsidyTypeCode.meal,
+      },
+    })) as Partial<SubsidyType>;
+
+    if (!subsidyType) {
+      status = 400;
+      throw Error("Subsidy Meal not Found");
+    }
+
+    const name: string = `${first_name} ${last_name}`;
+
+    const user: Partial<User> = {
+      email,
+      employee_id,
+      password_hash: hashpassword,
+      role_id: role.role_id,
+      department_id: department.department_id,
+      is_email_verified: true,
+    };
+
+    const userDetails: Partial<UserDetails> = {
+      name,
+      first_name,
+      last_name,
+    };
+
+    const createUser = await CreateUserNUserDetailsCascade({
+      user: user as User,
+      userDetails: userDetails as UserDetails,
+    });
+
+    if (!createUser || createUser.length < 0) {
+      status = 400;
+      throw Error("Failed To Create Employee");
+    }
+
+    console.log("createUser===>", createUser);
+
+    const SubsidyUser: Partial<Subsidy> = {
+      subsidy_type_id: subsidyType.subsidy_type_id,
+      user_id: createUser[0]?.user_id,
+    };
+
+    const createSubsidyUser = await CreateSubsidy_4User({
+      data: SubsidyUser as Subsidy,
+    });
+
+    if (!createSubsidyUser) {
+      status = 400;
+      throw Error("Failed To Assign Subsidy Meal");
+    }
+
+    return NextResponse.json({
+      message: "Successfully Create New Employee",
     });
   } catch (error: any) {
     return NextResponse.json(

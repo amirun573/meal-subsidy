@@ -50,7 +50,7 @@ model User {
   subsidy_credits           SubsidyCredit[]   // One-to-many relationship with SubsidyCredit
   subsidy_transactions      SubsidyTransaction[] // One-to-many relationship with SubsidyTransaction
   department                Department?       @relation(fields: [department_id], references: [department_id], onDelete: Cascade)
-  department_id             Int?              @unique
+  department_id             Int?
 }
 
 
