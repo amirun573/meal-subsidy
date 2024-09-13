@@ -41,7 +41,7 @@ model User {
 
   // Relation to RoleFeature (acts as a bridge between User and Role)
   user_features             UserFeatures[]     // One-to-many relationship with RoleFeature
-  
+
   is_email_verified         Boolean           @default(false)
   email_verification_token  String?
   deleted_at                DateTime?
@@ -51,6 +51,7 @@ model User {
   subsidy_transactions      SubsidyTransaction[] // One-to-many relationship with SubsidyTransaction
   department                Department?       @relation(fields: [department_id], references: [department_id], onDelete: Cascade)
   department_id             Int?
+  access_cards              AccessCard[]      // One-to-many relationship with MifareCard
 }
 
 
@@ -240,6 +241,19 @@ model UserFeatures {
   created_at      DateTime  @default(now()) 
   updated_at      DateTime  @default(now())
   deleted_at      DateTime?
+}
+
+model AccessCard {
+  card_id        Int       @id @default(autoincrement())
+  card_value     String    // Mifare card value (e.g. UID or other identifier)
+  active         Boolean   @default(true)  // Indicates if the card is active or replaced
+  issued_at      DateTime  @default(now()) // When the card was issued
+  user           User?      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  user_id        Int
+
+  uuid                      String?           @default(uuid())
+  created_at                DateTime          @default(now())
+  updated_at                DateTime          @updatedAt
 }
 
 

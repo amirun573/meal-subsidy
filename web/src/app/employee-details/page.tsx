@@ -16,6 +16,8 @@ import Spinner from '../../Components/Spinner/index';
 import { CreateUpdateUser } from "@/_Common/interface/user.interface";
 import { DepartmentLists } from "@/_Common/interface/department.interface";
 import { FormatDepartmentCode } from "@/_Common/function/String";
+import { FolderArrowDownIcon } from '@heroicons/react/24/solid'
+
 
 interface EmployeeDetails {
     name: string,
@@ -708,13 +710,32 @@ const EmployeeDetailsPage = () => {
 
                     <h1 className="text-black">Employee Details</h1>
                     <div className="flex justify-end">
-                        <button
-                            onClick={HandleUserAction}
-                            className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
-                        >
-                            +
-                        </button>
+                        <ul className="flex space-x-2">
+                            <li>
+                                <button
+                                    onClick={HandleUserAction}
+                                    className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
+                                >
+                                    +
+                                </button>
+                            </li>
+                            <li>
+                                <button
+                                    onClick={HandleUserAction}
+                                    className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 64 64" fill="none">
+                                        <rect x="4" y="14" width="56" height="36" rx="4" fill="#f5c38c" />
+                                        <path d="M4 14h20l4-4h32v36H4V14z" fill="#f5c38c" />
+                                        <rect x="8" y="22" width="48" height="24" rx="2" fill="#fff" />
+                                    </svg>
+                                </button>
+                            </li>
+                        </ul>
                     </div>
+
+
+
+
 
                     <div className="mt-7">
                         <div className="relative overflow-x-auto shadow-md sm:rounded-lg">

@@ -181,15 +181,39 @@ export async function ScanCheckEmployeeIDService(data: ScanCheckEmployeeID) {
 
     const user = await GetUserSingle({
       where: {
-        employee_id,
-        subsidies: {
-          some: {
-            applicable: true,
-            subsidy_type: {
-              subsidy_type_code: SubsidyTypeCode.meal,
+        OR: [
+          {
+            employee_id,
+          },
+          {
+            access_cards: {
+              some: {
+                active: true,
+                card_value: employee_id,
+              },
             },
           },
-        },
+          {
+            AND: [
+              {
+                subsidies: {
+                  some: {
+                    applicable: true,
+                  },
+                },
+              },
+              {
+                subsidies: {
+                  some: {
+                    subsidy_type: {
+                      subsidy_type_code: "meal",
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        ],
       },
       select: {
         user_id: true,
