@@ -9,6 +9,8 @@ import { StatusAPICode } from '@/_Common/enum/status-api-code.enum';
 import { DisplayAlert } from '@/_Common/function/Error';
 import { ScanEmployeeIDValidation } from '@/_Common/validation/user.validation';
 import { encrypt } from '@/_Common/function/Hashing';
+import { SubsidySubmitPrice } from '@/_Common/interface/subsidy.interface';
+import { EmployeeSubmitPriceValidation } from '@/_Common/validation/subsidy.validation';
 const ScanPage = () => {
     const [employeeId, setEmployeeId] = useState<string>('');
     const [showScannerModal, setShowScannerModal] = useState<boolean>(false);
@@ -16,6 +18,9 @@ const ScanPage = () => {
     const [availableCredit, setAvailableCredit] = useState<number>(0); // Example available credit
     const [discount, setDiscount] = useState<number>(0); // Example discount
     const [loading, setLoading] = useState(false);
+    const [employeeName, setEmployeeName] = useState<string>('');
+    const [calculatedFinalPrice, setCalculatedFinalPrice] = useState<number>(0);
+    const [subsidyCreditUUID, setSubsidyCreditUUID] = useState<string>('');
 
     // Callback function to get scan result
     const handleScanResult = (result: string) => {
@@ -57,6 +62,19 @@ const ScanPage = () => {
                 // Make sure to await the API call
                 const employeeIDCheckRequest = await axios.get(`/api/user?${StatusAPICode.code}=${StatusAPICode.GET_CHECK_EMPLOYEE_ID}&employeeID=${encrypt(employeeID)}`);
 
+                if (!employeeIDCheckRequest.data?.employee_name || (typeof employeeIDCheckRequest.data?.available_credit !== 'number') || !employeeIDCheckRequest.data?.subsidyCreditUUID) {
+                    throw Error("Failed To Retrieve Subsidy Details");
+                }
+
+                setSubsidyCreditUUID(employeeIDCheckRequest.data?.subsidyCreditUUID as string);
+                const newAvailableCredit: number = employeeIDCheckRequest.data?.available_credit as number > 0 ? employeeIDCheckRequest.data?.available_credit as number : 0;
+
+                setEmployeeName(employeeIDCheckRequest.data?.employee_name);
+                setAvailableCredit(newAvailableCredit)
+
+                const newDiscount: number = newAvailableCredit > 0 ? newAvailableCredit - totalPrice : 0;
+
+                setDiscount(newDiscount);
                 // Process employeeIDCheckRequest response as necessary
             } else {
                 setEmployeeId('');
@@ -77,22 +95,54 @@ const ScanPage = () => {
         }
     };
 
+    const HandleSubmitTotalPrice = async () => {
+        setLoading(true);
+        try {
 
-    const calculatedFinalPrice = totalPrice - discount - availableCredit;
+            const data: SubsidySubmitPrice = {
+                totalPrice: calculatedFinalPrice,
+                price: totalPrice,
+                availableCredit,
+                discount,
+                employee_id: employeeId,
+                [StatusAPICode.code]: StatusAPICode.CREATE_SUBSIDY_TRANSACTION,
+                subsidyCreditUUID,
+            };
 
-    //Future Focus
-    const playSound = () => {
-        const audio = new Audio('/path/to/click.mp3'); // Specify the path to your sound file
-        audio.play();
-    };
+            const encryptedData = {
+                encryptedData: encrypt(JSON.stringify(data)),
+                [StatusAPICode.code]: StatusAPICode.CREATE_SUBSIDY_TRANSACTION
+            }
 
-    // useEffect(() => {
-    //     if (employeeId) {
-    //         console.log(`Employee ID is set: ${employeeId}`);
-    //         // You can perform any action here when employeeId has a value.
-    //         // For example, making an API call or updating some other state.
-    //     }
-    // }, [employeeId]); // This effect will run whenever employeeId changes.
+
+            await EmployeeSubmitPriceValidation(data);
+
+            const requestSubmitPrice = await axios.post(`/api/subsidy`, encryptedData);
+
+            if (!requestSubmitPrice.data?.updateSubsidy) {
+                throw Error("Cannot Retreive Data For Update Subisdy Credit");
+            }
+
+            alert("Successfully Update");
+
+            window.location.reload();
+
+        } catch (error) {
+            console.error(error);
+            DisplayAlert(error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+
+    useEffect(() => {
+        const finalPrice: number = Math.max(0, totalPrice - availableCredit);
+
+        setCalculatedFinalPrice(finalPrice);
+
+    }, [totalPrice, availableCredit, discount]);
+
 
     return (
         <>
@@ -162,6 +212,13 @@ const ScanPage = () => {
 
                 </div>
 
+                {employeeName && (
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '20px' }}>
+                        <p className='text-white'>Employee Name: {employeeName}</p>
+                    </div>
+                )}
+
+
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '20px' }}>
                     <button
                         onClick={handleToggleScannerModal}
@@ -179,7 +236,7 @@ const ScanPage = () => {
                     </button>
 
                     <button
-                        // onClick={handleAnotherAction}
+                        onClick={HandleSubmitTotalPrice}
                         style={{
                             padding: '10px 20px',
                             fontSize: '16px',

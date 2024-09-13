@@ -1,8 +1,20 @@
-import { SubsidyEmployeeUpdate } from "@/_Common/interface/subsidy.interface";
-import { EmployeeUpdateSubsidyValidation } from "@/_Common/validation/subsidy.validation";
-import { Prisma, Subsidy } from "@prisma/client";
+import {
+  SubsidyEmployeeUpdate,
+  SubsidySubmitPrice,
+} from "@/_Common/interface/subsidy.interface";
+import {
+  EmployeeSubmitPriceValidation,
+  EmployeeUpdateSubsidyValidation,
+} from "@/_Common/validation/subsidy.validation";
+import { Prisma, Subsidy, SubsidyCredit } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { GetSubsidySingle, UpdateSubsidy } from "../model/subsidy.model";
+import {
+  GetSubsidySingle,
+  UpdateSubsidy,
+  UpdateSubsidyCredit,
+} from "../model/subsidy.model";
+import { GetUserSingle } from "../../user/model/user.model";
+import { SubsidyTypeCode } from "@/_Common/enum/subsidy-type.enum";
 
 export async function UpdateUserApplicableSubsidy(data: SubsidyEmployeeUpdate) {
   let message: string = "";
@@ -38,6 +50,146 @@ export async function UpdateUserApplicableSubsidy(data: SubsidyEmployeeUpdate) {
     if (!updateSubsidyProcess) {
       status = 400;
       throw Error("Failed To Update Subsidy");
+    }
+
+    return NextResponse.json({
+      updateSubsidy: true,
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        message: error.message || message,
+      },
+      {
+        status: error.statusCode || status,
+      }
+    );
+  }
+}
+
+export async function CreateSubsidyTransactionService(
+  data: SubsidySubmitPrice
+) {
+  let message: string = "";
+  let status: number = 500;
+  try {
+    await EmployeeSubmitPriceValidation(data);
+
+    const {
+      totalPrice,
+      price,
+      availableCredit,
+      discount,
+      employee_id,
+      subsidyCreditUUID,
+    } = data;
+
+    const user = await GetUserSingle({
+      where: {
+        employee_id,
+        subsidies: {
+          some: {
+            applicable: true,
+            subsidy_type: {
+              subsidy_type_code: SubsidyTypeCode.meal,
+            },
+            subsidy_credits: {
+              some: {
+                credit_amount: {
+                  gt: 0, // Check if credit_amount is greater than 0
+                },
+                uuid: {
+                  in: [subsidyCreditUUID], // Filter by specific UUID or an array of UUIDs
+                },
+              },
+            },
+          },
+        },
+      },
+      select: {
+        user_id: true,
+        subsidies: {
+          select: {
+            subsidy_id: true,
+            subsidy_credits: {
+              select: {
+                subsidy_credit_id: true,
+                credit_amount: true,
+                uuid: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      status = 400;
+      throw Error("Credit Has Been Finished");
+    }
+
+    const { subsidies, ...UserWihoutSubsidy } = user as any;
+
+    const subsidiesCheck: Subsidy[] = subsidies as Subsidy[];
+
+    if (subsidiesCheck.length !== 1) {
+      status = 400;
+      throw Error("Wrong Setup For Subsidy");
+    }
+
+    const SubsidyCredits: SubsidyCredit[] = [];
+
+    subsidiesCheck.forEach((subsidy) => {
+      // Type assertion to access subsidy_credits
+      const checkSubsidyCredits: SubsidyCredit[] = (subsidy as any)
+        ?.subsidy_credits;
+
+      // Check if there is exactly one credit
+      if (checkSubsidyCredits.length !== 1) {
+        throw new Error("Wrong Setup Subsidy Credit");
+      }
+
+      // Push the single credit to the SubsidyCredits array
+      SubsidyCredits.push(checkSubsidyCredits[0]);
+    });
+
+    if (SubsidyCredits.length !== 1) {
+      status = 400;
+      throw Error("Wrong Setup For Subsidy Credit");
+    }
+
+    const subsidy_credits: Partial<SubsidyCredit> = SubsidyCredits[0];
+
+    if (!subsidy_credits) {
+      status = 400;
+      throw Error("No Subsidy Credit Found");
+    }
+
+    if (
+      subsidy_credits?.credit_amount != availableCredit ||
+      subsidyCreditUUID != subsidy_credits?.uuid
+    ) {
+      status = 400;
+      throw Error("Amount Credit Not Have Same Value");
+    }
+
+    const updatedAvailableCredit = Math.max(0, availableCredit - price);
+
+    console.log("subsidy_credits-->", subsidy_credits);
+    console.log("updatedAvailableCredit==>", updatedAvailableCredit);
+
+    const updateSubsidyCredit: Partial<SubsidyCredit> = {
+      subsidy_credit_id: subsidy_credits.subsidy_credit_id,
+      credit_amount: updatedAvailableCredit,
+    };
+
+    const updateSubsidyCreditProcess = await UpdateSubsidyCredit({
+      data: updateSubsidyCredit,
+    });
+
+    if (!updateSubsidyCreditProcess) {
+      status = 400;
+      throw Error("Failed To Update Subsidy Credit");
     }
 
     return NextResponse.json({

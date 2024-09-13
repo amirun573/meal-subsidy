@@ -81,3 +81,44 @@ export async function CreateSubsidy_4User(object: {
     return null;
   }
 }
+
+export async function GetSubsidyCreditSingle(data: PrismaCondtionFetch) {
+  try {
+    const { where, select } = data;
+
+    return prisma.subsidyCredit.findFirst({
+      where,
+      select,
+    });
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+export async function UpdateSubsidyCredit(object: PrismaUpdate) {
+  try {
+    const { data, prismaTransaction } = object;
+
+    const { subsidy_credit_id, ...WihoutSubsidy_credit_id } = data;
+
+    if (!prismaTransaction) {
+      return prisma.subsidyCredit.update({
+        data: WihoutSubsidy_credit_id,
+        where: {
+          subsidy_credit_id,
+        },
+      });
+    } else {
+      return prismaTransaction.subsidyCredit.update({
+        data: WihoutSubsidy_credit_id,
+        where: {
+          subsidy_credit_id,
+        },
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}

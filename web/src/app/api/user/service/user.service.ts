@@ -23,6 +23,7 @@ import {
   Department,
   Role,
   Subsidy,
+  SubsidyCredit,
   SubsidyType,
   User,
   UserDetails,
@@ -35,6 +36,7 @@ import {
 } from "../../department/model/department.model";
 import {
   CreateSubsidy_4User,
+  GetSubsidyCreditSingle,
   GetSubsidySingle,
   GetSubsidyTypeSingle,
 } from "../../subsidy/model/subsidy.model";
@@ -182,9 +184,23 @@ export async function ScanCheckEmployeeIDService(data: ScanCheckEmployeeID) {
         employee_id,
         subsidies: {
           some: {
+            applicable: true,
             subsidy_type: {
               subsidy_type_code: SubsidyTypeCode.meal,
             },
+          },
+        },
+      },
+      select: {
+        user_id: true,
+        UserDetails: {
+          select: {
+            name: true,
+          },
+        },
+        subsidies: {
+          select: {
+            subsidy_id: true,
           },
         },
       },
@@ -195,9 +211,25 @@ export async function ScanCheckEmployeeIDService(data: ScanCheckEmployeeID) {
       throw Error("No Employee Found");
     }
 
-    console.log("user==>", user);
+    const subsidyCredit: Partial<SubsidyCredit> = (await GetSubsidyCreditSingle(
+      {
+        where: {
+          user_id: user?.user_id,
+          subsidy_id: (user as any)?.subsidies?.subsidy_id,
+          active: true,
+        },
+      }
+    )) as Partial<SubsidyCredit>;
+
+    if (!subsidyCredit) {
+      status = 400;
+      throw Error("No Subsidy Credit Found");
+    }
+
     return NextResponse.json({
-      message: "",
+      employee_name: (user as any)?.UserDetails?.name,
+      available_credit: subsidyCredit.credit_amount,
+      subsidyCreditUUID: subsidyCredit.uuid,
     });
   } catch (error: any) {
     return NextResponse.json(
@@ -298,8 +330,6 @@ export async function CreateEmployee(data: CreateUpdateUser) {
       status = 400;
       throw Error("Failed To Create Employee");
     }
-
-    console.log("createUser===>", createUser);
 
     const SubsidyUser: Partial<Subsidy> = {
       subsidy_type_id: subsidyType.subsidy_type_id,

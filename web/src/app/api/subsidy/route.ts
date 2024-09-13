@@ -10,8 +10,15 @@ import {
 import { GetBodyData } from "@/_Common/function/Authentication";
 import { JWTDecode } from "../auth/model/auth.model";
 import { SignInService } from "../auth/service/auth.service";
-import { SubsidyEmployeeUpdate } from "@/_Common/interface/subsidy.interface";
-import { UpdateUserApplicableSubsidy } from "./service/subsidy.service";
+import {
+  SubsidyEmployeeUpdate,
+  SubsidySubmitPrice,
+} from "@/_Common/interface/subsidy.interface";
+import {
+  CreateSubsidyTransactionService,
+  UpdateUserApplicableSubsidy,
+} from "./service/subsidy.service";
+import { decrypt } from "@/_Common/function/Hashing";
 const APIAuth: StatusAPICode[] = [StatusAPICode.GET_EMPLOYEE_DETAILS];
 
 export async function GET(req: any, res: any) {
@@ -104,6 +111,24 @@ export async function POST(req: any, res: any) {
 
           return SignInService(data);
           //return WriteAddToCart(data, user);
+        }
+
+        case StatusAPICode.CREATE_SUBSIDY_TRANSACTION: {
+          const data: any = body as any;
+
+          if (!data) {
+            throw Error("No Data Detected");
+          }
+
+          const decryptData: SubsidySubmitPrice = JSON.parse(
+            decrypt(data?.encryptedData as string) || "{}"
+          );
+
+          if (!decryptData) {
+            throw Error("Not Authorized To Proceed");
+          }
+
+          return CreateSubsidyTransactionService(decryptData);
         }
 
         default: {

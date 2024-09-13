@@ -6,3 +6,13 @@ export interface SubsidyEmployeeUpdate {
   [StatusAPICode.code]: StatusAPICode;
   subsidy_uuid: string;
 }
+
+export interface SubsidySubmitPrice {
+  totalPrice: number;
+  price: number;
+  availableCredit: number;
+  discount: number;
+  employee_id: string;
+  [StatusAPICode.code]: StatusAPICode;
+  subsidyCreditUUID: string;
+}
