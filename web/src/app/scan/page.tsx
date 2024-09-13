@@ -151,7 +151,7 @@ const ScanPage = () => {
             <div>
                 {loading && <Spinner />}
 
-                <div style={{ textAlign: 'center', margin: '20px 0' }}>
+                <div style={{ margin: '20px 0', textAlign: 'center' }}>
                     <label
                         htmlFor='totalPrice'
                         style={{
@@ -159,7 +159,7 @@ const ScanPage = () => {
                             fontSize: '18px',
                             fontWeight: 'bold',
                             marginBottom: '8px',
-                            color: 'white'
+                            color: 'white',
                         }}>
                         Total Price (RM):
                     </label>
@@ -174,14 +174,16 @@ const ScanPage = () => {
                             fontSize: '16px',
                             borderRadius: '5px',
                             border: '1px solid #ccc',
-                            color: 'black'
+                            color: 'black',
+                            display: 'block',
+                            margin: '0 auto', // Center the input
                         }}
-                        onChange={handleTotalPriceChange}  // Attach the change handler
-
+                        onChange={handleTotalPriceChange} // Attach the change handler
                     />
                 </div>
 
-                <div style={{ textAlign: 'center', margin: '20px 0' }}>
+
+                <div style={{ margin: '20px 0', textAlign: 'center' }}>
                     <label
                         htmlFor='employeeID'
                         style={{
@@ -189,7 +191,7 @@ const ScanPage = () => {
                             fontSize: '18px',
                             fontWeight: 'bold',
                             marginBottom: '8px',
-                            color: 'white'
+                            color: 'white',
                         }}>
                         Employee ID:
                     </label>
@@ -204,22 +206,31 @@ const ScanPage = () => {
                             fontSize: '16px',
                             borderRadius: '5px',
                             border: '1px solid #ccc',
-                            color: 'black'
+                            color: 'black',
+                            display: 'block',
+                            margin: '0 auto', // Center the input
                         }}
                         onChange={(e) => setEmployeeId(e.target.value)}
                         onKeyDown={handleKeyDown} // Trigger action when Enter is pressed
                     />
-
                 </div>
 
-                {employeeName && (
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '20px' }}>
-                        <p className='text-white'>Employee Name: {employeeName}</p>
-                    </div>
-                )}
+                <div style={{ marginTop: '20px', textAlign: 'center' }}>
+                    {employeeName && (
+                        <div style={{
+                            display: 'inline-block',
+                            padding: '10px',
+                            borderRadius: '5px',
+                            backgroundColor: '#444',
+                            color: 'white',
+                            boxShadow: '0 0 10px rgba(0, 0, 0, 0.3)',
+                        }}>
+                            <p>Employee Name: <h2 style={{ fontSize: '2em' }}>{employeeName}</h2></p>
+                        </div>
+                    )}
+                </div>
 
-
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '20px' }}>
+                <div style={{ marginTop: '20px', textAlign: 'center' }}>
                     <button
                         onClick={handleToggleScannerModal}
                         style={{
@@ -229,9 +240,9 @@ const ScanPage = () => {
                             color: 'white',
                             border: 'none',
                             borderRadius: '5px',
-                            cursor: 'pointer'
-                        }}
-                    >
+                            cursor: 'pointer',
+                            marginRight: '10px', // Adjust margin between buttons
+                        }}>
                         Open QR Scanner
                     </button>
 
@@ -244,36 +255,19 @@ const ScanPage = () => {
                             color: 'white',
                             border: 'none',
                             borderRadius: '5px',
-                            cursor: 'pointer'
-                        }}
-                    >
+                            cursor: 'pointer',
+                        }}>
                         Submit
                     </button>
-
-                    {/* <button
-                        // onClick={handleThirdAction}
-                        style={{
-                            padding: '10px 20px',
-                            fontSize: '16px',
-                            backgroundColor: '#ffc107',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '5px',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        Third Button
-                    </button> */}
                 </div>
 
                 {/* Table */}
-                <div style={{ textAlign: 'center', marginTop: '30px' }}>
+                <div style={{ marginTop: '30px', textAlign: 'center' }}>
                     <table style={{
-                        width: '60%',
-                        margin: '0 auto',
+                        width: '100%',
                         borderCollapse: 'collapse',
                         color: '#fff',
-                        fontSize: '16px'
+                        fontSize: '16px',
                     }}>
                         <thead>
                             <tr style={{ backgroundColor: '#333' }}>
@@ -338,15 +332,16 @@ const ScanPage = () => {
                                     color: 'white',
                                     padding: '5px 10px',
                                     borderRadius: '5px',
-                                    cursor: 'pointer'
-                                }}
-                            >
+                                    cursor: 'pointer',
+                                }}>
                                 Close
                             </button>
                         </div>
                     </div>
                 )}
             </div>
+
+
         </>
     );
 };

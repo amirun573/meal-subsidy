@@ -206,7 +206,7 @@ export async function ScanCheckEmployeeIDService(data: ScanCheckEmployeeID) {
                 subsidies: {
                   some: {
                     subsidy_type: {
-                      subsidy_type_code: "meal",
+                      subsidy_type_code: SubsidyTypeCode.meal,
                     },
                   },
                 },
