@@ -272,6 +272,7 @@ const EmployeeDetailsPage = () => {
                 }
 
 
+                window.location.reload();
 
             } catch (error: any) {
                 console.error(error);

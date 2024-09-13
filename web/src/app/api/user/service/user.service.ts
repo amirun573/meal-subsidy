@@ -208,7 +208,7 @@ export async function ScanCheckEmployeeIDService(data: ScanCheckEmployeeID) {
 
     if (!user) {
       status = 400;
-      throw Error("No Employee Found");
+      throw Error("Not Eligable For Subsidy Meal");
     }
 
     const subsidyCredit: Partial<SubsidyCredit> = (await GetSubsidyCreditSingle(
@@ -338,7 +338,7 @@ export async function CreateEmployee(data: CreateUpdateUser) {
       user_id: createUser[0]?.user_id,
     };
 
-    const createSubsidyUser = await CreateSubsidy_4User({
+    const createSubsidyUser: any = await CreateSubsidy_4User({
       data: SubsidyUser as Subsidy,
     });
 
