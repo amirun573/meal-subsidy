@@ -313,6 +313,8 @@ export async function CreateEmployee(data: CreateUpdateUser) {
       role_id: role.role_id,
       department_id: department.department_id,
       is_email_verified: true,
+      is_acc_verify: true,
+      active: true,
     };
 
     const userDetails: Partial<UserDetails> = {

@@ -23,8 +23,8 @@ const ScanPage = () => {
     const [subsidyCreditUUID, setSubsidyCreditUUID] = useState<string>('');
 
     // Callback function to get scan result
-    const handleScanResult = (result: string) => {
-        setEmployeeId(result);
+    const handleScanResult = (result: any) => {
+        handleEmployeeID(result);
         setShowScannerModal(false); // Close modal once scan is successful
     };
 
@@ -52,7 +52,7 @@ const ScanPage = () => {
     const handleEmployeeID = async (event: React.ChangeEvent<HTMLInputElement>) => {
         setLoading(true);
         try {
-            const employeeID = String(event.target.value); // Ensure value is string
+            const employeeID = String(event?.target?.value || event); // Ensure value is string
 
             if (employeeID) {
                 setEmployeeId(employeeID);
