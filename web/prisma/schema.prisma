@@ -30,7 +30,7 @@ model User {
   user_id                   Int               @id @default(autoincrement())
   employee_id               String            @unique
   email                     String?            @unique
-  password_hash             String
+  password_hash             String?
   active                    Boolean           @default(false)
   uuid                      String?           @default(uuid())
   created_at                DateTime          @default(now())
@@ -79,8 +79,8 @@ model Country {
 model UserDetails {
   UserDetails_id           Int               @id @default(autoincrement())
   name                      String
-  first_name                String
-  last_name                 String
+  first_name                String?
+  last_name                 String?
   mobile_phone              String?
   img_profile               String?
   user                      User              @relation(fields: [user_id], references: [user_id])

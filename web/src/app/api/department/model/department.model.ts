@@ -43,3 +43,17 @@ export async function GetEmployeeCategoryLists(data: PrismaCondtionFetch) {
     return [];
   }
 }
+
+export async function GetEmployeeCategorySingle(data: PrismaCondtionFetch) {
+  try {
+    const { where, select } = data;
+
+    return prisma.employeeCategory.findFirst({
+      where,
+      select,
+    });
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}

@@ -15,22 +15,20 @@ const ScanCheckEmployeeIDValidation = yup.object().shape({
 });
 
 const CreateUpdateEmployeeValidationSchema = yup.object().shape({
-  first_name: yup.string().required("First Name Required"),
-  last_name: yup.string().required("Last Name Required"),
+  name: yup.string().required("Name Required"),
   employee_id: yup.string().required("Employee ID Required"),
   submit_method: yup.string().required("Submit Method Required"),
-  department_name: yup.string().required("Department Required"),
-  email: yup
-    .string()
-    .email("Email Format Must Be Correct")
-    .required("Email Required"),
+  department_name: yup.string().required("Department Name Required"),
+  department_code: yup.string().required("Department Code Required"),
+  employee_category_code: yup.string().required("Employee Category Required"),
+  email: yup.string().email("Email Format Must Be Correct").optional(),
   password: yup
-    .string()
-    .optional()
-    .matches(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
-      "Password must be at least 8 characters long, include one uppercase letter, one lowercase letter, one number, and one special character."
-    ),
+  .string()
+  .optional()
+  .test('password-strength', 'Password must be at least 8 characters long, include one uppercase letter, one lowercase letter, one number, and one special character.', value => {
+    if (!value) return true; // If the value is empty, skip validation
+    return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(value);
+  }),
   confirmPassword: yup
     .string()
     .optional()

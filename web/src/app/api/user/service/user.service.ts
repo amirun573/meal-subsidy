@@ -21,6 +21,7 @@ import { decrypt } from "@/_Common/function/Hashing";
 import {
   Country,
   Department,
+  EmployeeCategory,
   Role,
   Subsidy,
   SubsidyCredit,
@@ -33,6 +34,7 @@ import { RoleCode } from "@/_Common/enum/role.enum";
 import {
   GetDepartmentLists,
   GetDepartmentSingle,
+  GetEmployeeCategorySingle,
 } from "../../department/model/department.model";
 import {
   CreateSubsidy_4User,
@@ -282,25 +284,30 @@ export async function CreateEmployee(data: CreateUpdateUser) {
     await CreateUpdateEmployeeValidation(data);
 
     const {
-      first_name,
-      last_name,
+      name,
       employee_id,
       department_name,
       email,
       password,
       confirmPassword,
+      department_code,
+      employee_category_code,
     } = data;
 
-    if (!password || !confirmPassword) {
-      status = 400;
-      throw Error("Password Need To Create Employee");
-    }
+    let hashpassword: string = "";
 
-    const hashpassword: string | null = await hashPassword(password);
+    if (password) {
+      if (!confirmPassword) {
+        status = 400;
+        throw Error("Confirm Password Need To Create Employee");
+      }
 
-    if (!hashpassword) {
-      status = 400;
-      throw Error("Password is Empty");
+      const hashpassword: string | null = await hashPassword(password);
+
+      if (!hashpassword) {
+        status = 400;
+        throw Error("Password is Empty");
+      }
     }
 
     const role: Partial<Role> = (await GetRoleSingle({
@@ -316,13 +323,25 @@ export async function CreateEmployee(data: CreateUpdateUser) {
 
     const department: Partial<Department> = (await GetDepartmentSingle({
       where: {
-        department_name,
+        department_code,
       },
     })) as Partial<Department>;
 
     if (!department) {
       status = 400;
       throw Error("Department not Found");
+    }
+
+    const employeeCategory: Partial<EmployeeCategory> =
+      (await GetEmployeeCategorySingle({
+        where: {
+          employee_category_code,
+        },
+      })) as Partial<EmployeeCategory>;
+
+    if (!employeeCategory) {
+      status = 400;
+      throw Error("Employee Category not Found");
     }
 
     const subsidyType: Partial<SubsidyType> = (await GetSubsidyTypeSingle({
@@ -336,8 +355,6 @@ export async function CreateEmployee(data: CreateUpdateUser) {
       throw Error("Subsidy Meal not Found");
     }
 
-    const name: string = `${first_name} ${last_name}`;
-
     const user: Partial<User> = {
       email,
       employee_id,
@@ -347,12 +364,11 @@ export async function CreateEmployee(data: CreateUpdateUser) {
       is_email_verified: true,
       is_acc_verify: true,
       active: true,
+      employee_category_id: employeeCategory.employee_category_id,
     };
 
     const userDetails: Partial<UserDetails> = {
       name,
-      first_name,
-      last_name,
     };
 
     const createUser = await CreateUserNUserDetailsCascade({

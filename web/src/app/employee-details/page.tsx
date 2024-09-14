@@ -49,8 +49,7 @@ const EmployeeDetailsPage = () => {
     const [employeeCategories, setEmployeeCategories] = useState<EmployeeCategoryLists[]>([]);
 
     const [initializeSubmitDetails, setInitializeSubmitDetails] = useState<CreateUpdateUser>({
-        first_name: '',
-        last_name: '',
+        name: '',
         employee_id: '',
         submit_method: 'post',
         department_name: '',
@@ -59,6 +58,8 @@ const EmployeeDetailsPage = () => {
         password: '',
         confirmPassword: '',
         employee_category_name: '',
+        department_code: '',
+        employee_category_code: '',
 
     });
 
@@ -296,6 +297,21 @@ const EmployeeDetailsPage = () => {
                     await HandleUnAuthorized(null);
                 }
 
+                const findEmployeeCategory: EmployeeCategoryLists | undefined = employeeCategories.find(category => submitDetails.employee_category_name.trim() === category.employee_category_name.trim());
+
+                if (!findEmployeeCategory) {
+                    throw Error("Cannot Find Employee Category Code.");
+                }
+
+                const findDepartment: DepartmentLists | undefined = departments.find(department => submitDetails.department_name.trim() === department.department_name.trim());
+
+                if (!findDepartment) {
+                    throw Error("Cannot Find Department Code.");
+                }
+
+                submitDetails.employee_category_code = findEmployeeCategory.employee_category_code;
+                submitDetails.department_code = findDepartment.department_code;
+
                 await CreateUpdateEmployeeValidation(submitDetails);
 
                 if (submitDetails.submit_method === 'post') {
@@ -350,12 +366,12 @@ const EmployeeDetailsPage = () => {
                                 <div className="col-span-2 sm:col-span-1">
                                     <div className="grid gap-4 mb-4 sm:grid-cols-2">
                                         <div className="mt-4">
-                                            <label htmlFor="first_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">First Name</label>
+                                            <label htmlFor="name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Name</label>
                                             <input
                                                 type="text"
-                                                name="first_name"
-                                                id="first_name"
-                                                value={submitDetails.first_name}
+                                                name="name"
+                                                id="name"
+                                                value={submitDetails.name}
                                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
                                                 onChange={(e) => handleInputChange(e)}
                                                 placeholder="John"
@@ -363,19 +379,6 @@ const EmployeeDetailsPage = () => {
                                             />
                                         </div>
 
-                                        <div className="mt-4">
-                                            <label htmlFor="last_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Last Name</label>
-                                            <input
-                                                type="text"
-                                                name="last_name"
-                                                id="last_name"
-                                                value={submitDetails.last_name}
-                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                                                onChange={(e) => handleInputChange(e)}
-                                                placeholder="Affendy"
-                                                required
-                                            />
-                                        </div>
 
                                         <div className="mt-4">
                                             <label htmlFor="employee_id" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Employee ID</label>
@@ -428,7 +431,7 @@ const EmployeeDetailsPage = () => {
                                         </div>
 
                                         <div className="mt-4">
-                                            <label htmlFor="employee_category_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Department</label>
+                                            <label htmlFor="employee_category_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Employee Category</label>
                                             <select
                                                 id="employee_category_name"
                                                 name="employee_category_name"
@@ -436,10 +439,10 @@ const EmployeeDetailsPage = () => {
                                                 onChange={handleInputChange}
                                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
                                             >
-                                                <option value="" disabled>Select a department</option>
-                                                {departments.map((department, index) => (
-                                                    <option key={index} value={department.department_name}>
-                                                        {department.department_name}
+                                                <option value="" disabled>Select a Employee Category</option>
+                                                {employeeCategories.map((department, index) => (
+                                                    <option key={index} value={department.employee_category_name}>
+                                                        {department.employee_category_name}
                                                     </option>
                                                 ))}
                                             </select>
@@ -512,28 +515,17 @@ const EmployeeDetailsPage = () => {
                             <div className="col-span-2 sm:col-span-1">
                                 <div className="grid gap-4 mb-4 sm:grid-cols-2">
                                     <div className="mt-4">
-                                        <label htmlFor="first_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">First Name</label>
+                                        <label htmlFor="name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Name</label>
                                         <input
                                             type="text"
-                                            name="first_name"
-                                            id="first_name"
-                                            value={submitDetails.first_name}
+                                            name="name"
+                                            id="name"
+                                            value={submitDetails.name}
                                             className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
                                             readOnly
                                         />
                                     </div>
 
-                                    <div className="mt-4">
-                                        <label htmlFor="last_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Last Name</label>
-                                        <input
-                                            type="text"
-                                            name="last_name"
-                                            id="last_name"
-                                            value={submitDetails.last_name}
-                                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                                            readOnly
-                                        />
-                                    </div>
 
                                     <div className="mt-4">
                                         <label htmlFor="employee_id" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Employee ID</label>
@@ -549,7 +541,7 @@ const EmployeeDetailsPage = () => {
                                     </div>
 
                                     <div className="mt-4">
-                                        <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Employee ID</label>
+                                        <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Email</label>
                                         <input
                                             type="email"
                                             name="email"
@@ -573,7 +565,19 @@ const EmployeeDetailsPage = () => {
                                             readOnly
                                         />
 
+                                    </div>
 
+                                    <div className="mt-4">
+                                        <label htmlFor="employee_category_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Employee Category</label>
+
+                                        <input
+                                            type="text"
+                                            name="employee_category_name"
+                                            id="employee_category_name"
+                                            value={(submitDetails.employee_category_name)}
+                                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                            readOnly
+                                        />
 
                                     </div>
                                 </div>

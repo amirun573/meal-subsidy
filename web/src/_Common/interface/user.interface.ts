@@ -11,14 +11,17 @@ export interface ScanCheckEmployeeID {
 
 export interface CreateUpdateUser {
   user_uuid?: string;
-  first_name: string;
-  last_name: string;
+  name: string;
   employee_id: string;
   submit_method: "post" | "put";
   department_name: string;
+  department_code: string;
+
   code: StatusAPICode;
   email: string;
   password?: string;
   confirmPassword?: string;
   employee_category_name: string;
+  employee_category_code: string;
+
 }
