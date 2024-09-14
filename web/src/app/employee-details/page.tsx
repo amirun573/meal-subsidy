@@ -17,6 +17,7 @@ import { CreateUpdateUser } from "@/_Common/interface/user.interface";
 import { DepartmentLists } from "@/_Common/interface/department.interface";
 import { FormatDepartmentCode } from "@/_Common/function/String";
 import { FolderArrowDownIcon } from '@heroicons/react/24/solid'
+import { MainContent } from "@/Components/Main";
 
 
 interface EmployeeDetails {
@@ -65,6 +66,10 @@ const EmployeeDetailsPage = () => {
 
     const [departments, setDepartments] = useState<DepartmentLists[]>([]);
 
+    const [openModalUploadFile, setOpenModalUploadFile] = useState<boolean>(false);
+    const [isOpenModalUploadFile, setIsOpenodalUploadFile] = useState(false);
+
+
 
     const GetEmployee = async () => {
         try {
@@ -98,7 +103,7 @@ const EmployeeDetailsPage = () => {
                     const subsidies = ((user as any)?.subsidies as Subsidy[]).find(subsidy => (subsidy as any).subsidy_type?.subsidy_type_code === SubsidyTypeCode.meal);
 
                     const employee: EmployeeDetails = {
-                        name: (user as any)?.UserDetails?.name,
+                        name: String((user as any)?.UserDetails?.name).toUpperCase(),
                         employee_id: user.employee_id,
                         department: (user as any)?.department?.department_name,
                         is_meal_subsidiry_active: subsidies?.applicable as boolean || false,
@@ -178,17 +183,7 @@ const EmployeeDetailsPage = () => {
         GetEmployee();
     };
 
-    const handleUpdateBooking = (uuid: string) => {
 
-        try {
-
-
-            setOpenModalAddBooking(true);
-
-        } catch (error) {
-            console.error(error);
-        }
-    }
 
     const ModalUser = () => {
 
@@ -594,59 +589,188 @@ const EmployeeDetailsPage = () => {
         };
 
         return (
-            <Modal show={openModalAddBooking} onClose={() => setOpenModalAddBooking(false)}>
-                <Modal.Header className="bg-gray-200 text-gray-900"></Modal.Header>
-                <Modal.Body className="max-h-[75vh] overflow-y-auto">
-                    <Stepper steps={steps} currentStep={currentStep} setCurrentStep={setCurrentStep} />
-                    {renderStep()}
-                    <div className="flex justify-between mt-3">
-                        {currentStep <= 0 ?
-                            <button type="button" className="text-gray-700 bg-gray-200 hover:bg-gray-300 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-800"
+            <>
 
-                                disabled={false}
-                            >
-                                Previous Step
-                            </button> :
+                {openModalAddBooking && (
+                    <div className="relative">
+                        <button
+                            className="bg-blue-500 text-white px-4 py-2 rounded"
+                            onClick={() => setOpenModalAddBooking(true)}
+                        >
+                            Employee Details
+                        </button>
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                            <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl p-6 relative mx-4 sm:mx-6 md:mx-8 lg:mx-12">
+                                <button
+                                    className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+                                    onClick={() => setOpenModalAddBooking(false)}
+                                    aria-label="Close modal"
+                                >
+                                    &times;
+                                </button>
 
-                            <button type="button" className="text-white-700 bg-gray-700 hover:bg-blue-300 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-gray-800"
-                                onClick={prevStep}
-                            >
-                                Previous Step
-                            </button>
-                        }
+                                <div className="mb-4">
+                                    <Stepper steps={steps} currentStep={currentStep} setCurrentStep={setCurrentStep} />
+                                </div>
 
-                        {currentStep < steps.length - 1 ? (
-                            <button
-                                className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 mt-4"
-                                onClick={nextStep}
-                            >
-                                Next Step
-                            </button>
-                        ) : (
-                            <button
-                                type="button"
-                                className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 mt-4"
-                                onClick={handleSubmit}
-                                disabled={loading}
-                            >
-                                {loading ? 'Loading...' : 'Submit'}
-                            </button>
-                        )}
+                                <div className="overflow-y-auto max-h-[70vh]">
+                                    {renderStep()}
+                                </div>
 
+                                <div className="flex flex-col sm:flex-row justify-between mt-3">
+                                    <div>
+                                        {currentStep <= 0 ? (
+                                            <button
+                                                type="button"
+                                                className="text-gray-700 bg-gray-200 hover:bg-gray-300 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
+                                                disabled
+                                            >
+                                                Previous Step
+                                            </button>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                className="text-white bg-gray-700 hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
+                                                onClick={prevStep}
+                                            >
+                                                Previous Step
+                                            </button>
+                                        )}
+                                    </div>
 
-
+                                    <div className="mt-3 sm:mt-0">
+                                        {currentStep < steps.length - 1 ? (
+                                            <button
+                                                className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
+                                                onClick={nextStep}
+                                            >
+                                                Next Step
+                                            </button>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
+                                                onClick={handleSubmit}
+                                                disabled={loading}
+                                            >
+                                                {loading ? 'Loading...' : 'Submit'}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </Modal.Body>
-                <Modal.Footer className="flex justify-between">
-                    {/* <button className="bg-red-500 text-white px-4 py-2 rounded" onClick={() => setOpenModalAddBooking(false)}>Close</button> */}
-                    {/* <button className="bg-yellow-500 text-white px-4 py-2 rounded" onClick={() => setSubmitDetails(initializeSubmitDetails)}>Reset</button> */}
-                    <div className="flex space-x-2">
-                        {/* <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded" onClick={handleSubmit}>Submit ({(storeService as any)?.postcode?.city?.state?.country?.currency_code || 'RM'} {submitDetails.totalPrice > 0 ? `${submitDetails.totalPrice} Include Tax and Service Fee` : 0})</button> */}
-                    </div>
-                </Modal.Footer>
-            </Modal>
+                )}
+            </>
+
         );
 
+    }
+
+    const HandleCloseModalUploadFile = () => {
+        setIsOpenodalUploadFile(false);
+    };
+
+
+    const ModalUploadUser = () => {
+
+        const [selectedFile, setSelectedFile] = useState<any>(null);
+
+        // Handle file selection
+        const HandleFileChange = (event: any) => {
+            setSelectedFile(event.target.files[0]);
+        };
+
+
+        // Handle file submission
+        const HandleSubmit = () => {
+            if (!selectedFile) {
+                alert('Please select a file to upload');
+                return;
+            }
+
+            // Handle file upload logic here (e.g., using a form data or API)
+            console.log('File selected for upload:', selectedFile);
+            alert(`File ${selectedFile.name} uploaded successfully!`);
+
+            // After submission, close the modal and reset the file
+            setOpenModalAddBooking(false);
+            setSelectedFile(null);
+        };
+        return (
+            <>
+                {isOpenModalUploadFile && (
+                    <div className="flex items-center justify-center h-screen">
+                        <button
+                            className="bg-blue-500 text-white px-4 py-2 rounded"
+                            onClick={() => setIsOpenodalUploadFile(true)}
+                        >
+                            Upload File
+                        </button>
+
+
+                        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                            <div className="bg-white rounded-lg w-96 p-6">
+                                <div className="flex justify-between items-center border-b pb-3 mb-4">
+                                    <h2 className="text-xl font-semibold text-gray-700">Upload File</h2>
+                                    <button
+                                        className="text-gray-400 hover:text-gray-600"
+                                        onClick={HandleCloseModalUploadFile}
+                                    >
+                                        &times;
+                                    </button>
+                                </div>
+
+                                <div className="flex flex-col items-center space-y-4">
+                                    <label
+                                        htmlFor="fileUpload"
+                                        className="text-gray-600 font-medium"
+                                    >
+                                        Select a file to upload:
+                                    </label>
+                                    <input
+                                        type="file"
+                                        id="fileUpload"
+                                        className="border border-gray-300 rounded-md px-4 py-2 w-full"
+                                        onChange={HandleFileChange}
+                                    />
+
+                                    {selectedFile && (
+                                        <p className="text-sm text-green-500 mt-2">
+                                            Selected file: {selectedFile.name}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="flex justify-end mt-6">
+                                    <button
+                                        className="bg-gray-500 text-white px-4 py-2 rounded mr-2"
+                                        onClick={HandleCloseModalUploadFile}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        className="bg-blue-500 text-white px-4 py-2 rounded"
+                                        onClick={() => {
+                                            if (selectedFile) {
+                                                alert(`File ${selectedFile.name} uploaded!`);
+                                            } else {
+                                                alert('Please select a file to upload.');
+                                            }
+                                        }}
+                                    >
+                                        Submit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                )}
+            </>
+
+        );
     }
 
     const GetDepartment = async () => {
@@ -727,7 +851,11 @@ const EmployeeDetailsPage = () => {
 
 
     const HandleUserAction = () => {
-        setOpenModalAddBooking(true)
+        setOpenModalAddBooking(true);
+    }
+
+    const HandleUserUploadFileAction = () => {
+        setIsOpenodalUploadFile(true)
     }
 
     const HandleCheckboxChange = async (e: any, index: number) => {
@@ -811,7 +939,7 @@ const EmployeeDetailsPage = () => {
                             </li>
                             <li>
                                 <button
-                                    onClick={HandleUserAction}
+                                    onClick={HandleUserUploadFileAction}
                                     className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"                                >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 64 64" fill="none">
                                         <rect x="4" y="14" width="56" height="36" rx="4" fill="#f5c38c" />
@@ -927,6 +1055,9 @@ const EmployeeDetailsPage = () => {
                 <div>
                     <ModalUser />
                 </div>
+                <div>
+                    <ModalUploadUser />
+                </div>
             </div>
         </div>
     </>);
@@ -937,6 +1068,7 @@ const Page = () => {
     return (
         <Suspense fallback={'...Loading'}>
             <Navbar />
+            <MainContent/>
             <EmployeeDetailsPage />
         </Suspense>
     );

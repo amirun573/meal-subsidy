@@ -368,7 +368,7 @@ export async function CreateEmployee(data: CreateUpdateUser) {
     };
 
     const userDetails: Partial<UserDetails> = {
-      name,
+      name: name.toLowerCase(),
     };
 
     const createUser = await CreateUserNUserDetailsCascade({
