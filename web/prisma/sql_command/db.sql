@@ -76,4 +76,14 @@ INSERT INTO ROLE(
   'Employee'
 );
 
+INSERT INTO EmployeeCategory (employee_category_code, employee_category_name)
+VALUES ('dl', 'DIRECT LABOUR');
+
+INSERT INTO EmployeeCategory (employee_category_code, employee_category_name)
+VALUES ('idl', 'INDIRECT LABOUR');
+
+INSERT INTO EmployeeCategory (employee_category_code, employee_category_name)
+VALUES ('ndl', 'Non Eligible DIRECT LABOUR');
+
+
 

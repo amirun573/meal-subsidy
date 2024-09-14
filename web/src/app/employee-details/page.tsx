@@ -8,7 +8,7 @@ import { UserDetailsLocalStorage } from "@/_Common/interface/auth.interface";
 import { SubsidyEmployeeUpdate } from "@/_Common/interface/subsidy.interface";
 import { EmployeeUpdateSubsidyValidation } from "@/_Common/validation/subsidy.validation";
 import { CreateUpdateEmployeeValidation, UserPaginationValidation } from "@/_Common/validation/user.validation";
-import { Department, Subsidy, User } from "@prisma/client";
+import { Department, EmployeeCategory, Subsidy, User } from "@prisma/client";
 import axios from "axios";
 import { Modal } from "flowbite-react";
 import { Suspense, useEffect, useState } from "react";
@@ -26,7 +26,14 @@ interface EmployeeDetails {
     is_meal_subsidiry_active: boolean,
     meal_subsidiry_uuid: string,
     uuid: string,
-    email: string,
+    email?: string,
+    employee_category_code: string;
+
+}
+
+interface EmployeeCategoryLists {
+    employee_category_code: string,
+    employee_category_name: string,
 }
 
 const EmployeeDetailsPage = () => {
@@ -39,7 +46,7 @@ const EmployeeDetailsPage = () => {
     const [openModalAddBooking, setOpenModalAddBooking] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [loading, setLoading] = useState(false);
-
+    const [employeeCategories, setEmployeeCategories] = useState<EmployeeCategoryLists[]>([]);
 
     const [initializeSubmitDetails, setInitializeSubmitDetails] = useState<CreateUpdateUser>({
         first_name: '',
@@ -51,6 +58,8 @@ const EmployeeDetailsPage = () => {
         email: '',
         password: '',
         confirmPassword: '',
+        employee_category_name: '',
+
     });
 
     const [departments, setDepartments] = useState<DepartmentLists[]>([]);
@@ -94,7 +103,8 @@ const EmployeeDetailsPage = () => {
                         is_meal_subsidiry_active: subsidies?.applicable as boolean || false,
                         meal_subsidiry_uuid: (subsidies as any)?.subsidy_type?.uuid || '',
                         uuid: user?.uuid || '',
-                        email: user?.email,
+                        email: user?.email || '',
+                        employee_category_code: (user as any)?.employee_category?.employee_category_code || '',
                     }
 
                     employeeDetailsResponse.push(employee);
@@ -112,6 +122,49 @@ const EmployeeDetailsPage = () => {
         } catch (error: any) {
             console.error(error);
             alert(error?.response?.data?.message || error?.message || "Something Goes Wrong");
+            await HandleUnAuthorized(error);
+        }
+    }
+
+    const GetEmployeeCategory = async () => {
+        try {
+            const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+
+            if (!userDetailsLocalStorage) {
+                await HandleUnAuthorized(null);
+            }
+
+            const requestEmployeeCategory = await axios.get(`/api/department?${StatusAPICode.code}=${StatusAPICode.GET_EMPLOYEE_CATEGORY_LISTS}`, {
+                headers: {
+                    Authorization: `Bearer ${userDetailsLocalStorage?.accessToken}`
+                }
+            });
+
+            if (!requestEmployeeCategory.data?.employeeCategories) {
+                throw Error("No Employee Categories Been Retreived");
+            }
+
+            const employeeCategory: Partial<EmployeeCategory>[] = requestEmployeeCategory.data?.employeeCategories as Partial<EmployeeCategory>[];
+
+            const employeeCategoryArray: EmployeeCategoryLists[] = [];
+
+
+            employeeCategory.map(category => {
+                const employeeCategory: EmployeeCategoryLists = {
+                    employee_category_code: category.employee_category_code || '',
+                    employee_category_name: category.employee_category_name || '',
+                };
+
+                employeeCategoryArray.push(employeeCategory);
+
+            });
+
+            setEmployeeCategories(employeeCategoryArray);
+
+
+        } catch (error) {
+            console.error(error);
+            DisplayAlert(error);
             await HandleUnAuthorized(error);
         }
     }
@@ -373,6 +426,26 @@ const EmployeeDetailsPage = () => {
 
 
                                         </div>
+
+                                        <div className="mt-4">
+                                            <label htmlFor="employee_category_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Department</label>
+                                            <select
+                                                id="employee_category_name"
+                                                name="employee_category_name"
+                                                value={submitDetails.employee_category_name}
+                                                onChange={handleInputChange}
+                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                            >
+                                                <option value="" disabled>Select a department</option>
+                                                {departments.map((department, index) => (
+                                                    <option key={index} value={department.department_name}>
+                                                        {department.department_name}
+                                                    </option>
+                                                ))}
+                                            </select>
+
+
+                                        </div>
                                     </div>
                                 </div>
                             </form>
@@ -615,26 +688,39 @@ const EmployeeDetailsPage = () => {
     }
 
     useEffect(() => {
-        setLoading(true);
-        try {
-            const handleResize = () => {
-                setIsMobile(window.innerWidth < 768);
-            };
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
 
-            window.addEventListener('resize', handleResize);
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                window.addEventListener('resize', handleResize);
 
-            // Call handler right away so state gets updated with initial window size
-            handleResize();
-            GetEmployee();
-            GetDepartment();
-        } catch (error) {
-            console.error(error);
-            DisplayAlert(error);
-        } finally {
-            setLoading(false);
-        }
+                // Call handler right away so state gets updated with initial window size
+                handleResize();
 
-    }, []);
+                // Fetch employee and department data sequentially
+                await GetEmployee();       // If this throws an error, the following will not execute
+                await GetDepartment();     // If this throws an error, the next will not execute
+                await GetEmployeeCategory(); // If this throws an error, it will be caught in the catch block
+
+            } catch (error) {
+                console.error(error);
+                DisplayAlert(error);       // Display the error alert
+            } finally {
+                setLoading(false);         // Ensure loading is turned off after the operations
+            }
+        };
+
+
+        fetchData();
+
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+    }, []);  // Empty dependency array ensures this runs only once
+
 
     const HandleUserAction = () => {
         setOpenModalAddBooking(true)

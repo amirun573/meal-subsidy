@@ -139,6 +139,12 @@ export async function UserPaginationService(data: UserPaginationRequest) {
             },
           },
         },
+        employee_category: {
+          select: {
+            employee_category_code: true,
+            employee_category_name: true,
+          },
+        },
       },
       orderBy: { field: "created_at", direction: "desc" },
     });

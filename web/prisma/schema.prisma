@@ -35,7 +35,7 @@ model User {
   uuid                      String?           @default(uuid())
   created_at                DateTime          @default(now())
   updated_at                DateTime          @updatedAt
-  UserDetails              UserDetails?     // Relation to UserDetails model
+  UserDetails               UserDetails?      // Relation to UserDetails model
   role                      Role?             @relation(fields: [role_id], references: [role_id], onDelete: Cascade)
   role_id                   Int?
 
@@ -52,6 +52,8 @@ model User {
   department                Department?       @relation(fields: [department_id], references: [department_id], onDelete: Cascade)
   department_id             Int?
   access_cards              AccessCard[]      // One-to-many relationship with MifareCard
+  employee_category         EmployeeCategory? @relation(fields: [employee_category_id], references: [employee_category_id], onDelete: Cascade)
+  employee_category_id      Int?              // Many-to-one relation, no unique constraint here
 }
 
 
@@ -258,6 +260,22 @@ model AccessCard {
   created_at                DateTime          @default(now())
   updated_at                DateTime          @updatedAt
 }
+
+model EmployeeCategory {
+  employee_category_id   Int       @id @default(autoincrement())
+  employee_category_code String    @unique
+  employee_category_name String
+
+  uuid            String?   @default(uuid())
+  active          Boolean   @default(true)
+  created_at      DateTime  @default(now()) 
+  updated_at      DateTime  @default(now())
+  deleted_at      DateTime?
+
+  // Relation to Users (one category can have many users)
+  users                   User[]              // One-to-many relation to User
+}
+
 
 
 

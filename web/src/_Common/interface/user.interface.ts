@@ -20,4 +20,5 @@ export interface CreateUpdateUser {
   email: string;
   password?: string;
   confirmPassword?: string;
+  employee_category_name: string;
 }

@@ -11,8 +11,14 @@ import { GetBodyData } from "@/_Common/function/Authentication";
 import { JWTDecode } from "../auth/model/auth.model";
 import { SignInService } from "../auth/service/auth.service";
 import { SubsidyEmployeeUpdate } from "@/_Common/interface/subsidy.interface";
-import { DepartmentLists } from "./service/department.service";
-const APIAuth: StatusAPICode[] = [StatusAPICode.GET_DEPARTMENT_LISTS];
+import {
+  DepartmentLists,
+  EmployeeCategoryListsService,
+} from "./service/department.service";
+const APIAuth: StatusAPICode[] = [
+  StatusAPICode.GET_DEPARTMENT_LISTS,
+  StatusAPICode.GET_EMPLOYEE_CATEGORY_LISTS,
+];
 
 export async function GET(req: any, res: any) {
   let statusCode: number = 500;
@@ -54,6 +60,10 @@ export async function GET(req: any, res: any) {
     switch (parseInt(code) as StatusAPICode) {
       case StatusAPICode.GET_DEPARTMENT_LISTS: {
         return DepartmentLists();
+      }
+
+      case StatusAPICode.GET_EMPLOYEE_CATEGORY_LISTS: {
+        return EmployeeCategoryListsService();
       }
       default: {
         statusCode = 400;
