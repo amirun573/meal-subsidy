@@ -9,6 +9,8 @@ import { StatusAPICode } from '@/_Common/enum/status-api-code.enum';
 import { DisplayAlert } from '@/_Common/function/Error';
 import { ScanEmployeeIDValidation } from '@/_Common/validation/user.validation';
 import { encrypt } from '@/_Common/function/Hashing';
+import { SubsidySubmitPrice } from '@/_Common/interface/subsidy.interface';
+import { EmployeeSubmitPriceValidation } from '@/_Common/validation/subsidy.validation';
 const ScanPage = () => {
     const [employeeId, setEmployeeId] = useState<string>('');
     const [showScannerModal, setShowScannerModal] = useState<boolean>(false);
@@ -16,10 +18,13 @@ const ScanPage = () => {
     const [availableCredit, setAvailableCredit] = useState<number>(0); // Example available credit
     const [discount, setDiscount] = useState<number>(0); // Example discount
     const [loading, setLoading] = useState(false);
+    const [employeeName, setEmployeeName] = useState<string>('');
+    const [calculatedFinalPrice, setCalculatedFinalPrice] = useState<number>(0);
+    const [subsidyCreditUUID, setSubsidyCreditUUID] = useState<string>('');
 
     // Callback function to get scan result
-    const handleScanResult = (result: string) => {
-        setEmployeeId(result);
+    const handleScanResult = (result: any) => {
+        handleEmployeeID(result);
         setShowScannerModal(false); // Close modal once scan is successful
     };
 
@@ -47,16 +52,31 @@ const ScanPage = () => {
     const handleEmployeeID = async (event: React.ChangeEvent<HTMLInputElement>) => {
         setLoading(true);
         try {
-            const employeeID = String(event.target.value); // Ensure value is string
+            const employeeID = String(event?.target?.value || event); // Ensure value is string
 
             if (employeeID) {
-                setEmployeeId(employeeID);
 
 
                 await ScanEmployeeIDValidation({ employeeID });
                 // Make sure to await the API call
                 const employeeIDCheckRequest = await axios.get(`/api/user?${StatusAPICode.code}=${StatusAPICode.GET_CHECK_EMPLOYEE_ID}&employeeID=${encrypt(employeeID)}`);
 
+                if (!employeeIDCheckRequest.data?.employee_id||!employeeIDCheckRequest.data?.employee_name || (typeof employeeIDCheckRequest.data?.available_credit !== 'number') || !employeeIDCheckRequest.data?.subsidyCreditUUID) {
+                    throw Error("Failed To Retrieve Subsidy Details");
+                }
+
+                setEmployeeId(employeeIDCheckRequest.data?.employee_id as string);
+
+
+                setSubsidyCreditUUID(employeeIDCheckRequest.data?.subsidyCreditUUID as string);
+                const newAvailableCredit: number = employeeIDCheckRequest.data?.available_credit as number > 0 ? employeeIDCheckRequest.data?.available_credit as number : 0;
+
+                setEmployeeName(employeeIDCheckRequest.data?.employee_name);
+                setAvailableCredit(newAvailableCredit)
+
+                const newDiscount: number = newAvailableCredit > 0 ? newAvailableCredit - totalPrice : 0;
+
+                setDiscount(newDiscount);
                 // Process employeeIDCheckRequest response as necessary
             } else {
                 setEmployeeId('');
@@ -77,22 +97,54 @@ const ScanPage = () => {
         }
     };
 
+    const HandleSubmitTotalPrice = async () => {
+        setLoading(true);
+        try {
 
-    const calculatedFinalPrice = totalPrice - discount - availableCredit;
+            const data: SubsidySubmitPrice = {
+                totalPrice: calculatedFinalPrice,
+                price: totalPrice,
+                availableCredit,
+                discount,
+                employee_id: employeeId,
+                [StatusAPICode.code]: StatusAPICode.CREATE_SUBSIDY_TRANSACTION,
+                subsidyCreditUUID,
+            };
 
-    //Future Focus
-    const playSound = () => {
-        const audio = new Audio('/path/to/click.mp3'); // Specify the path to your sound file
-        audio.play();
-    };
+            const encryptedData = {
+                encryptedData: encrypt(JSON.stringify(data)),
+                [StatusAPICode.code]: StatusAPICode.CREATE_SUBSIDY_TRANSACTION
+            }
 
-    // useEffect(() => {
-    //     if (employeeId) {
-    //         console.log(`Employee ID is set: ${employeeId}`);
-    //         // You can perform any action here when employeeId has a value.
-    //         // For example, making an API call or updating some other state.
-    //     }
-    // }, [employeeId]); // This effect will run whenever employeeId changes.
+
+            await EmployeeSubmitPriceValidation(data);
+
+            const requestSubmitPrice = await axios.post(`/api/subsidy`, encryptedData);
+
+            if (!requestSubmitPrice.data?.updateSubsidy) {
+                throw Error("Cannot Retreive Data For Update Subisdy Credit");
+            }
+
+            alert("Successfully Update");
+
+            window.location.reload();
+
+        } catch (error) {
+            console.error(error);
+            DisplayAlert(error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+
+    useEffect(() => {
+        const finalPrice: number = Math.max(0, totalPrice - availableCredit);
+
+        setCalculatedFinalPrice(finalPrice);
+
+    }, [totalPrice, availableCredit, discount]);
+
 
     return (
         <>
@@ -101,7 +153,7 @@ const ScanPage = () => {
             <div>
                 {loading && <Spinner />}
 
-                <div style={{ textAlign: 'center', margin: '20px 0' }}>
+                <div style={{ margin: '20px 0', textAlign: 'center' }}>
                     <label
                         htmlFor='totalPrice'
                         style={{
@@ -109,7 +161,7 @@ const ScanPage = () => {
                             fontSize: '18px',
                             fontWeight: 'bold',
                             marginBottom: '8px',
-                            color: 'white'
+                            color: 'white',
                         }}>
                         Total Price (RM):
                     </label>
@@ -124,14 +176,16 @@ const ScanPage = () => {
                             fontSize: '16px',
                             borderRadius: '5px',
                             border: '1px solid #ccc',
-                            color: 'black'
+                            color: 'black',
+                            display: 'block',
+                            margin: '0 auto', // Center the input
                         }}
-                        onChange={handleTotalPriceChange}  // Attach the change handler
-
+                        onChange={handleTotalPriceChange} // Attach the change handler
                     />
                 </div>
 
-                <div style={{ textAlign: 'center', margin: '20px 0' }}>
+
+                <div style={{ margin: '20px 0', textAlign: 'center' }}>
                     <label
                         htmlFor='employeeID'
                         style={{
@@ -139,7 +193,7 @@ const ScanPage = () => {
                             fontSize: '18px',
                             fontWeight: 'bold',
                             marginBottom: '8px',
-                            color: 'white'
+                            color: 'white',
                         }}>
                         Employee ID:
                     </label>
@@ -154,15 +208,31 @@ const ScanPage = () => {
                             fontSize: '16px',
                             borderRadius: '5px',
                             border: '1px solid #ccc',
-                            color: 'black'
+                            color: 'black',
+                            display: 'block',
+                            margin: '0 auto', // Center the input
                         }}
                         onChange={(e) => setEmployeeId(e.target.value)}
                         onKeyDown={handleKeyDown} // Trigger action when Enter is pressed
                     />
-
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '20px' }}>
+                <div style={{ marginTop: '20px', textAlign: 'center' }}>
+                    {employeeName && (
+                        <div style={{
+                            display: 'inline-block',
+                            padding: '10px',
+                            borderRadius: '5px',
+                            backgroundColor: '#444',
+                            color: 'white',
+                            boxShadow: '0 0 10px rgba(0, 0, 0, 0.3)',
+                        }}>
+                            <p>Employee Name: <h2 style={{ fontSize: '2em' }}>{employeeName}</h2></p>
+                        </div>
+                    )}
+                </div>
+
+                <div style={{ marginTop: '20px', textAlign: 'center' }}>
                     <button
                         onClick={handleToggleScannerModal}
                         style={{
@@ -172,14 +242,14 @@ const ScanPage = () => {
                             color: 'white',
                             border: 'none',
                             borderRadius: '5px',
-                            cursor: 'pointer'
-                        }}
-                    >
+                            cursor: 'pointer',
+                            marginRight: '10px', // Adjust margin between buttons
+                        }}>
                         Open QR Scanner
                     </button>
 
                     <button
-                        // onClick={handleAnotherAction}
+                        onClick={HandleSubmitTotalPrice}
                         style={{
                             padding: '10px 20px',
                             fontSize: '16px',
@@ -187,36 +257,19 @@ const ScanPage = () => {
                             color: 'white',
                             border: 'none',
                             borderRadius: '5px',
-                            cursor: 'pointer'
-                        }}
-                    >
+                            cursor: 'pointer',
+                        }}>
                         Submit
                     </button>
-
-                    {/* <button
-                        // onClick={handleThirdAction}
-                        style={{
-                            padding: '10px 20px',
-                            fontSize: '16px',
-                            backgroundColor: '#ffc107',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '5px',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        Third Button
-                    </button> */}
                 </div>
 
                 {/* Table */}
-                <div style={{ textAlign: 'center', marginTop: '30px' }}>
+                <div style={{ marginTop: '30px', textAlign: 'center' }}>
                     <table style={{
-                        width: '60%',
-                        margin: '0 auto',
+                        width: '100%',
                         borderCollapse: 'collapse',
                         color: '#fff',
-                        fontSize: '16px'
+                        fontSize: '16px',
                     }}>
                         <thead>
                             <tr style={{ backgroundColor: '#333' }}>
@@ -281,15 +334,16 @@ const ScanPage = () => {
                                     color: 'white',
                                     padding: '5px 10px',
                                     borderRadius: '5px',
-                                    cursor: 'pointer'
-                                }}
-                            >
+                                    cursor: 'pointer',
+                                }}>
                                 Close
                             </button>
                         </div>
                     </div>
                 )}
             </div>
+
+
         </>
     );
 };
