@@ -209,5 +209,8 @@ export async function CreateUserNUserDetailsCascade(data: {
     );
 
     return result;
-  } catch (error) {}
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
 }

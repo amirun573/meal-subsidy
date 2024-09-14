@@ -217,6 +217,7 @@ export async function ScanCheckEmployeeIDService(data: ScanCheckEmployeeID) {
       },
       select: {
         user_id: true,
+        employee_id: true,
         UserDetails: {
           select: {
             name: true,
@@ -251,6 +252,7 @@ export async function ScanCheckEmployeeIDService(data: ScanCheckEmployeeID) {
     }
 
     return NextResponse.json({
+      employee_id: user.employee_id,
       employee_name: (user as any)?.UserDetails?.name,
       available_credit: subsidyCredit.credit_amount,
       subsidyCreditUUID: subsidyCredit.uuid,

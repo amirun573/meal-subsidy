@@ -176,13 +176,16 @@ enum TransactionStatus {
 
 
 model SubsidyTransaction {
-  transaction_id     Int            @id @default(autoincrement())
+  subsidy_transaction_id     Int            @id @default(autoincrement())
   subsidy_credit     SubsidyCredit  @relation(fields: [subsidy_credit_id], references: [subsidy_credit_id], onDelete: Cascade)
   subsidy_credit_id  Int
-  user               User           @relation(fields: [user_id], references: [user_id], onDelete: Cascade) // Link to User
+  user               User?           @relation(fields: [user_id], references: [user_id], onDelete: Cascade) // Link to User
   user_id            Int
   transaction_type   TransactionType @default(DEBIT) // Default set to 'DEBIT'
-  amount             Float           // The amount for this transaction
+  price               Float       @default(0)    // The price for this transaction
+  discount_price      Float       @default(0)    // The discount price for this transaction
+  credit_used         Float       @default(0)    // The credit used for this transaction
+  total_price         Float       @default(0)    // The total price for this transaction
   transaction_status TransactionStatus @default(FAILED) // Default set to 'FAILED'
   transaction_at     DateTime        @default(now()) // When the transaction was made
   note               String?         // Optional note or description about the transaction

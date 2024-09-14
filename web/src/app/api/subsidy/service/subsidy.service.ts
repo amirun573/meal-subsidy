@@ -6,10 +6,17 @@ import {
   EmployeeSubmitPriceValidation,
   EmployeeUpdateSubsidyValidation,
 } from "@/_Common/validation/subsidy.validation";
-import { Prisma, Subsidy, SubsidyCredit } from "@prisma/client";
+import {
+  $Enums,
+  Prisma,
+  Subsidy,
+  SubsidyCredit,
+  SubsidyTransaction,
+} from "@prisma/client";
 import { NextResponse } from "next/server";
 import {
   GetSubsidySingle,
+  SubsidyCreditTransactionCascade,
   UpdateSubsidy,
   UpdateSubsidyCredit,
 } from "../model/subsidy.model";
@@ -95,9 +102,9 @@ export async function CreateSubsidyTransactionService(
             },
             subsidy_credits: {
               some: {
-                credit_amount: {
-                  gt: 0, // Check if credit_amount is greater than 0
-                },
+                // credit_amount: {
+                //   gt: 0, // Check if credit_amount is greater than 0
+                // },
                 uuid: {
                   in: [subsidyCreditUUID], // Filter by specific UUID or an array of UUIDs
                 },
@@ -183,13 +190,27 @@ export async function CreateSubsidyTransactionService(
       credit_amount: updatedAvailableCredit,
     };
 
-    const updateSubsidyCreditProcess = await UpdateSubsidyCredit({
-      data: updateSubsidyCredit,
+    const subsidyTransaction: Partial<SubsidyTransaction> = {
+      user_id: user.user_id,
+      price,
+      discount_price: discount,
+      credit_used: availableCredit,
+      total_price: totalPrice,
+      transaction_status: $Enums.TransactionStatus.COMPLETED,
+    };
+
+    const transactionSubsidy = await SubsidyCreditTransactionCascade({
+      subsidyCredit: updateSubsidyCredit as SubsidyCredit,
+      subsidyTransaction: subsidyTransaction as SubsidyTransaction,
     });
 
-    if (!updateSubsidyCreditProcess) {
+    // const updateSubsidyCreditProcess = await UpdateSubsidyCredit({
+    //   data: updateSubsidyCredit,
+    // });
+
+    if (!transactionSubsidy) {
       status = 400;
-      throw Error("Failed To Update Subsidy Credit");
+      throw Error("Failed To Update Subsidy Credit Transaction.");
     }
 
     return NextResponse.json({

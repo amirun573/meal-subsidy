@@ -55,16 +55,18 @@ const ScanPage = () => {
             const employeeID = String(event?.target?.value || event); // Ensure value is string
 
             if (employeeID) {
-                setEmployeeId(employeeID);
 
 
                 await ScanEmployeeIDValidation({ employeeID });
                 // Make sure to await the API call
                 const employeeIDCheckRequest = await axios.get(`/api/user?${StatusAPICode.code}=${StatusAPICode.GET_CHECK_EMPLOYEE_ID}&employeeID=${encrypt(employeeID)}`);
 
-                if (!employeeIDCheckRequest.data?.employee_name || (typeof employeeIDCheckRequest.data?.available_credit !== 'number') || !employeeIDCheckRequest.data?.subsidyCreditUUID) {
+                if (!employeeIDCheckRequest.data?.employee_id||!employeeIDCheckRequest.data?.employee_name || (typeof employeeIDCheckRequest.data?.available_credit !== 'number') || !employeeIDCheckRequest.data?.subsidyCreditUUID) {
                     throw Error("Failed To Retrieve Subsidy Details");
                 }
+
+                setEmployeeId(employeeIDCheckRequest.data?.employee_id as string);
+
 
                 setSubsidyCreditUUID(employeeIDCheckRequest.data?.subsidyCreditUUID as string);
                 const newAvailableCredit: number = employeeIDCheckRequest.data?.available_credit as number > 0 ? employeeIDCheckRequest.data?.available_credit as number : 0;
