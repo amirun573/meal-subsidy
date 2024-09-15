@@ -20,6 +20,7 @@ import { PaginationData } from "../../../../_Common/interface/pagination.interfa
 import { SubsidyTypeCode } from "@/_Common/enum/subsidy-type.enum";
 import { decrypt } from "@/_Common/function/Hashing";
 import {
+  CostCenter,
   Country,
   Department,
   EmployeeCategory,
@@ -482,11 +483,11 @@ export async function CreateEmployeeBulkUpload(
       throw Error("No Departments Found");
     }
 
-    const costCenter = await GetCostCenterLists({
+    const costCenters: Partial<CostCenter>[] = await GetCostCenterLists({
       where: {},
     });
 
-    if (!costCenter || costCenter.length < 1) {
+    if (!costCenters || costCenters.length < 1) {
       status = 400;
       throw Error("No Cost Center Found");
     }
@@ -531,6 +532,17 @@ export async function CreateEmployeeBulkUpload(
           status = 400;
           throw new Error(
             `No name Department ${employee.department_desc} in database. Please Check Spelling in row for Employee ID ${employee.employee_id}`
+          );
+        }
+
+        const costcenter: Partial<CostCenter> | undefined = costCenters.find(
+          (items) => items.cost_center_code === employee.cost_center
+        );
+
+        if (!costcenter) {
+          status = 400;
+          throw new Error(
+            `No name Cost Center ${employee.cost_center} in database. Please Check Spelling in row for Employee ID ${employee.employee_id}`
           );
         }
         createEmployees.push(employee);
