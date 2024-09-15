@@ -23,6 +23,8 @@ export interface CreateUpdateUser {
   confirmPassword?: string;
   employee_category_name: string;
   employee_category_code: string;
+
+  cost_center_code: string;
 }
 
 export interface CreateUserUploadExcel {

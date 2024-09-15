@@ -33,6 +33,7 @@ import {
 import { GetRoleSingle } from "../../role/model/role.model";
 import { RoleCode } from "@/_Common/enum/role.enum";
 import {
+  GetCostCenterLists,
   GetDepartmentLists,
   GetDepartmentSingle,
   GetEmployeeCategorySingle,
@@ -126,6 +127,11 @@ export async function UserPaginationService(data: UserPaginationRequest) {
         UserDetails: {
           select: {
             name: true,
+          },
+        },
+        cost_center: {
+          select: {
+            cost_center_code: true,
           },
         },
         department: {
@@ -467,19 +473,66 @@ export async function CreateEmployeeBulkUpload(
 
     const createEmployees: ExcelCreateEmployee[] = [];
 
+    const departments: Partial<Department>[] = await GetDepartmentLists({
+      where: {},
+    });
+
+    if (!departments || departments.length < 1) {
+      status = 400;
+      throw Error("No Departments Found");
+    }
+
+    const costCenter = await GetCostCenterLists({
+      where: {},
+    });
+
+    if (!costCenter || costCenter.length < 1) {
+      status = 400;
+      throw Error("No Cost Center Found");
+    }
+
     dataExcel.map((items) => {
       items.data.map((data) => {
-
         const employee: ExcelCreateEmployee = {
-          department_desc: String(data[columns.department_desc]).toLowerCase().trim(),
+          department_desc: String(data[columns.department_desc]).trim(),
           cost_center: String(data[columns.cost_center]).toLowerCase().trim(),
           employee_id: String(data[columns.employee_id]).trim(),
-          employee_name: String(data[columns.employee_name]).toLowerCase().trim(),
-          employee_category: String(data[columns.employee_category]).toLowerCase().trim(),
-          eligble_subsidy: String(data[columns.eligble_subsidy]).toLowerCase().trim(),
+          employee_name: String(data[columns.employee_name])
+            .toLowerCase()
+            .trim(),
+          employee_category: String(data[columns.employee_category])
+            .toLowerCase()
+            .trim(),
+          eligble_subsidy: String(data[columns.eligble_subsidy])
+            .toLowerCase()
+            .trim(),
           mifare_card_no: String(data[columns.mifare_card_no]).trim(),
         };
 
+        // Validate that no values are null or undefined
+        const isValid = Object.values(employee).every(
+          (value) => value !== null && value !== undefined && value !== ""
+        );
+
+        if (!isValid) {
+          status = 400;
+          throw new Error(
+            "Validation error: Some fields are null, undefined, or empty"
+          );
+        }
+
+        const department: Partial<Department> | undefined = departments.find(
+          (item) =>
+            item.department_name?.toLocaleLowerCase() ===
+            employee.department_desc?.toLocaleLowerCase()
+        );
+
+        if (!department) {
+          status = 400;
+          throw new Error(
+            `No name Department ${employee.department_desc} in database. Please Check Spelling in row for Employee ID ${employee.employee_id}`
+          );
+        }
         createEmployees.push(employee);
       });
     });

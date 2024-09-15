@@ -30,6 +30,7 @@ interface EmployeeDetails {
     uuid: string,
     email?: string,
     employee_category_code: string;
+    cost_center_code: string;
 
 }
 
@@ -62,6 +63,7 @@ const EmployeeDetailsPage = () => {
         employee_category_name: '',
         department_code: '',
         employee_category_code: '',
+        cost_center_code: '',
 
     });
 
@@ -112,6 +114,7 @@ const EmployeeDetailsPage = () => {
                         uuid: user?.uuid || '',
                         email: user?.email || '',
                         employee_category_code: (user as any)?.employee_category?.employee_category_code || '',
+                        cost_center_code: (user as any)?.cost_center?.cost_center_code || '',
                     }
 
                     employeeDetailsResponse.push(employee);
@@ -1010,6 +1013,9 @@ const EmployeeDetailsPage = () => {
                                             Department
                                         </th>
                                         <th scope="col" className="px-6 py-3">
+                                            Cost Center
+                                        </th>
+                                        <th scope="col" className="px-6 py-3">
                                             Meal Subsidiry Applicable
                                         </th>
                                         {/* <th scope="col" className="px-6 py-3">Edit</th> */}
@@ -1031,6 +1037,9 @@ const EmployeeDetailsPage = () => {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     {item.department}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {item.cost_center_code}
                                                 </td>
                                                 <td className="px-6 py-4 flex justify-center items-center">
                                                     <input
