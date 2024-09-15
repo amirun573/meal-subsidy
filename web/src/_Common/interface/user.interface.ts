@@ -23,5 +23,9 @@ export interface CreateUpdateUser {
   confirmPassword?: string;
   employee_category_name: string;
   employee_category_code: string;
+}
 
+export interface CreateUserUploadExcel {
+  code: StatusAPICode;
+  file: File;
 }

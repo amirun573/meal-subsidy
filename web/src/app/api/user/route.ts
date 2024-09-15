@@ -12,13 +12,18 @@ import { JWTDecode } from "../auth/model/auth.model";
 import { SignInService } from "../auth/service/auth.service";
 import {
   CreateEmployee,
+  CreateEmployeeBulkUpload,
   ScanCheckEmployeeIDService,
   UserPaginationService,
 } from "./service/user.service";
-import { CreateUpdateUser } from "@/_Common/interface/user.interface";
+import {
+  CreateUpdateUser,
+  CreateUserUploadExcel,
+} from "@/_Common/interface/user.interface";
 const APIAuth: StatusAPICode[] = [
   StatusAPICode.GET_EMPLOYEE_DETAILS,
   StatusAPICode.CREATE_EMPLOYEE,
+  StatusAPICode.UPLOAD_EXCEL_EMPLOYEE_CREATE,
 ];
 
 export async function GET(req: any, res: any) {
@@ -150,6 +155,17 @@ export async function POST(req: any, res: any) {
           }
 
           return CreateEmployee(data);
+        }
+
+        case StatusAPICode.UPLOAD_EXCEL_EMPLOYEE_CREATE: {
+          const data: CreateUserUploadExcel = body as CreateUserUploadExcel;
+
+          if(!user){
+            throw Error("No User Found");
+          }
+
+
+          return CreateEmployeeBulkUpload(data, user);
         }
 
         default: {

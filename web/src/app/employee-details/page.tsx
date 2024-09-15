@@ -18,6 +18,7 @@ import { DepartmentLists } from "@/_Common/interface/department.interface";
 import { FormatDepartmentCode } from "@/_Common/function/String";
 import { FolderArrowDownIcon } from '@heroicons/react/24/solid'
 import { MainContent } from "@/Components/Main";
+import { FileMimeType } from "@/_Common/enum/file-type.enum";
 
 
 interface EmployeeDetails {
@@ -675,29 +676,70 @@ const EmployeeDetailsPage = () => {
 
     const ModalUploadUser = () => {
 
-        const [selectedFile, setSelectedFile] = useState<any>(null);
+        const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-        // Handle file selection
-        const HandleFileChange = (event: any) => {
-            setSelectedFile(event.target.files[0]);
+        const HandleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+            const file = event.target.files?.[0];
+            if (file) {
+                const fileType = file.type;
+                if (fileType !== FileMimeType.XLSX) {
+                    alert('Please upload a valid .xlsx file');
+                    event.target.value = ''; // Clear the input
+                    return;
+                }
+
+                console.log("event.target.files===>", file);
+                setSelectedFile(file);
+
+                // Proceed with handling the file
+                console.log('File is valid:', file);
+                // Add your file processing logic here
+
+
+            }
         };
 
 
         // Handle file submission
-        const HandleSubmit = () => {
-            if (!selectedFile) {
-                alert('Please select a file to upload');
-                return;
+        const HandleSubmit = async () => {
+            try {
+                if (!selectedFile) {
+                    alert('Please select a file to upload');
+                    return;
+                }
+
+                // Create FormData object
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                formData.append('code', StatusAPICode.UPLOAD_EXCEL_EMPLOYEE_CREATE.toString());
+
+
+                // Post request to API
+                const response = await axios.post('/api/user', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        Authorization: `Bearer ${userDetailLocal?.accessToken}`,
+
+                    },
+                });
+
+                // Handle the response
+                console.log('File uploaded successfully:', response.data);
+                alert(`File ${selectedFile.name} uploaded successfully!`);
+
+                // Close the modal and reset the file
+                setOpenModalAddBooking(false);
+                setSelectedFile(null);
+
+            } catch (error) {
+                console.error(error);
+                DisplayAlert(error);
+                await HandleUnAuthorized(error);
             }
 
-            // Handle file upload logic here (e.g., using a form data or API)
-            console.log('File selected for upload:', selectedFile);
-            alert(`File ${selectedFile.name} uploaded successfully!`);
-
-            // After submission, close the modal and reset the file
-            setOpenModalAddBooking(false);
-            setSelectedFile(null);
         };
+
+
         return (
             <>
                 {isOpenModalUploadFile && (
@@ -734,6 +776,7 @@ const EmployeeDetailsPage = () => {
                                         id="fileUpload"
                                         className="border border-gray-300 rounded-md px-4 py-2 w-full"
                                         onChange={HandleFileChange}
+                                        accept=".xlsx"
                                     />
 
                                     {selectedFile && (
@@ -752,13 +795,7 @@ const EmployeeDetailsPage = () => {
                                     </button>
                                     <button
                                         className="bg-blue-500 text-white px-4 py-2 rounded"
-                                        onClick={() => {
-                                            if (selectedFile) {
-                                                alert(`File ${selectedFile.name} uploaded!`);
-                                            } else {
-                                                alert('Please select a file to upload.');
-                                            }
-                                        }}
+                                        onClick={HandleSubmit}
                                     >
                                         Submit
                                     </button>
@@ -1068,7 +1105,7 @@ const Page = () => {
     return (
         <Suspense fallback={'...Loading'}>
             <Navbar />
-            <MainContent/>
+            <MainContent />
             <EmployeeDetailsPage />
         </Suspense>
     );

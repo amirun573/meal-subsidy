@@ -1,5 +1,6 @@
 import {
   CreateUpdateUser,
+  CreateUserUploadExcel,
   ScanCheckEmployeeID,
   UserPaginationRequest,
 } from "@/_Common/interface/user.interface";
@@ -43,6 +44,13 @@ import {
   GetSubsidyTypeSingle,
 } from "../../subsidy/model/subsidy.model";
 import { hashPassword } from "../../auth/model/auth.model";
+import { utils, WorkBook } from "xlsx";
+import {
+  ReadExcelFile,
+  ExtractExcelData,
+} from "@/_Common/function/SpreedSheet";
+import { File as FormidableFile } from "formidable";
+import * as XLSX from "xlsx";
 
 export async function UserPaginationService(data: UserPaginationRequest) {
   let message: string = "";
@@ -397,6 +405,61 @@ export async function CreateEmployee(data: CreateUpdateUser) {
 
     return NextResponse.json({
       message: "Successfully Create New Employee",
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        message: error.message || message,
+      },
+      {
+        status: error.statusCode || status,
+      }
+    );
+  }
+}
+
+export async function CreateEmployeeBulkUpload(
+  data: CreateUserUploadExcel,
+  user: User
+) {
+  let message: string = "";
+  let status: number = 500;
+  try {
+    const { file } = data;
+
+    const headers = [
+      "Department Desc",
+      "Cost Centre",
+      "Employee Id",
+      "Employee Name",
+      "Employee  Category",
+      "Subsidy",
+    ];
+
+    var workbook = await ReadExcelFile(file);
+
+    if (!workbook) {
+      status = 400;
+      throw Error("Workbook Cannot Generate");
+    }
+
+    const dataExcel = ExtractExcelData(headers, workbook);
+
+    // var sheet = workbook.Sheets[workbook.SheetNames[0]];
+    // const excelData = XLSX.utils.sheet_to_json(sheet);
+
+    console.log("dataExcel==>", dataExcel);
+
+    // if (!Buffer.isBuffer(file)) {
+    //   throw new Error("File buffer is not valid");
+    // }
+
+    // const readExcel = ReadExcelFile(file);
+
+    // console.log("readExcel===>", readExcel);
+
+    return NextResponse.json({
+      message: "Hii",
     });
   } catch (error: any) {
     return NextResponse.json(
