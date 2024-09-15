@@ -422,18 +422,38 @@ export async function CreateEmployeeBulkUpload(
   data: CreateUserUploadExcel,
   user: User
 ) {
+  interface ExcelCreateEmployee {
+    department_desc: string;
+    cost_center: string;
+    employee_id: string;
+    employee_name: string;
+    employee_category: string;
+    eligble_subsidy: string;
+    mifare_card_no: string;
+  }
   let message: string = "";
   let status: number = 500;
   try {
     const { file } = data;
 
+    const columns = {
+      department_desc: "Department Desc",
+      cost_center: "Cost Centre",
+      employee_id: "Employee Id",
+      employee_name: "Employee Name",
+      employee_category: "Employee  Category",
+      eligble_subsidy: "Eligble Subsidy (Yes/No)",
+      mifare_card_no: "MIFARE Card Number",
+    };
+
     const headers = [
-      "Department Desc",
-      "Cost Centre",
-      "Employee Id",
-      "Employee Name",
-      "Employee  Category",
-      "Subsidy",
+      columns.department_desc,
+      columns.cost_center,
+      columns.employee_id,
+      columns.employee_name,
+      columns.employee_category,
+      columns.eligble_subsidy,
+      columns.mifare_card_no,
     ];
 
     var workbook = await ReadExcelFile(file);
@@ -445,10 +465,29 @@ export async function CreateEmployeeBulkUpload(
 
     const dataExcel = ExtractExcelData(headers, workbook);
 
+    const createEmployees: ExcelCreateEmployee[] = [];
+
+    dataExcel.map((items) => {
+      items.data.map((data) => {
+
+        const employee: ExcelCreateEmployee = {
+          department_desc: String(data[columns.department_desc]).toLowerCase().trim(),
+          cost_center: String(data[columns.cost_center]).toLowerCase().trim(),
+          employee_id: String(data[columns.employee_id]).trim(),
+          employee_name: String(data[columns.employee_name]).toLowerCase().trim(),
+          employee_category: String(data[columns.employee_category]).toLowerCase().trim(),
+          eligble_subsidy: String(data[columns.eligble_subsidy]).toLowerCase().trim(),
+          mifare_card_no: String(data[columns.mifare_card_no]).trim(),
+        };
+
+        createEmployees.push(employee);
+      });
+    });
+
+    console.log("createEmployees===>", createEmployees);
+
     // var sheet = workbook.Sheets[workbook.SheetNames[0]];
     // const excelData = XLSX.utils.sheet_to_json(sheet);
-
-    console.log("dataExcel==>", dataExcel);
 
     // if (!Buffer.isBuffer(file)) {
     //   throw new Error("File buffer is not valid");

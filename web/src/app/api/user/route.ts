@@ -20,6 +20,7 @@ import {
   CreateUpdateUser,
   CreateUserUploadExcel,
 } from "@/_Common/interface/user.interface";
+
 const APIAuth: StatusAPICode[] = [
   StatusAPICode.GET_EMPLOYEE_DETAILS,
   StatusAPICode.CREATE_EMPLOYEE,
@@ -160,10 +161,9 @@ export async function POST(req: any, res: any) {
         case StatusAPICode.UPLOAD_EXCEL_EMPLOYEE_CREATE: {
           const data: CreateUserUploadExcel = body as CreateUserUploadExcel;
 
-          if(!user){
+          if (!user) {
             throw Error("No User Found");
           }
-
 
           return CreateEmployeeBulkUpload(data, user);
         }

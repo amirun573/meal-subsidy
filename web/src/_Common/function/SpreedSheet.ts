@@ -12,13 +12,13 @@ export function ExtractExcelData(
 ): Array<ExtractExcelInterface> {
   const excelInfo: Array<ExtractExcelInterface> = [];
 
-  console.log(" workbook.SheetNames===>",  workbook);
   workbook.SheetNames.map((sheetName) => {
 
     const sheet = workbook.Sheets[sheetName];
     const data: any = utils.sheet_to_json(sheet, {
       defval: ExcelCharacterisitics.defval,
     });
+
 
 
     if (data.length <= 0) {
