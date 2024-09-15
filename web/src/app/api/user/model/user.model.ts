@@ -1,7 +1,9 @@
-import { User, UserDetails } from "@prisma/client";
+import { Subsidy, User, UserDetails } from "@prisma/client";
 import { PrismaCondtionFetch } from "@/_Common/interface/database.interface";
 import { prisma, timeout } from "../../../../../libs/prisma";
 import { PaginationData } from "@/_Common/interface/pagination.interface";
+import { CreateUserUserDetails } from "@/_Common/interface/user.interface";
+import { CreateSubsidyMany } from "../../subsidy/model/subsidy.model";
 
 export async function GetUserSingle(
   data: PrismaCondtionFetch
@@ -74,6 +76,52 @@ async function CreateUser(object: { user: User; prismaTransaction?: any }) {
   } catch (error) {
     console.error(error);
     return null;
+  }
+}
+
+async function CreateUserMany(object: {
+  data: User[];
+  prismaTransaction?: any;
+}) {
+  try {
+    const { data, prismaTransaction } = object;
+
+    if (!prismaTransaction) {
+      return prisma.user.createManyAndReturn({
+        data,
+      });
+    } else {
+      return prismaTransaction.user.createManyAndReturn({
+        data,
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+async function CreateUserDetailsMany(object: {
+  data: UserDetails[];
+  prismaTransaction?: any;
+}) {
+  try {
+    const { data, prismaTransaction } = object;
+
+    if (!prismaTransaction) {
+      return prisma.userDetails.createManyAndReturn({
+        data,
+        skipDuplicates: true,
+      });
+    } else {
+      return prismaTransaction.userDetails.createManyAndReturn({
+        data,
+        skipDuplicates: true,
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    return [];
   }
 }
 
@@ -212,5 +260,102 @@ export async function CreateUserNUserDetailsCascade(data: {
   } catch (error) {
     console.error(error);
     return null;
+  }
+}
+
+export async function CreateUserNUserDetailsManyCascade(data: {
+  details: CreateUserUserDetails[];
+}): Promise<CreateUserUserDetails[]> {
+  try {
+    const { details } = data;
+
+    const result: CreateUserUserDetails[] = await prisma.$transaction(
+      async (prisma) => {
+        // Extract user[] from details
+        const users: User[] = details.map((detail) => detail.user);
+
+        // Create users in bulk using the provided transaction
+        const userTransaction: User[] = await CreateUserMany({
+          data: users,
+          prismaTransaction: prisma,
+        });
+
+        console.log("users.length==>", users.length);
+        console.log("userTransaction.length==>", userTransaction.length);
+
+        // Validate that the same number of users were created
+        if (!userTransaction || userTransaction.length !== users.length) {
+          throw Error("No Users Been Created");
+        }
+
+        const updateDetails: CreateUserUserDetails[] = [];
+
+        const createSubsidies: Subsidy[] = [];
+
+        // Use forEach since you're performing side effects (modifying details)
+        details.forEach((detail) => {
+          // Find the created user using the employee_id
+          const user: User | undefined = userTransaction.find(
+            (item) => item.employee_id === detail.user.employee_id
+          );
+
+          if (!user) {
+            throw Error("Cannot Find User That Has Been Inserted.");
+          }
+
+          // Update user_id for both user and userDetails in the details array
+          detail.user.user_id = user.user_id;
+          detail.userDetails.user_id = user.user_id;
+
+          // Check if 'subsidy' exists before assigning 'user_id'
+          if (detail.subsidy) {
+            detail.subsidy.user_id = user.user_id;
+
+            createSubsidies.push(detail.subsidy as Subsidy);
+          }
+
+          // Push the updated detail to the updateDetails array
+          updateDetails.push(detail);
+        });
+
+        // Extract userDetails[] from the updated details array
+        const usersDetails: UserDetails[] = updateDetails.map(
+          (detail) => detail.userDetails
+        );
+
+        // Create userDetails in bulk using the same transaction
+        const userDetailsTransaction = await CreateUserDetailsMany({
+          data: usersDetails,
+          prismaTransaction: prisma,
+        });
+
+        // Validate that the same number of userDetails were created
+        if (
+          !userDetailsTransaction ||
+          userDetailsTransaction.length !== usersDetails.length
+        ) {
+          throw Error("No User Details Been Created");
+        }
+
+        if (createSubsidies) {
+          const subsidyTransaction = await CreateSubsidyMany({
+            data: createSubsidies,
+            prismaTransaction: prisma,
+          });
+
+          if (subsidyTransaction.length !== createSubsidies.length) {
+            throw Error("Failed To Create User Subsidy ");
+          }
+        }
+
+        return updateDetails; // Return the updated details array
+      },
+      { timeout }
+    );
+
+    return result; // Return the result from the transaction
+  } catch (error) {
+    console.error(error);
+    return []; // Return an empty array in case of an error
   }
 }
