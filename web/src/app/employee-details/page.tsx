@@ -75,6 +75,7 @@ const EmployeeDetailsPage = () => {
 
 
     const GetEmployee = async () => {
+        setLoading(true);
         try {
 
             const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
@@ -133,6 +134,8 @@ const EmployeeDetailsPage = () => {
             console.error(error);
             alert(error?.response?.data?.message || error?.message || "Something Goes Wrong");
             await HandleUnAuthorized(error);
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -1027,8 +1030,7 @@ const EmployeeDetailsPage = () => {
                                         employeesDetails.map((item, index) => (
                                             <tr key={index} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                                                 <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                                                    {index + 1}
-                                                </th>
+                                                    {index + 1 + (currentPage - 1) * 10}                                                </th>
                                                 <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
                                                     {item?.name}
                                                 </th>

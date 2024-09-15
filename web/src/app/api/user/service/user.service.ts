@@ -528,8 +528,6 @@ export async function CreateEmployeeBulkUpload(
 
     const createUsers: CreateUserUserDetails[] = [];
 
-    const createSubsidies: Subsidy[] = [];
-
     dataExcel.map((items) => {
       items.data.map((data) => {
         const employee: ExcelCreateEmployee = {
@@ -625,6 +623,7 @@ export async function CreateEmployeeBulkUpload(
           is_acc_verify: true,
           active: true,
           employee_category_id: employeeCategory.employee_category_id,
+          cost_center_id: costcenter.cost_center_id,
         };
 
         const userDetails: Partial<UserDetails> = {
@@ -656,48 +655,6 @@ export async function CreateEmployeeBulkUpload(
       status = 400;
       throw Error("No User Being Created");
     }
-
-    // createUsers.forEach((details) => {
-    //   const item: CreateUserUserDetails | undefined = createUserCascade.find(
-    //     (detail) => detail.user.employee_id === details.user.employee_id
-    //   );
-
-    //   if (!item) {
-    //     throw Error("No User Being Found After Creating User");
-    //   }
-
-    //   // Check if 'subsidy' exists before assigning 'user_id'
-    //   if (details.subsidy) {
-    //     details.subsidy.user_id = item.user.user_id;
-
-    //     createSubsidies.push(details.subsidy);
-    //   }
-    // });
-
-    // if (createSubsidies.length !== createUserCascade.length) {
-    //   status = 400;
-    //   throw Error("Subsidy not have same amount like User");
-    // }
-
-    // const createSubsidiesCascade = await CreateSubsidyMany({
-    //   data: createSubsidies,
-    // });
-
-    // if (!createSubsidiesCascade || createSubsidiesCascade.length < 1) {
-    //   status = 400;
-    //   throw Error("No Subsidy Being Assigned");
-    // }
-
-    // var sheet = workbook.Sheets[workbook.SheetNames[0]];
-    // const excelData = XLSX.utils.sheet_to_json(sheet);
-
-    // if (!Buffer.isBuffer(file)) {
-    //   throw new Error("File buffer is not valid");
-    // }
-
-    // const readExcel = ReadExcelFile(file);
-
-    // console.log("readExcel===>", readExcel);
 
     return NextResponse.json({
       message: "Successfully Create All Employees",
