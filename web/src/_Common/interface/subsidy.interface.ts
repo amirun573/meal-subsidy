@@ -24,3 +24,18 @@ export interface SubsidyTransactionPaginationRequest {
   endDate: string | null;
 
 }
+
+export interface SubsidyTransactionDownloadReportRequest {
+  startDate: string;
+  endDate: string;
+}
+
+export interface DownloadReportSubsidyTransactionResult {
+  name: string;
+  cost_center_code: string;
+  credit_used: number;
+  department_name: string;
+  employee_category_name: string;
+  employee_id: string;
+  transaction_at: Date;
+}

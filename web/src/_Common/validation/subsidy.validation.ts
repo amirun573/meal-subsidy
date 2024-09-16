@@ -3,6 +3,7 @@ import {
   SubsidyEmployeeUpdate,
   SubsidySubmitPrice,
   SubsidyTransactionPaginationRequest,
+  SubsidyTransactionDownloadReportRequest,
 } from "../interface/subsidy.interface";
 
 const UserUpdateSubsidyValidation = yup.object().shape({
@@ -29,6 +30,11 @@ const SubsidyTransactionPaginationValidation = yup.object().shape({
   endDate: yup.string().optional(),
 });
 
+const SubsidyTransactionDownloadReportValidation = yup.object().shape({
+  startDate: yup.string().required("Start Date Required"),
+  endDate: yup.string().required("End Date Required"),
+});
+
 export function EmployeeUpdateSubsidyValidation(data: SubsidyEmployeeUpdate) {
   return UserUpdateSubsidyValidation.validate(data);
 }
@@ -37,6 +43,14 @@ export function EmployeeSubmitPriceValidation(data: SubsidySubmitPrice) {
   return SubsidySubmitPriceValidation.validate(data);
 }
 
-export function SubsidyTransactionPagination(data: SubsidyTransactionPaginationRequest) {
+export function SubsidyTransactionPagination(
+  data: SubsidyTransactionPaginationRequest
+) {
   return SubsidyTransactionPaginationValidation.validate(data);
+}
+
+export function SubsidyTransactionReportDownload(
+  data: SubsidyTransactionDownloadReportRequest
+) {
+  return SubsidyTransactionDownloadReportValidation.validate(data);
 }

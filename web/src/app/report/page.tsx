@@ -18,11 +18,13 @@ import {
 } from 'chart.js';
 import { UserDetailsLocalStorage } from '@/_Common/interface/auth.interface';
 import { GetLocalStorageDetails, HandleUnAuthorized } from '@/_Common/function/LocalStorage';
-import { SubsidyTransactionPagination } from '@/_Common/validation/subsidy.validation';
+import { SubsidyTransactionPagination, SubsidyTransactionReportDownload } from '@/_Common/validation/subsidy.validation';
 import axios from 'axios';
 import { StatusAPICode } from '@/_Common/enum/status-api-code.enum';
 import { Subsidy, SubsidyTransaction, User } from '@prisma/client';
 import { DisplayAlert } from '@/_Common/function/Error';
+import { ConvertToUTCEndOfDay, ConvertToUTCStartOfDay, HandleDateFormatToAPI, HandleDateTimeFormatToAPI } from '../../_Common/function/Date';
+import Spinner from '@/Components/Spinner';
 
 // Register the components globally
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
@@ -72,14 +74,83 @@ const chartData = {
 
 const ChartComponent = () => {
     const chartRef = useRef(null);
-    const [selectedRange, setSelectedRange] = useState<'yearly' | 'monthly' | 'weekly' | 'daily'>('monthly');
+    const [selectedRange, setSelectedRange] = useState<'yearly' | 'monthly' | 'weekly' | 'daily'>('yearly');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    // Update chart data based on selected range
-    const updateChartData = (range: 'yearly' | 'monthly' | 'weekly' | 'daily') => {
-        const updatedData = chartData[range];
+    const [currentPage, setCurrentPage] = useState<number>(1); // State variable to store current page
+    const [filter, setFilter] = useState<string>('');
+    const [totalItems, setTotalItems] = useState<number>(0); // State variable to store total number of items
+    const [userDetailLocal, setUserDetailLocal] = useState<UserDetailsLocalStorage>();
+    const [subsidyTransactions, setSubsidyTransactions] = useState<SubsidyTransactionsPagination[]>([]);
+    const [isMobile, setIsMobile] = useState(false);
+    const [startDate, setStartDate] = useState<string>('');
+    const [endDate, setEndDate] = useState<string>('');
+
+    const [chartData, setChartData] = useState<any>(null);
+    const [isOpenModalDownloadReport, setIsOpenodalDownloadReport] = useState(false);
+
+    interface DownloadReport {
+        startDate: string;
+        endDate: string;
+
+    }
+
+    const initial: DownloadReport = {
+        startDate: new Date().toISOString().split('T')[0], // Initialize with today's date in YYYY-MM-DD format
+        endDate: new Date().toISOString().split('T')[0], // Initialize with today's date in YYYY-MM-DD format
+
+    }
+
+    const [initializeSubmitDownloadReportDetails, setInitializeSubmitDownloadReportDetails] = useState<DownloadReport>(initial);
+
+    // Update chart with new data
+    const updateChartData = (data: any) => {
         if (chartRef.current) {
-            (chartRef as any).current.data = updatedData;
+            (chartRef as any).current.data = data;
             (chartRef as any).current.update();
+        }
+    };
+
+    // Function to fetch data from API based on selected range
+    const fetchChartData = async (range: 'yearly' | 'monthly' | 'weekly' | 'daily') => {
+        try {
+
+            const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+
+            if (!userDetailsLocalStorage) {
+                await HandleUnAuthorized(null);
+            }
+
+
+
+            setUserDetailLocal(userDetailsLocalStorage as UserDetailsLocalStorage);
+
+
+            const response = await axios.get(`/api/subsidy?${StatusAPICode.code}=${StatusAPICode.SUBSIDY_CHART_REPORT}&range=${range}`, {
+                headers: {
+                    Authorization: `Bearer ${userDetailsLocalStorage.accessToken}`
+                }
+            }); // Adjust the URL to your API
+            const fetchedData = response.data;
+
+            const formattedData = {
+                labels: fetchedData.labels,
+                datasets: [{
+                    label: 'Credited',
+                    data: fetchedData.data,
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1,
+                }]
+            };
+
+            setChartData((prevData: any) => ({
+                ...prevData,
+                [range]: formattedData,
+            }));
+        } catch (error) {
+            console.error('Error fetching chart data:', error);
         }
     };
 
@@ -105,7 +176,7 @@ const ChartComponent = () => {
                 break;
             case 'csv':
                 let csvContent = 'Month, Sales\n';
-                chartData.monthly.labels.forEach((label, index) => {
+                chartData.monthly.labels.forEach((label: any, index: number) => {
                     csvContent += `${label},${chartData.monthly.datasets[0].data[index]}\n`;
                 });
 
@@ -115,7 +186,7 @@ const ChartComponent = () => {
                 csvLink.click();
                 break;
             case 'excel':
-                const worksheet = XLSX.utils.json_to_sheet(chartData.monthly.labels.map((label, index) => ({
+                const worksheet = XLSX.utils.json_to_sheet(chartData.monthly.labels.map((label: any, index: number) => ({
                     Month: label,
                     Sales: chartData.monthly.datasets[0].data[index],
                 })));
@@ -157,16 +228,6 @@ const ChartComponent = () => {
 
     }
 
-    const [currentPage, setCurrentPage] = useState<number>(1); // State variable to store current page
-    const [filter, setFilter] = useState<string>('');
-    const [totalItems, setTotalItems] = useState<number>(0); // State variable to store total number of items
-    const [userDetailLocal, setUserDetailLocal] = useState<UserDetailsLocalStorage>();
-    const [subsidyTransactions, setSubsidyTransactions] = useState<SubsidyTransactionsPagination[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
-    const [startDate, setStartDate] = useState<string>('');
-    const [endDate, setEndDate] = useState<string>('');
-
 
     const handlePageChange = (page: number) => {
         // Update the current page state
@@ -175,8 +236,6 @@ const ChartComponent = () => {
         // Fetch data for the new page using the page number and other parameters as needed
         // GetEmployee();
     };
-
-
 
     const GetSubsidyTransaction = async () => {
         setLoading(true);
@@ -188,6 +247,8 @@ const ChartComponent = () => {
                 await HandleUnAuthorized(null);
             }
 
+            setUserDetailLocal(userDetailsLocalStorage as UserDetailsLocalStorage);
+
             await SubsidyTransactionPagination({
                 page: currentPage,
                 filter,
@@ -195,7 +256,7 @@ const ChartComponent = () => {
                 endDate
             });
 
-            setUserDetailLocal(userDetailsLocalStorage as UserDetailsLocalStorage);
+
             const requestBooking = await axios.get(`/api/subsidy?${StatusAPICode.code}=${StatusAPICode.SUBSIDY_TRANSACTION_PAGINATION}&page=${currentPage}&filter=${filter}&startDate=${startDate}&endDate=${endDate}`, {
                 headers: {
                     Authorization: `Bearer ${userDetailsLocalStorage?.accessToken}`
@@ -303,34 +364,222 @@ const ChartComponent = () => {
         } finally {
             setLoading(false);
         }
-    }, [filter])
+    }, [filter]);
+
+    const HandleOpenModalReport = () => {
+
+        setIsOpenodalDownloadReport(true);
+    }
+
+    const HandleCloseDownloadReport = () => {
+        setIsOpenodalDownloadReport(false);
+    };
+
+    const ModalDownloadReport = () => {
+
+
+        const [submitDetails, setSubmitDetails] = useState<DownloadReport>(initial);
+        const todayDate = new Date().toISOString().split('T')[0];
+
+
+        // Handle file submission
+        const HandleSubmit = async () => {
+            setLoading(true);
+            try {
+                const startDate: string = ConvertToUTCStartOfDay(submitDetails.startDate);
+                const endDate: string = ConvertToUTCEndOfDay(submitDetails.endDate);
+
+                // Ensure the user's authorization details are valid
+                const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+
+                if (!userDetailsLocalStorage) {
+                    await HandleUnAuthorized(null);
+                    return;
+                }
+
+                setUserDetailLocal(userDetailsLocalStorage as UserDetailsLocalStorage);
+
+                // Request the report from the server
+                const response = await axios.get(`/api/subsidy?${StatusAPICode.code}=${StatusAPICode.SUBSIDY_REPORT_DOWNLOAD}&startDate=${startDate}&endDate=${endDate}`, {
+                    headers: {
+                        Authorization: `Bearer ${userDetailsLocalStorage?.accessToken}`,
+                    },
+                    responseType: 'blob', // Important for handling binary data
+                });
+
+                // Create a new Blob object using the response data
+                const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+                // Create a link element
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'report.xlsx'; // Set the default file name for the download
+                document.body.appendChild(link);
+                link.click();
+
+                // Cleanup
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+
+            } catch (error) {
+                console.error(error);
+                DisplayAlert(error);
+                await HandleUnAuthorized(error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        const handleInputChange = async (e: any) => {
+            const { name, value } = e.target;
+
+            try {
+
+                console.log("Name==>", name, ".Value==>", value);
+                setSubmitDetails(prevState => ({
+                    ...prevState,
+                    [name]: value
+                }));
+
+            } catch (error: any) {
+                console.error(error);
+                alert(error?.response?.data?.message || error?.message || "Something Incorrect");
+                await HandleUnAuthorized(error);
+            }
+        };
+
+
+        return (
+            <>
+                {isOpenModalDownloadReport && (
+                    <div className="flex items-center justify-center h-screen">
+                        {/* <button
+                            className="bg-blue-500 text-white px-4 py-2 rounded"
+                            onClick={() => setIsOpenodalDownloadReport(true)}
+                        >
+                            Download Report
+                        </button> */}
+
+
+                        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                            <div className="bg-white rounded-lg w-96 p-6">
+                                <div className="flex justify-between items-center border-b pb-3 mb-4">
+                                    <h1 className='text-black'>Download Report</h1>
+                                    <button
+                                        className="ml-auto text-gray-400 hover:text-gray-600 text-3xl"
+                                        onClick={HandleCloseDownloadReport}
+                                    >
+                                        &times;
+                                    </button>
+                                </div>
+
+
+                                <div className="flex flex-col items-center space-y-4">
+                                    <form>
+                                        <div className="col-span-2 sm:col-span-1">
+                                            <div className="grid gap-4 mb-4 sm:grid-cols-2">
+                                                <div className="mt-4">
+                                                    <label htmlFor="startDate" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Start Date</label>
+                                                    <input
+                                                        type="date"
+                                                        name="startDate"
+                                                        id="startDate"
+                                                        value={submitDetails.startDate} // Display the selected date
+                                                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                                        onChange={handleInputChange}
+                                                        max={todayDate} // Disable future dates
+                                                        required
+                                                    />
+                                                </div>
+
+                                                <div className="mt-4">
+                                                    <label htmlFor="endDate" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">End Date</label>
+                                                    <input
+                                                        type="date"
+                                                        name="endDate"
+                                                        id="endDate"
+                                                        value={submitDetails.endDate} // Display the selected date
+                                                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                                        onChange={handleInputChange}
+                                                        max={todayDate} // Disable future dates
+                                                        required
+                                                    />
+                                                </div>
+
+
+
+                                            </div>
+                                        </div>
+                                    </form>
+
+                                </div>
+
+                                <div className="flex justify-end mt-6">
+
+                                    <button
+                                        className="bg-blue-500 text-white px-4 py-2 rounded"
+                                        onClick={HandleSubmit}
+                                    >
+                                        Submit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                )}
+            </>
+
+        );
+    }
+
+    // // Fetch the initial data when component mounts or range changes
+    // useEffect(() => {
+    //     fetchChartData(selectedRange);
+    // }, [selectedRange]);
+
+    // useEffect(() => {
+    //     if (chartData) {
+    //         updateChartData(chartData); // Update chart when data is fetched
+    //     }
+    // }, [chartData]);
     return (
         <>
             <Navbar />
             <MainContent />
+
+            {loading && <Spinner />}
+
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: 'white', padding: '20px' }}>
                 <div style={{ width: '100%', maxWidth: '1200px', height: 'auto', position: 'relative', padding: '20px', boxSizing: 'border-box' }}>
                     {/* Dropdown Menu */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                        <select onChange={handleRangeChange} style={{ padding: '10px', backgroundColor: 'gray', color: 'black', border: 'none', borderRadius: '5px' }}>
+                    {/* <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <select value={selectedRange} onChange={handleRangeChange} style={{ padding: '10px', backgroundColor: 'gray', color: 'black', border: 'none', borderRadius: '5px' }}>
                             <option value="yearly">Yearly</option>
-                            <option value="monthly" selected>Monthly</option>
+                            <option value="monthly">Monthly</option>
                             <option value="weekly">Weekly</option>
                             <option value="daily">Daily</option>
                         </select>
-                        {/* Uncomment if you want to include the DownloadSelection */}
-                        {/* <DownloadSelection /> */}
-                    </div>
+                    </div> */}
 
                     {/* Bar Chart */}
-                    <div style={{ width: '100%', height: 'auto', flexGrow: '1', position: 'relative', aspectRatio: '2 / 1' }}>
-                        <Bar ref={chartRef} data={chartData.monthly} options={{ responsive: true, maintainAspectRatio: false }} />
-                    </div>
+                    {/* <div style={{ width: '100%', height: 'auto', flexGrow: '1', position: 'relative', aspectRatio: '2 / 1' }}>
+                        {chartData && chartData[selectedRange] ? (
+                            <Bar
+                                ref={chartRef}
+                                data={chartData[selectedRange]} // Dynamically use the selected range (monthly, yearly, etc.)
+                                options={{ responsive: true, maintainAspectRatio: false }}
+                            />
+                        ) : (
+                            <p className='text-black'>Loading chart data...</p> // Or show a placeholder when there's no data
+                        )}
+                    </div> */}
+
 
 
                     {/* Table */}
                     <div className="mt-10">
-                        <p className='text-black mb-2'><strong>Transactions</strong></p>
+                        <p className='text-black mb-2'><strong>Subsidy Transactions</strong></p>
 
                         <div className="flex justify-end items-center space-x-4">
                             <label
@@ -345,6 +594,13 @@ const ChartComponent = () => {
                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
                                 onChange={(e) => setFilter(e.target.value)}
                             />
+                            <button
+                                onClick={HandleOpenModalReport}
+                                className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
+                            >
+                                Download Report
+
+                            </button>
                         </div>
 
                         <div className="relative overflow-x-auto shadow-md sm:rounded-lg mt-10">
@@ -444,6 +700,9 @@ const ChartComponent = () => {
                         </div>
 
                     </div>
+                </div>
+                <div>
+                    <ModalDownloadReport />
                 </div>
             </div>
 

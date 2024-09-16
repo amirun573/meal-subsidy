@@ -10,6 +10,7 @@ import {
   PrismaUpdate,
 } from "@/_Common/interface/database.interface";
 import { PaginationData } from "@/_Common/interface/pagination.interface";
+import { DownloadReportSubsidyTransactionResult } from "@/_Common/interface/subsidy.interface";
 
 export async function GetSubsidySingle(data: PrismaCondtionFetch) {
   try {
@@ -321,5 +322,48 @@ export async function GetSubsidyTransactionPagination(options: {
     //const page = data.get("page");
   } catch (error) {
     return null;
+  }
+}
+
+export async function GetFilteredTransactions(data: {
+  startDate: Date;
+
+  endDate: Date;
+}): Promise<DownloadReportSubsidyTransactionResult[]> {
+  try {
+    const { startDate, endDate } = data;
+    const query = `
+    SELECT
+        ud.name AS "name",
+        u.employee_id AS "employee_id",
+        d.department_name AS "department_name",
+        cc.cost_center_code AS "cost_center_code",
+        ec.employee_category_name AS "employee_category_name",
+        st.credit_used AS "credit_used",
+        TO_CHAR(st.transaction_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kuala_Lumpur', 'YYYY-MM-DD HH24:MI:SS') AS "transaction_at"
+
+    FROM
+        "SubsidyTransaction" st
+    JOIN
+        "User" u ON st.user_id = u.user_id
+    JOIN
+        "UserDetails" ud ON u.user_id = ud.user_id
+    LEFT JOIN
+        "Department" d ON u.department_id = d.department_id
+    LEFT JOIN
+        "CostCenter" cc ON u.cost_center_id = cc.cost_center_id
+    LEFT JOIN
+        "EmployeeCategory" ec ON u.employee_category_id = ec.employee_category_id
+    WHERE
+        st.transaction_at BETWEEN $1::timestamp AND $2::timestamp
+    AND
+        st.active = TRUE;
+  `;
+
+    const result: DownloadReportSubsidyTransactionResult[] = await prisma.$queryRawUnsafe(query, startDate, endDate);
+    return result;
+  } catch (error) {
+    console.error(error);
+    return [];
   }
 }
