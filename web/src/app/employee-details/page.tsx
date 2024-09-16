@@ -70,7 +70,7 @@ const EmployeeDetailsPage = () => {
         employee_category_code: '',
         cost_center_code: '',
         access_card_no: '',
-
+        subsidy_meal_applicable: 'yes',
     });
 
     const [departments, setDepartments] = useState<DepartmentLists[]>([]);
@@ -364,6 +364,7 @@ const EmployeeDetailsPage = () => {
 
             try {
 
+                console.log("Name==>", name, ".Value==>", value);
                 setSubmitDetails(prevState => ({
                     ...prevState,
                     [name]: value
@@ -574,6 +575,25 @@ const EmployeeDetailsPage = () => {
                                                 required
                                             />
                                         </div>
+
+                                        <div className="mt-4">
+                                            <label htmlFor="subsidy_meal_applicable" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Subsidy Meal Applicable</label>
+                                            <select
+                                                id="subsidy_meal_applicable"
+                                                name="subsidy_meal_applicable"
+                                                value={submitDetails.subsidy_meal_applicable}
+                                                onChange={handleInputChange}
+                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                            >
+                                                <option value="" disabled>Select a Condition Subsidy Meal</option>
+                                                <option key={1} value={'yes'}>
+                                                    {'Yes'}
+                                                </option>
+                                                <option key={0} value={'no'}>
+                                                    {'No'}
+                                                </option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                             </form>
@@ -730,6 +750,20 @@ const EmployeeDetailsPage = () => {
                                             name="access_card_no"
                                             id="access_card_no"
                                             value={(submitDetails.access_card_no)}
+                                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                            readOnly
+                                        />
+
+                                    </div>
+
+                                    <div className="mt-4">
+                                        <label htmlFor="subsidy_meal_applicable" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Subsidy Meal Applicable</label>
+
+                                        <input
+                                            type="text"
+                                            name="subsidy_meal_applicable"
+                                            id="subsidy_meal_applicable"
+                                            value={(submitDetails.subsidy_meal_applicable === 'yes' ? 'Yes' : 'No')}
                                             className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
                                             readOnly
                                         />

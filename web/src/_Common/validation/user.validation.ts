@@ -41,6 +41,10 @@ const CreateUpdateEmployeeValidationSchema = yup.object().shape({
     .optional()
     .oneOf([yup.ref("password")], "Passwords must match"),
   access_card_no: yup.string().optional(),
+  subsidy_meal_applicable: yup
+    .string()
+    .required("Subsidy Meal Applicable is required")
+    .oneOf(["yes", "no"], "Subsidy Meal Applicable must be 'yes' or 'no'"),
 });
 
 export function UserPaginationValidation(data: UserPaginationRequest) {

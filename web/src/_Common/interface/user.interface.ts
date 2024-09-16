@@ -29,6 +29,8 @@ export interface CreateUpdateUser {
 
   cost_center_code: string;
   access_card_no: string;
+
+  subsidy_meal_applicable: string;
 }
 
 export interface CreateUserUploadExcel {

@@ -331,6 +331,7 @@ export async function CreateEmployee(data: CreateUpdateUser) {
       employee_category_code,
       access_card_no,
       cost_center_code,
+      subsidy_meal_applicable,
     } = data;
 
     let hashpassword: string = "";
@@ -438,6 +439,7 @@ export async function CreateEmployee(data: CreateUpdateUser) {
     const SubsidyUser: Partial<Subsidy> = {
       subsidy_type_id: subsidyType.subsidy_type_id,
       user_id,
+      applicable: subsidy_meal_applicable === "yes" ? true : false,
     };
 
     if (access_card_no) {
