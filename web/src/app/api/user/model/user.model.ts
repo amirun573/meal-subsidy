@@ -216,13 +216,13 @@ export async function CreateUserNUserDetailsCascade(data: {
       async (prisma) => {
         let userTransaction: any;
 
-        if (!user.user_id) {
-          userTransaction = await CreateUser({
+        if (user.user_id) {
+          userTransaction = await UpdateUser({
             user,
             prismaTransaction: prisma,
           });
         } else {
-          userTransaction = await UpdateUser({
+          userTransaction = await CreateUser({
             user,
             prismaTransaction: prisma,
           });
@@ -236,13 +236,13 @@ export async function CreateUserNUserDetailsCascade(data: {
 
         let userDetailsTrancation: any;
 
-        if (!userDetails.UserDetails_id) {
-          userDetailsTrancation = await CreateUserDetails({
+        if (userDetails.UserDetails_id) {
+          userDetailsTrancation = await UpdateUserDetails({
             userDetails,
             prismaTransaction: prisma,
           });
         } else {
-          userDetailsTrancation = await UpdateUserDetails({
+          userDetailsTrancation = await CreateUserDetails({
             userDetails,
             prismaTransaction: prisma,
           });

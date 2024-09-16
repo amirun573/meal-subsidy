@@ -24,13 +24,16 @@ import { FileMimeType } from "@/_Common/enum/file-type.enum";
 interface EmployeeDetails {
     name: string,
     employee_id: string,
-    department: string,
+    department_code: string,
+    department_name: string,
     is_meal_subsidiry_active: boolean,
     meal_subsidiry_uuid: string,
     uuid: string,
     email?: string,
     employee_category_code: string;
     cost_center_code: string;
+    access_card_no: string;
+    employee_category_name: string;
 
 }
 
@@ -56,7 +59,7 @@ const EmployeeDetailsPage = () => {
     const [loading, setLoading] = useState(false);
     const [employeeCategories, setEmployeeCategories] = useState<EmployeeCategoryLists[]>([]);
 
-    const [initializeSubmitDetails, setInitializeSubmitDetails] = useState<CreateUpdateUser>({
+    const initial: CreateUpdateUser = {
         name: '',
         employee_id: '',
         submit_method: 'post',
@@ -71,7 +74,8 @@ const EmployeeDetailsPage = () => {
         cost_center_code: '',
         access_card_no: '',
         subsidy_meal_applicable: 'yes',
-    });
+    }
+    const [initializeSubmitDetails, setInitializeSubmitDetails] = useState<CreateUpdateUser>(initial);
 
     const [departments, setDepartments] = useState<DepartmentLists[]>([]);
     const [costCenters, setCostCenters] = useState<CostCenterLists[]>([]);
@@ -116,13 +120,16 @@ const EmployeeDetailsPage = () => {
                     const employee: EmployeeDetails = {
                         name: String((user as any)?.UserDetails?.name).toUpperCase(),
                         employee_id: user.employee_id,
-                        department: (user as any)?.department?.department_name,
+                        department_code: (user as any)?.department?.department_code,
+                        department_name: (user as any)?.department?.department_name,
                         is_meal_subsidiry_active: subsidies?.applicable as boolean || false,
                         meal_subsidiry_uuid: (subsidies as any)?.subsidy_type?.uuid || '',
                         uuid: user?.uuid || '',
                         email: user?.email || '',
+                        employee_category_name: (user as any)?.employee_category?.employee_category_name || '',
                         employee_category_code: (user as any)?.employee_category?.employee_category_code || '',
                         cost_center_code: (user as any)?.cost_center?.cost_center_code || '',
+                        access_card_no: (user as any)?.access_cards[0]?.card_value || '',
                     }
 
                     employeeDetailsResponse.push(employee);
@@ -1069,8 +1076,45 @@ const EmployeeDetailsPage = () => {
         }
     }, [filter])
 
-    const HandleUserAction = () => {
+    const HandleAddUser = () => {
+        initializeSubmitDetails.code = StatusAPICode.CREATE_EMPLOYEE;
+        initializeSubmitDetails.submit_method = 'post';
+        setInitializeSubmitDetails(initializeSubmitDetails);
         setOpenModalAddBooking(true);
+    }
+
+    const HandleEditUser = (uuid: string) => {
+        try {
+
+            const employee: EmployeeDetails | undefined = employeesDetails.find(item => item.uuid === uuid);
+
+
+            if (!employee) {
+                throw Error("No Employee Found From ID");
+            }
+
+            const updateEmployee: CreateUpdateUser = {
+                name: employee?.name || '',
+                employee_id: employee.employee_id,
+                submit_method: 'put',
+                department_name: employee.department_name,
+                code: StatusAPICode.UPDATE_EMPLOYEE,
+                email: employee?.email || '',
+                password: '',
+                confirmPassword: '',
+                employee_category_name: employee.employee_category_name,
+                department_code: employee.department_code,
+                employee_category_code: employee.employee_category_code,
+                cost_center_code: employee.cost_center_code,
+                access_card_no: employee.access_card_no,
+                subsidy_meal_applicable: employee.is_meal_subsidiry_active ? 'yes' : 'no',
+            }
+            setInitializeSubmitDetails(updateEmployee);
+            setOpenModalAddBooking(true);
+        } catch (error) {
+
+        }
+
     }
 
     const HandleUserUploadFileAction = () => {
@@ -1160,7 +1204,7 @@ const EmployeeDetailsPage = () => {
                             onChange={(e) => setFilter(e.target.value)}
                         />
                         <button
-                            onClick={HandleUserAction}
+                            onClick={HandleAddUser}
                             className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
                         >
                             +
@@ -1208,7 +1252,7 @@ const EmployeeDetailsPage = () => {
                                         <th scope="col" className="px-6 py-3">
                                             Meal Subsidiry Applicable
                                         </th>
-                                        {/* <th scope="col" className="px-6 py-3">Edit</th> */}
+                                        <th scope="col" className="px-6 py-3">Edit</th>
 
                                     </tr>
                                 </thead>
@@ -1225,7 +1269,7 @@ const EmployeeDetailsPage = () => {
                                                     {item.employee_id}
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    {item.department}
+                                                    {item.department_name}
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     {item.cost_center_code}
@@ -1242,14 +1286,14 @@ const EmployeeDetailsPage = () => {
                                                 </td>
 
 
-                                                {/* <td className="px-6 py-4">
+                                                <td className="px-6 py-4">
                                                     <button
                                                         className="bg-blue-500 text-white px-4 py-2 rounded"
-                                                        onClick={() => handleUpdateBooking(item?.uuid as string || '')}
+                                                        onClick={() => HandleEditUser(item?.uuid as string || '')}
                                                     >
                                                         Edit
                                                     </button>
-                                                </td> */}
+                                                </td>
 
 
                                             </tr>
