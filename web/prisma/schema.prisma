@@ -29,7 +29,7 @@ model Role {
 model User {
   user_id                   Int               @id @default(autoincrement())
   employee_id               String            @unique
-  email                     String?            @unique
+  email                     String?           @unique
   password_hash             String?
   active                    Boolean           @default(false)
   uuid                      String?           @default(uuid())
@@ -40,7 +40,7 @@ model User {
   role_id                   Int?
 
   // Relation to RoleFeature (acts as a bridge between User and Role)
-  user_features             UserFeatures[]     // One-to-many relationship with RoleFeature
+  user_features             UserFeatures[]    // One-to-many relationship with RoleFeature
 
   is_email_verified         Boolean           @default(false)
   email_verification_token  String?
@@ -49,12 +49,15 @@ model User {
   subsidies                 Subsidy[]         // One-to-many relationship with Subsidy
   subsidy_credits           SubsidyCredit[]   // One-to-many relationship with SubsidyCredit
   subsidy_transactions      SubsidyTransaction[] // One-to-many relationship with SubsidyTransaction
-  department                Department?       @relation(fields: [department_id], references: [department_id], onDelete: Cascade)
-  department_id             Int?
+  department                Department?       @relation(fields: [department_id], references: [department_id])
+  department_id             Int?              // Nullable reference to Department
+  cost_center               CostCenter?       @relation(fields: [cost_center_id], references: [cost_center_id])
+  cost_center_id            Int?              // Nullable reference to CostCenter
   access_cards              AccessCard[]      // One-to-many relationship with MifareCard
   employee_category         EmployeeCategory? @relation(fields: [employee_category_id], references: [employee_category_id], onDelete: Cascade)
   employee_category_id      Int?              // Many-to-one relation, no unique constraint here
 }
+
 
 
 model Country {
@@ -133,7 +136,7 @@ model Subsidy {
   subsidy_type      SubsidyType?  @relation(fields: [subsidy_type_id], references: [subsidy_type_id], onDelete: SetNull)
   subsidy_type_id   Int
   applicable        Boolean      @default(false)
-  start_date        DateTime?
+  start_date        DateTime?    @default(now())
   end_date          DateTime?
   active            Boolean      @default(true)
   uuid              String?      @default(uuid())
@@ -199,7 +202,6 @@ model SubsidyTransaction {
 }
 
 
-
 model Department {
   department_id   Int         @id @default(autoincrement())
   department_code String      @unique
@@ -210,8 +212,27 @@ model Department {
   updated_at      DateTime    @updatedAt
   deleted_at      DateTime?
 
+  // Reference to the User model
   users           User[]      // One-to-many relationship with User
 }
+
+
+model CostCenter {
+  cost_center_id           Int         @id @default(autoincrement())
+  cost_center_code         String      @unique
+  cost_center_description  String?
+
+  active                   Boolean     @default(true)
+  uuid                     String?     @default(uuid())
+  created_at               DateTime    @default(now())
+  updated_at               DateTime    @updatedAt
+  deleted_at               DateTime?
+
+  // Reference to the User model
+  users           User[]      // One-to-many relationship with User
+}
+
+
 
 model Feature {
   feature_id      Int       @id @default(autoincrement())
@@ -250,7 +271,7 @@ model UserFeatures {
 
 model AccessCard {
   card_id        Int       @id @default(autoincrement())
-  card_value     String    // Mifare card value (e.g. UID or other identifier)
+  card_value     String   @unique // Mifare card value (e.g. UID or other identifier)
   active         Boolean   @default(true)  // Indicates if the card is active or replaced
   issued_at      DateTime  @default(now()) // When the card was issued
   user           User?      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)

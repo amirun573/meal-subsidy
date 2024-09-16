@@ -257,3 +257,27 @@ export async function SubsidyCreditTransactionCascade(data: {
     return null;
   }
 }
+
+export async function CreateSubsidyMany(object: {
+  data: Subsidy[];
+  prismaTransaction?: any;
+}): Promise<Subsidy[]> {
+  try {
+    const { data, prismaTransaction } = object;
+
+    if (!prismaTransaction) {
+      return prisma.subsidy.createManyAndReturn({
+        data,
+        skipDuplicates: true,
+      });
+    } else {
+      return prismaTransaction.subsidy.createManyAndReturn({
+        data,
+        skipDuplicates: true,
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}

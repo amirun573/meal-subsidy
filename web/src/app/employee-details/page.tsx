@@ -8,7 +8,7 @@ import { UserDetailsLocalStorage } from "@/_Common/interface/auth.interface";
 import { SubsidyEmployeeUpdate } from "@/_Common/interface/subsidy.interface";
 import { EmployeeUpdateSubsidyValidation } from "@/_Common/validation/subsidy.validation";
 import { CreateUpdateEmployeeValidation, UserPaginationValidation } from "@/_Common/validation/user.validation";
-import { Department, EmployeeCategory, Subsidy, User } from "@prisma/client";
+import { CostCenter, Department, EmployeeCategory, Subsidy, User } from "@prisma/client";
 import axios from "axios";
 import { Modal } from "flowbite-react";
 import { Suspense, useEffect, useState } from "react";
@@ -17,23 +17,34 @@ import { CreateUpdateUser } from "@/_Common/interface/user.interface";
 import { DepartmentLists } from "@/_Common/interface/department.interface";
 import { FormatDepartmentCode } from "@/_Common/function/String";
 import { FolderArrowDownIcon } from '@heroicons/react/24/solid'
+import { MainContent } from "@/Components/Main";
+import { FileMimeType } from "@/_Common/enum/file-type.enum";
 
 
 interface EmployeeDetails {
     name: string,
     employee_id: string,
-    department: string,
+    department_code: string,
+    department_name: string,
     is_meal_subsidiry_active: boolean,
     meal_subsidiry_uuid: string,
     uuid: string,
     email?: string,
     employee_category_code: string;
+    cost_center_code: string;
+    access_card_no: string;
+    employee_category_name: string;
 
 }
 
 interface EmployeeCategoryLists {
     employee_category_code: string,
     employee_category_name: string,
+}
+
+interface CostCenterLists {
+    cost_center_code: string,
+    description?: string,
 }
 
 const EmployeeDetailsPage = () => {
@@ -48,7 +59,7 @@ const EmployeeDetailsPage = () => {
     const [loading, setLoading] = useState(false);
     const [employeeCategories, setEmployeeCategories] = useState<EmployeeCategoryLists[]>([]);
 
-    const [initializeSubmitDetails, setInitializeSubmitDetails] = useState<CreateUpdateUser>({
+    const initial: CreateUpdateUser = {
         name: '',
         employee_id: '',
         submit_method: 'post',
@@ -60,13 +71,22 @@ const EmployeeDetailsPage = () => {
         employee_category_name: '',
         department_code: '',
         employee_category_code: '',
-
-    });
+        cost_center_code: '',
+        access_card_no: '',
+        subsidy_meal_applicable: 'yes',
+    }
+    const [initializeSubmitDetails, setInitializeSubmitDetails] = useState<CreateUpdateUser>(initial);
 
     const [departments, setDepartments] = useState<DepartmentLists[]>([]);
+    const [costCenters, setCostCenters] = useState<CostCenterLists[]>([]);
+
+    const [openModalUploadFile, setOpenModalUploadFile] = useState<boolean>(false);
+    const [isOpenModalUploadFile, setIsOpenodalUploadFile] = useState(false);
+
 
 
     const GetEmployee = async () => {
+        setLoading(true);
         try {
 
             const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
@@ -98,14 +118,18 @@ const EmployeeDetailsPage = () => {
                     const subsidies = ((user as any)?.subsidies as Subsidy[]).find(subsidy => (subsidy as any).subsidy_type?.subsidy_type_code === SubsidyTypeCode.meal);
 
                     const employee: EmployeeDetails = {
-                        name: (user as any)?.UserDetails?.name,
+                        name: String((user as any)?.UserDetails?.name).toUpperCase(),
                         employee_id: user.employee_id,
-                        department: (user as any)?.department?.department_name,
+                        department_code: (user as any)?.department?.department_code,
+                        department_name: (user as any)?.department?.department_name,
                         is_meal_subsidiry_active: subsidies?.applicable as boolean || false,
                         meal_subsidiry_uuid: (subsidies as any)?.subsidy_type?.uuid || '',
                         uuid: user?.uuid || '',
                         email: user?.email || '',
+                        employee_category_name: (user as any)?.employee_category?.employee_category_name || '',
                         employee_category_code: (user as any)?.employee_category?.employee_category_code || '',
+                        cost_center_code: (user as any)?.cost_center?.cost_center_code || '',
+                        access_card_no: (user as any)?.access_cards[0]?.card_value || '',
                     }
 
                     employeeDetailsResponse.push(employee);
@@ -124,6 +148,91 @@ const EmployeeDetailsPage = () => {
             console.error(error);
             alert(error?.response?.data?.message || error?.message || "Something Goes Wrong");
             await HandleUnAuthorized(error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    const GetDepartment = async () => {
+
+        try {
+
+            const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+
+            if (!userDetailsLocalStorage) {
+                await HandleUnAuthorized(null);
+            }
+            const requestDepartments = await axios.get(`/api/department?${StatusAPICode.code}=${StatusAPICode.GET_DEPARTMENT_LISTS}`, {
+                headers: {
+                    Authorization: `Bearer ${userDetailsLocalStorage?.accessToken}`
+                }
+            });
+
+            if (!requestDepartments.data?.departments) {
+                throw Error("No Departments Data Retreived");
+            }
+
+            const departmentsLists: Partial<Department>[] = requestDepartments.data?.departments as Partial<Department>[];
+
+            const departmentsArray: DepartmentLists[] = [];
+
+            departmentsLists.map(department => {
+                const depart: DepartmentLists = {
+                    department_code: department?.department_code || '',
+                    department_name: department?.department_name || '',
+                    department_uuid: department?.uuid || ''
+                }
+
+                departmentsArray.push(depart);
+            });
+
+            setDepartments(departmentsArray);
+
+        } catch (error) {
+            console.error(error);
+            DisplayAlert(error);
+            await HandleUnAuthorized(error)
+        }
+    }
+
+    const GetCostCenter = async () => {
+
+        try {
+
+            const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+
+            if (!userDetailsLocalStorage) {
+                await HandleUnAuthorized(null);
+            }
+            const requestDepartments = await axios.get(`/api/department?${StatusAPICode.code}=${StatusAPICode.GET_COST_CENTER_LISTS}`, {
+                headers: {
+                    Authorization: `Bearer ${userDetailsLocalStorage?.accessToken}`
+                }
+            });
+
+            if (!requestDepartments.data?.costCenterLists) {
+                throw Error("No Departments Data Retreived");
+            }
+
+            const costCenterLists: Partial<CostCenter>[] = requestDepartments.data?.costCenterLists as Partial<CostCenter>[];
+
+            const costCenterArray: CostCenterLists[] = [];
+
+            costCenterLists.map(item => {
+                const costCenter: CostCenterLists = {
+                    cost_center_code: item?.cost_center_code || '',
+                    description: item?.cost_center_description || '',
+                }
+
+                costCenterArray.push(costCenter);
+            });
+
+            setCostCenters(costCenterArray);
+
+        } catch (error) {
+            console.error(error);
+            DisplayAlert(error);
+            await HandleUnAuthorized(error)
         }
     }
 
@@ -178,17 +287,7 @@ const EmployeeDetailsPage = () => {
         GetEmployee();
     };
 
-    const handleUpdateBooking = (uuid: string) => {
 
-        try {
-
-
-            setOpenModalAddBooking(true);
-
-        } catch (error) {
-            console.error(error);
-        }
-    }
 
     const ModalUser = () => {
 
@@ -272,6 +371,7 @@ const EmployeeDetailsPage = () => {
 
             try {
 
+                console.log("Name==>", name, ".Value==>", value);
                 setSubmitDetails(prevState => ({
                     ...prevState,
                     [name]: value
@@ -395,20 +495,7 @@ const EmployeeDetailsPage = () => {
                                             />
                                         </div>
 
-                                        <div className="mt-4">
-                                            <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Email</label>
-                                            <input
-                                                type="email"
-                                                name="email"
-                                                id="email"
-                                                value={submitDetails.email}
 
-                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                                                onChange={(e) => handleInputChange(e)}
-                                                placeholder="watlow@watlow.com"
-                                                required
-                                            />
-                                        </div>
 
                                         <div className="mt-4">
                                             <label htmlFor="department_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Department</label>
@@ -431,6 +518,24 @@ const EmployeeDetailsPage = () => {
                                         </div>
 
                                         <div className="mt-4">
+                                            <label htmlFor="cost_center_code" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cost Center</label>
+                                            <select
+                                                id="cost_center_code"
+                                                name="cost_center_code"
+                                                value={submitDetails.cost_center_code}
+                                                onChange={handleInputChange}
+                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                            >
+                                                <option value="" disabled>Select a Cost Center</option>
+                                                {costCenters.map((item, index) => (
+                                                    <option key={index} value={item.cost_center_code}>
+                                                        {item.cost_center_code}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="mt-4">
                                             <label htmlFor="employee_category_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Employee Category</label>
                                             <select
                                                 id="employee_category_name"
@@ -446,8 +551,55 @@ const EmployeeDetailsPage = () => {
                                                     </option>
                                                 ))}
                                             </select>
+                                        </div>
 
+                                        <div className="mt-4">
+                                            <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Email</label>
+                                            <input
+                                                type="email"
+                                                name="email"
+                                                id="email"
+                                                value={submitDetails.email}
 
+                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                                onChange={(e) => handleInputChange(e)}
+                                                placeholder="watlow@watlow.com"
+                                                required
+                                            />
+                                        </div>
+
+                                        <div className="mt-4">
+                                            <label htmlFor="access_card_no" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Access Card No</label>
+                                            <input
+                                                type="text"
+                                                name="access_card_no"
+                                                id="access_card_no"
+                                                value={submitDetails.access_card_no}
+
+                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                                onChange={(e) => handleInputChange(e)}
+                                                placeholder="12121212"
+                                                required
+                                            />
+                                        </div>
+
+                                        <div className="mt-4">
+                                            <label htmlFor="subsidy_meal_applicable" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Subsidy Meal Applicable</label>
+                                            <select
+                                                id="subsidy_meal_applicable"
+                                                name="subsidy_meal_applicable"
+                                                value={submitDetails.subsidy_meal_applicable}
+                                                onChange={handleInputChange}
+                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                            >
+                                                <option value="" disabled>Select a Condition Subsidy Meal</option>
+                                                <option key={1} value={'yes'}>
+                                                    {'Yes'}
+                                                </option>
+                                                <option key={0} value={'no'}>
+                                                    {'No'}
+                                                </option>
+                                            </select>
                                         </div>
                                     </div>
                                 </div>
@@ -540,18 +692,7 @@ const EmployeeDetailsPage = () => {
                                         />
                                     </div>
 
-                                    <div className="mt-4">
-                                        <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Email</label>
-                                        <input
-                                            type="email"
-                                            name="email"
-                                            id="email"
-                                            value={submitDetails.email}
 
-                                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                                            readOnly
-                                        />
-                                    </div>
 
                                     <div className="mt-4">
                                         <label htmlFor="department_code" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Department</label>
@@ -568,6 +709,33 @@ const EmployeeDetailsPage = () => {
                                     </div>
 
                                     <div className="mt-4">
+                                        <label htmlFor="cost_center_code" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cost Center</label>
+
+                                        <input
+                                            type="text"
+                                            name="cost_center_code"
+                                            id="cost_center_code"
+                                            value={(submitDetails.cost_center_code)}
+                                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                            readOnly
+                                        />
+
+                                    </div>
+
+                                    <div className="mt-4">
+                                        <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Email</label>
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            id="email"
+                                            value={submitDetails.email}
+
+                                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                            readOnly
+                                        />
+                                    </div>
+
+                                    <div className="mt-4">
                                         <label htmlFor="employee_category_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Employee Category</label>
 
                                         <input
@@ -575,6 +743,34 @@ const EmployeeDetailsPage = () => {
                                             name="employee_category_name"
                                             id="employee_category_name"
                                             value={(submitDetails.employee_category_name)}
+                                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                            readOnly
+                                        />
+
+                                    </div>
+
+                                    <div className="mt-4">
+                                        <label htmlFor="employee_category_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Access Card No</label>
+
+                                        <input
+                                            type="text"
+                                            name="access_card_no"
+                                            id="access_card_no"
+                                            value={(submitDetails.access_card_no)}
+                                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                            readOnly
+                                        />
+
+                                    </div>
+
+                                    <div className="mt-4">
+                                        <label htmlFor="subsidy_meal_applicable" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Subsidy Meal Applicable</label>
+
+                                        <input
+                                            type="text"
+                                            name="subsidy_meal_applicable"
+                                            id="subsidy_meal_applicable"
+                                            value={(submitDetails.subsidy_meal_applicable === 'yes' ? 'Yes' : 'No')}
                                             className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
                                             readOnly
                                         />
@@ -594,102 +790,227 @@ const EmployeeDetailsPage = () => {
         };
 
         return (
-            <Modal show={openModalAddBooking} onClose={() => setOpenModalAddBooking(false)}>
-                <Modal.Header className="bg-gray-200 text-gray-900"></Modal.Header>
-                <Modal.Body className="max-h-[75vh] overflow-y-auto">
-                    <Stepper steps={steps} currentStep={currentStep} setCurrentStep={setCurrentStep} />
-                    {renderStep()}
-                    <div className="flex justify-between mt-3">
-                        {currentStep <= 0 ?
-                            <button type="button" className="text-gray-700 bg-gray-200 hover:bg-gray-300 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-800"
+            <>
 
-                                disabled={false}
-                            >
-                                Previous Step
-                            </button> :
+                {openModalAddBooking && (
+                    <div className="relative">
+                        <button
+                            className="bg-blue-500 text-white px-4 py-2 rounded"
+                            onClick={() => setOpenModalAddBooking(true)}
+                        >
+                            Employee Details
+                        </button>
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                            <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl p-6 relative mx-4 sm:mx-6 md:mx-8 lg:mx-12">
+                                <button
+                                    className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+                                    onClick={() => setOpenModalAddBooking(false)}
+                                    aria-label="Close modal"
+                                >
+                                    &times;
+                                </button>
 
-                            <button type="button" className="text-white-700 bg-gray-700 hover:bg-blue-300 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-gray-800"
-                                onClick={prevStep}
-                            >
-                                Previous Step
-                            </button>
-                        }
+                                <div className="mb-4">
+                                    <Stepper steps={steps} currentStep={currentStep} setCurrentStep={setCurrentStep} />
+                                </div>
 
-                        {currentStep < steps.length - 1 ? (
-                            <button
-                                className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 mt-4"
-                                onClick={nextStep}
-                            >
-                                Next Step
-                            </button>
-                        ) : (
-                            <button
-                                type="button"
-                                className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 mt-4"
-                                onClick={handleSubmit}
-                                disabled={loading}
-                            >
-                                {loading ? 'Loading...' : 'Submit'}
-                            </button>
-                        )}
+                                <div className="overflow-y-auto max-h-[70vh]">
+                                    {renderStep()}
+                                </div>
 
+                                <div className="flex flex-col sm:flex-row justify-between mt-3">
+                                    <div>
+                                        {currentStep <= 0 ? (
+                                            <button
+                                                type="button"
+                                                className="text-gray-700 bg-gray-200 hover:bg-gray-300 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
+                                                disabled
+                                            >
+                                                Previous Step
+                                            </button>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                className="text-white bg-gray-700 hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
+                                                onClick={prevStep}
+                                            >
+                                                Previous Step
+                                            </button>
+                                        )}
+                                    </div>
 
-
+                                    <div className="mt-3 sm:mt-0">
+                                        {currentStep < steps.length - 1 ? (
+                                            <button
+                                                className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
+                                                onClick={nextStep}
+                                            >
+                                                Next Step
+                                            </button>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
+                                                onClick={handleSubmit}
+                                                disabled={loading}
+                                            >
+                                                {loading ? 'Loading...' : 'Submit'}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </Modal.Body>
-                <Modal.Footer className="flex justify-between">
-                    {/* <button className="bg-red-500 text-white px-4 py-2 rounded" onClick={() => setOpenModalAddBooking(false)}>Close</button> */}
-                    {/* <button className="bg-yellow-500 text-white px-4 py-2 rounded" onClick={() => setSubmitDetails(initializeSubmitDetails)}>Reset</button> */}
-                    <div className="flex space-x-2">
-                        {/* <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded" onClick={handleSubmit}>Submit ({(storeService as any)?.postcode?.city?.state?.country?.currency_code || 'RM'} {submitDetails.totalPrice > 0 ? `${submitDetails.totalPrice} Include Tax and Service Fee` : 0})</button> */}
-                    </div>
-                </Modal.Footer>
-            </Modal>
+                )}
+            </>
+
         );
 
     }
 
-    const GetDepartment = async () => {
+    const HandleCloseModalUploadFile = () => {
+        setIsOpenodalUploadFile(false);
+    };
 
-        try {
 
-            const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+    const ModalUploadUser = () => {
 
-            if (!userDetailsLocalStorage) {
-                await HandleUnAuthorized(null);
-            }
-            const requestDepartments = await axios.get(`/api/department?${StatusAPICode.code}=${StatusAPICode.GET_DEPARTMENT_LISTS}`, {
-                headers: {
-                    Authorization: `Bearer ${userDetailsLocalStorage?.accessToken}`
-                }
-            });
+        const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-            if (!requestDepartments.data?.departments) {
-                throw Error("No Departments Data Retreived");
-            }
-
-            const departmentsLists: Partial<Department>[] = requestDepartments.data?.departments as Partial<Department>[];
-
-            const departmentsArray: DepartmentLists[] = [];
-
-            departmentsLists.map(department => {
-                const depart: DepartmentLists = {
-                    department_code: department?.department_code || '',
-                    department_name: department?.department_name || '',
-                    department_uuid: department?.uuid || ''
+        const HandleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+            const file = event.target.files?.[0];
+            if (file) {
+                const fileType = file.type;
+                if (fileType !== FileMimeType.XLSX) {
+                    alert('Please upload a valid .xlsx file');
+                    event.target.value = ''; // Clear the input
+                    return;
                 }
 
-                departmentsArray.push(depart);
-            });
+                console.log("event.target.files===>", file);
+                setSelectedFile(file);
 
-            setDepartments(departmentsArray);
+                // Proceed with handling the file
+                console.log('File is valid:', file);
+                // Add your file processing logic here
 
-        } catch (error) {
-            console.error(error);
-            DisplayAlert(error);
-            await HandleUnAuthorized(error)
-        }
+
+            }
+        };
+
+
+        // Handle file submission
+        const HandleSubmit = async () => {
+            try {
+                if (!selectedFile) {
+                    alert('Please select a file to upload');
+                    return;
+                }
+
+                // Create FormData object
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                formData.append('code', StatusAPICode.UPLOAD_EXCEL_EMPLOYEE_CREATE.toString());
+
+
+                // Post request to API
+                const response = await axios.post('/api/user', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        Authorization: `Bearer ${userDetailLocal?.accessToken}`,
+
+                    },
+                });
+
+                // Handle the response
+                console.log('File uploaded successfully:', response.data);
+                alert(`File ${selectedFile.name} uploaded successfully!`);
+
+                // Close the modal and reset the file
+                setOpenModalAddBooking(false);
+                setSelectedFile(null);
+
+            } catch (error) {
+                console.error(error);
+                DisplayAlert(error);
+                await HandleUnAuthorized(error);
+            }
+
+        };
+
+
+        return (
+            <>
+                {isOpenModalUploadFile && (
+                    <div className="flex items-center justify-center h-screen">
+                        <button
+                            className="bg-blue-500 text-white px-4 py-2 rounded"
+                            onClick={() => setIsOpenodalUploadFile(true)}
+                        >
+                            Upload File
+                        </button>
+
+
+                        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                            <div className="bg-white rounded-lg w-96 p-6">
+                                <div className="flex justify-between items-center border-b pb-3 mb-4">
+                                    <h2 className="text-xl font-semibold text-gray-700">Upload File</h2>
+                                    <button
+                                        className="text-gray-400 hover:text-gray-600"
+                                        onClick={HandleCloseModalUploadFile}
+                                    >
+                                        &times;
+                                    </button>
+                                </div>
+
+                                <div className="flex flex-col items-center space-y-4">
+                                    <label
+                                        htmlFor="fileUpload"
+                                        className="text-gray-600 font-medium"
+                                    >
+                                        Select a file to upload:
+                                    </label>
+                                    <input
+                                        type="file"
+                                        id="fileUpload"
+                                        className="border border-gray-300 rounded-md px-4 py-2 w-full"
+                                        onChange={HandleFileChange}
+                                        accept=".xlsx"
+                                    />
+
+                                    {selectedFile && (
+                                        <p className="text-sm text-green-500 mt-2">
+                                            Selected file: {selectedFile.name}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="flex justify-end mt-6">
+                                    <button
+                                        className="bg-gray-500 text-white px-4 py-2 rounded mr-2"
+                                        onClick={HandleCloseModalUploadFile}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        className="bg-blue-500 text-white px-4 py-2 rounded"
+                                        onClick={HandleSubmit}
+                                    >
+                                        Submit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                )}
+            </>
+
+        );
     }
+
+
 
     useEffect(() => {
         const handleResize = () => {
@@ -708,7 +1029,7 @@ const EmployeeDetailsPage = () => {
                 await GetEmployee();       // If this throws an error, the following will not execute
                 await GetDepartment();     // If this throws an error, the next will not execute
                 await GetEmployeeCategory(); // If this throws an error, it will be caught in the catch block
-
+                await GetCostCenter();
             } catch (error) {
                 console.error(error);
                 DisplayAlert(error);       // Display the error alert
@@ -725,9 +1046,79 @@ const EmployeeDetailsPage = () => {
         };
     }, []);  // Empty dependency array ensures this runs only once
 
+    useEffect(() => {
+        setLoading(true)
+        try {
+            const fetchData = async () => {
+                setLoading(true);
+                try {
 
-    const HandleUserAction = () => {
-        setOpenModalAddBooking(true)
+
+                    // Fetch employee and department data sequentially
+                    await GetEmployee();       // If this throws an error, the following will not execute
+
+
+                } catch (error) {
+                    console.error(error);
+                    DisplayAlert(error);       // Display the error alert
+                } finally {
+                    setLoading(false);         // Ensure loading is turned off after the operations
+                }
+            };
+
+            if (filter) {
+                fetchData();
+            }
+        } catch (error) {
+            DisplayAlert(error);
+        } finally {
+            setLoading(false);
+        }
+    }, [filter])
+
+    const HandleAddUser = () => {
+        initializeSubmitDetails.code = StatusAPICode.CREATE_EMPLOYEE;
+        initializeSubmitDetails.submit_method = 'post';
+        setInitializeSubmitDetails(initializeSubmitDetails);
+        setOpenModalAddBooking(true);
+    }
+
+    const HandleEditUser = (uuid: string) => {
+        try {
+
+            const employee: EmployeeDetails | undefined = employeesDetails.find(item => item.uuid === uuid);
+
+
+            if (!employee) {
+                throw Error("No Employee Found From ID");
+            }
+
+            const updateEmployee: CreateUpdateUser = {
+                name: employee?.name || '',
+                employee_id: employee.employee_id,
+                submit_method: 'put',
+                department_name: employee.department_name,
+                code: StatusAPICode.UPDATE_EMPLOYEE,
+                email: employee?.email || '',
+                password: '',
+                confirmPassword: '',
+                employee_category_name: employee.employee_category_name,
+                department_code: employee.department_code,
+                employee_category_code: employee.employee_category_code,
+                cost_center_code: employee.cost_center_code,
+                access_card_no: employee.access_card_no,
+                subsidy_meal_applicable: employee.is_meal_subsidiry_active ? 'yes' : 'no',
+            }
+            setInitializeSubmitDetails(updateEmployee);
+            setOpenModalAddBooking(true);
+        } catch (error) {
+
+        }
+
+    }
+
+    const HandleUserUploadFileAction = () => {
+        setIsOpenodalUploadFile(true)
     }
 
     const HandleCheckboxChange = async (e: any, index: number) => {
@@ -799,29 +1190,37 @@ const EmployeeDetailsPage = () => {
                     {loading && <Spinner />}
 
                     <h1 className="text-black">Employee Details</h1>
-                    <div className="flex justify-end">
-                        <ul className="flex space-x-2">
-                            <li>
-                                <button
-                                    onClick={HandleUserAction}
-                                    className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
-                                >
-                                    +
-                                </button>
-                            </li>
-                            <li>
-                                <button
-                                    onClick={HandleUserAction}
-                                    className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 64 64" fill="none">
-                                        <rect x="4" y="14" width="56" height="36" rx="4" fill="#f5c38c" />
-                                        <path d="M4 14h20l4-4h32v36H4V14z" fill="#f5c38c" />
-                                        <rect x="8" y="22" width="48" height="24" rx="2" fill="#fff" />
-                                    </svg>
-                                </button>
-                            </li>
-                        </ul>
+                    <div className="flex justify-end items-center space-x-4">
+                        <label
+                            htmlFor="filter"
+                            className="text-gray-900 text-sm dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                        >
+                            Search:
+                        </label>
+                        <input
+                            id="filter"
+                            name="filter"
+                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                            onChange={(e) => setFilter(e.target.value)}
+                        />
+                        <button
+                            onClick={HandleAddUser}
+                            className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
+                        >
+                            +
+                        </button>
+                        <button
+                            onClick={HandleUserUploadFileAction}
+                            className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded flex items-center"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 64 64" fill="none">
+                                <rect x="4" y="14" width="56" height="36" rx="4" fill="#f5c38c" />
+                                <path d="M4 14h20l4-4h32v36H4V14z" fill="#f5c38c" />
+                                <rect x="8" y="22" width="48" height="24" rx="2" fill="#fff" />
+                            </svg>
+                        </button>
                     </div>
+
 
 
 
@@ -845,9 +1244,15 @@ const EmployeeDetailsPage = () => {
                                             Department
                                         </th>
                                         <th scope="col" className="px-6 py-3">
+                                            Cost Center
+                                        </th>
+                                        <th scope="col" className="px-6 py-3">
+                                            Employee Category
+                                        </th>
+                                        <th scope="col" className="px-6 py-3">
                                             Meal Subsidiry Applicable
                                         </th>
-                                        {/* <th scope="col" className="px-6 py-3">Edit</th> */}
+                                        <th scope="col" className="px-6 py-3">Edit</th>
 
                                     </tr>
                                 </thead>
@@ -856,8 +1261,7 @@ const EmployeeDetailsPage = () => {
                                         employeesDetails.map((item, index) => (
                                             <tr key={index} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                                                 <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                                                    {index + 1}
-                                                </th>
+                                                    {index + 1 + (currentPage - 1) * 10}                                                </th>
                                                 <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
                                                     {item?.name}
                                                 </th>
@@ -865,7 +1269,13 @@ const EmployeeDetailsPage = () => {
                                                     {item.employee_id}
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    {item.department}
+                                                    {item.department_name}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {item.cost_center_code}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {item.employee_category_code.toUpperCase()}
                                                 </td>
                                                 <td className="px-6 py-4 flex justify-center items-center">
                                                     <input
@@ -876,14 +1286,14 @@ const EmployeeDetailsPage = () => {
                                                 </td>
 
 
-                                                {/* <td className="px-6 py-4">
+                                                <td className="px-6 py-4">
                                                     <button
                                                         className="bg-blue-500 text-white px-4 py-2 rounded"
-                                                        onClick={() => handleUpdateBooking(item?.uuid as string || '')}
+                                                        onClick={() => HandleEditUser(item?.uuid as string || '')}
                                                     >
                                                         Edit
                                                     </button>
-                                                </td> */}
+                                                </td>
 
 
                                             </tr>
@@ -927,6 +1337,9 @@ const EmployeeDetailsPage = () => {
                 <div>
                     <ModalUser />
                 </div>
+                <div>
+                    <ModalUploadUser />
+                </div>
             </div>
         </div>
     </>);
@@ -937,6 +1350,7 @@ const Page = () => {
     return (
         <Suspense fallback={'...Loading'}>
             <Navbar />
+            <MainContent />
             <EmployeeDetailsPage />
         </Suspense>
     );

@@ -85,5 +85,40 @@ VALUES ('idl', 'INDIRECT LABOUR');
 INSERT INTO EmployeeCategory (employee_category_code, employee_category_name)
 VALUES ('ndl', 'Non Eligible DIRECT LABOUR');
 
+INSERT INTO DEPARTMENT (department_code, department_name)
+VALUES 
+  ('hr', 'HUMAN RESOURCE'),
+  ('finance', 'FINANCE'),
+  ('op', 'OPERATIONS'),
+  ('cs', 'CUSTOMER SERVICE'),
+  ('en', 'ENGINEERING'),
+  ('fc', 'FACILITIES'),
+  ('hs&e', 'HS&E'),
+  ('it', 'INFORMATION TECHNOLOGY'),
+  ('pm', 'PRODUCT MANAGEMENT'),
+  ('pr', 'PRODUCTION'),
+  ('qa', 'QUALITY ASSURANCE'),
+  ('rc', 'REGIONAL COMMUNICATION'),
+  ('sa', 'SALES'),
+  ('sc', 'SUPPLY CHAIN'),
+  ('qc', 'QUALITY CONTROL');
+
+  INSERT INTO COSTCENTER (cost_center_code)
+VALUES
+  ('037-31'),
+  ('037-3001'),
+  ('037-60'),
+  ('037-6962'),
+  ('037-6077'),
+  ('037-30'),
+  ('037-3101'),
+  ('037-34'),
+  ('037-3401'),
+  ('037-38'),
+  ('037-6071'),
+  ('037-33')
+;
+
+
 
 

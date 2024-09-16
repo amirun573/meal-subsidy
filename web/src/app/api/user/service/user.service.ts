@@ -1,7 +1,9 @@
 import {
   CreateUpdateUser,
+  CreateUserUploadExcel,
   ScanCheckEmployeeID,
   UserPaginationRequest,
+  CreateUserUserDetails,
 } from "@/_Common/interface/user.interface";
 import {
   CreateUpdateEmployeeValidation,
@@ -11,6 +13,7 @@ import {
 import { NextResponse } from "next/server";
 import {
   CreateUserNUserDetailsCascade,
+  CreateUserNUserDetailsManyCascade,
   GetTotalUser,
   GetUserPagination,
   GetUserSingle,
@@ -19,6 +22,8 @@ import { PaginationData } from "../../../../_Common/interface/pagination.interfa
 import { SubsidyTypeCode } from "@/_Common/enum/subsidy-type.enum";
 import { decrypt } from "@/_Common/function/Hashing";
 import {
+  AccessCard,
+  CostCenter,
   Country,
   Department,
   EmployeeCategory,
@@ -32,17 +37,32 @@ import {
 import { GetRoleSingle } from "../../role/model/role.model";
 import { RoleCode } from "@/_Common/enum/role.enum";
 import {
+  GetCostCenterLists,
+  GetCostCenterSingle,
   GetDepartmentLists,
   GetDepartmentSingle,
+  GetEmployeeCategoryLists,
   GetEmployeeCategorySingle,
 } from "../../department/model/department.model";
 import {
+  CreateSubsidyMany,
   CreateSubsidy_4User,
   GetSubsidyCreditSingle,
   GetSubsidySingle,
   GetSubsidyTypeSingle,
 } from "../../subsidy/model/subsidy.model";
 import { hashPassword } from "../../auth/model/auth.model";
+import { utils, WorkBook } from "xlsx";
+import {
+  ReadExcelFile,
+  ExtractExcelData,
+} from "@/_Common/function/SpreedSheet";
+import { File as FormidableFile } from "formidable";
+import * as XLSX from "xlsx";
+import {
+  CreateAccessCard,
+  CreateAccessCardCascade,
+} from "../../accessCard/model/accessCard.model";
 
 export async function UserPaginationService(data: UserPaginationRequest) {
   let message: string = "";
@@ -61,8 +81,13 @@ export async function UserPaginationService(data: UserPaginationRequest) {
       subsidies: {
         some: {
           subsidy_type: {
-            subsidy_type_code: "meal",
+            subsidy_type_code: SubsidyTypeCode.meal,
           },
+        },
+      },
+      access_cards: {
+        some: {
+          active: true,
         },
       },
     };
@@ -73,7 +98,22 @@ export async function UserPaginationService(data: UserPaginationRequest) {
           { employee_id: { contains: filter } },
           {
             UserDetails: {
-              name: { contains: filter },
+              name: { contains: filter, mode: "insensitive" },
+            },
+          },
+          {
+            department: {
+              department_name: { contains: filter, mode: "insensitive" },
+            },
+          },
+          {
+            cost_center: {
+              cost_center_code: { contains: filter, mode: "insensitive" },
+            },
+          },
+          {
+            employee_category: {
+              employee_category_name: { contains: filter, mode: "insensitive" },
             },
           },
         ],
@@ -120,6 +160,11 @@ export async function UserPaginationService(data: UserPaginationRequest) {
             name: true,
           },
         },
+        cost_center: {
+          select: {
+            cost_center_code: true,
+          },
+        },
         department: {
           select: {
             department_code: true,
@@ -145,6 +190,11 @@ export async function UserPaginationService(data: UserPaginationRequest) {
           select: {
             employee_category_code: true,
             employee_category_name: true,
+          },
+        },
+        access_cards: {
+          select: {
+            card_value: true,
           },
         },
       },
@@ -292,6 +342,9 @@ export async function CreateEmployee(data: CreateUpdateUser) {
       confirmPassword,
       department_code,
       employee_category_code,
+      access_card_no,
+      cost_center_code,
+      subsidy_meal_applicable,
     } = data;
 
     let hashpassword: string = "";
@@ -332,6 +385,18 @@ export async function CreateEmployee(data: CreateUpdateUser) {
       throw Error("Department not Found");
     }
 
+    const costCenter: Partial<CostCenter> | null = await GetCostCenterSingle({
+      where: {
+        cost_center_code,
+        active: true,
+      },
+    });
+
+    if (!costCenter) {
+      status = 400;
+      throw Error("Cost Center not Found");
+    }
+
     const employeeCategory: Partial<EmployeeCategory> =
       (await GetEmployeeCategorySingle({
         where: {
@@ -356,7 +421,7 @@ export async function CreateEmployee(data: CreateUpdateUser) {
     }
 
     const user: Partial<User> = {
-      email,
+      email: email ? email : null,
       employee_id,
       password_hash: hashpassword,
       role_id: role.role_id,
@@ -365,10 +430,11 @@ export async function CreateEmployee(data: CreateUpdateUser) {
       is_acc_verify: true,
       active: true,
       employee_category_id: employeeCategory.employee_category_id,
+      cost_center_id: costCenter.cost_center_id,
     };
 
     const userDetails: Partial<UserDetails> = {
-      name,
+      name: name.toLowerCase(),
     };
 
     const createUser = await CreateUserNUserDetailsCascade({
@@ -381,10 +447,488 @@ export async function CreateEmployee(data: CreateUpdateUser) {
       throw Error("Failed To Create Employee");
     }
 
+    const user_id: number = createUser[0]?.user_id;
+
     const SubsidyUser: Partial<Subsidy> = {
       subsidy_type_id: subsidyType.subsidy_type_id,
-      user_id: createUser[0]?.user_id,
+      user_id,
+      applicable: subsidy_meal_applicable === "yes" ? true : false,
     };
+
+    if (access_card_no) {
+      const access_card: Partial<AccessCard> = {
+        card_value: access_card_no,
+        user_id,
+      };
+
+      const createAccessCard = await CreateAccessCard({
+        data: access_card as AccessCard,
+      });
+
+      if (!createAccessCard) {
+        status = 400;
+        throw Error("Failed To Register Employee Access Card");
+      }
+    }
+
+    const createSubsidyUser: any = await CreateSubsidy_4User({
+      data: SubsidyUser as Subsidy,
+    });
+
+    if (!createSubsidyUser) {
+      status = 400;
+      throw Error("Failed To Assign Subsidy Meal");
+    }
+
+    return NextResponse.json({
+      message: "Successfully Create New Employee",
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        message: error.message || message,
+      },
+      {
+        status: error.statusCode || status,
+      }
+    );
+  }
+}
+
+export async function CreateEmployeeBulkUpload(
+  data: CreateUserUploadExcel,
+  user: User
+) {
+  interface ExcelCreateEmployee {
+    department_desc: string;
+    cost_center: string;
+    employee_id: string;
+    employee_name: string;
+    employee_category: string;
+    eligble_subsidy: string;
+    mifare_card_no: string;
+  }
+  let message: string = "";
+  let status: number = 500;
+  try {
+    const { file } = data;
+
+    const columns = {
+      department_desc: "Department Desc",
+      cost_center: "Cost Centre",
+      employee_id: "Employee Id",
+      employee_name: "Employee Name",
+      employee_category: "Employee  Category",
+      eligble_subsidy: "Eligble Subsidy (Yes/No)",
+      mifare_card_no: "MIFARE Card Number",
+    };
+
+    const headers = [
+      columns.department_desc,
+      columns.cost_center,
+      columns.employee_id,
+      columns.employee_name,
+      columns.employee_category,
+      columns.eligble_subsidy,
+      columns.mifare_card_no,
+    ];
+
+    var workbook = await ReadExcelFile(file);
+
+    if (!workbook) {
+      status = 400;
+      throw Error("Workbook Cannot Generate");
+    }
+
+    const dataExcel = ExtractExcelData(headers, workbook);
+
+    const departments: Partial<Department>[] = await GetDepartmentLists({
+      where: {},
+    });
+
+    if (!departments || departments.length < 1) {
+      status = 400;
+      throw Error("No Departments Found");
+    }
+
+    const costCenters: Partial<CostCenter>[] = await GetCostCenterLists({
+      where: {},
+    });
+
+    if (!costCenters || costCenters.length < 1) {
+      status = 400;
+      throw Error("No Cost Center Found");
+    }
+
+    const subsidyType: Partial<SubsidyType> = (await GetSubsidyTypeSingle({
+      where: {
+        subsidy_type_code: SubsidyTypeCode.meal,
+      },
+    })) as Partial<SubsidyType>;
+
+    if (!subsidyType) {
+      status = 400;
+      throw Error("Subsidy Meal not Found");
+    }
+
+    const role: Partial<Role> = (await GetRoleSingle({
+      where: {
+        role_code: RoleCode.employee,
+      },
+    })) as Partial<Role>;
+
+    if (!role) {
+      status = 400;
+      throw Error("Role not Found");
+    }
+
+    const employeeCategories: Partial<EmployeeCategory>[] =
+      await GetEmployeeCategoryLists({
+        where: {},
+      });
+
+    if (!employeeCategories || employeeCategories.length < 1) {
+      status = 400;
+      throw Error("Employee Category Not Found");
+    }
+
+    const createUsers: CreateUserUserDetails[] = [];
+
+    dataExcel.map((items) => {
+      items.data.map((data) => {
+        const employee: ExcelCreateEmployee = {
+          department_desc: String(data[columns.department_desc]).trim(),
+          cost_center: String(data[columns.cost_center]).toLowerCase().trim(),
+          employee_id: String(data[columns.employee_id]).trim(),
+          employee_name: String(data[columns.employee_name])
+            .toLowerCase()
+            .trim(),
+          employee_category: String(data[columns.employee_category])
+            .toLowerCase()
+            .trim(),
+          eligble_subsidy: String(data[columns.eligble_subsidy])
+            .toLowerCase()
+            .trim(),
+          mifare_card_no: String(data[columns.mifare_card_no]).trim(),
+        };
+
+        const checkDuplicate = createUsers.findIndex(
+          (users) => users.user.employee_id === employee.employee_id
+        );
+
+        if (checkDuplicate !== -1) {
+          status = 400;
+          throw new Error(
+            `Duplicate Employee ID ${employee.employee_id} in Excel. Please Check at row for Employee ID ${employee.employee_id}`
+          );
+        }
+
+        // Validate that no values are null or undefined
+        const isValid = Object.values(employee).every(
+          (value) => value !== null && value !== undefined && value !== ""
+        );
+
+        if (!isValid) {
+          status = 400;
+          throw new Error(
+            `Validation error: Some fields are null, undefined, or empty at Employee ID ${employee.employee_id}`
+          );
+        }
+
+        // Validate eligibility subsidy
+        const validSubsidyValues = ["yes", "no"];
+        if (!validSubsidyValues.includes(employee.eligble_subsidy)) {
+          throw new Error(
+            `Invalid eligble_subsidy value: ${employee.eligble_subsidy}. It must be 'yes' or 'no'.`
+          );
+        }
+
+        const department: Partial<Department> | undefined = departments.find(
+          (item) =>
+            item.department_name?.toLocaleLowerCase() ===
+            employee.department_desc?.toLocaleLowerCase()
+        );
+
+        if (!department) {
+          status = 400;
+          throw new Error(
+            `No name Department ${employee.department_desc} in database. Please Check at row for Employee ID ${employee.employee_id}`
+          );
+        }
+
+        const costcenter: Partial<CostCenter> | undefined = costCenters.find(
+          (items) => items.cost_center_code === employee.cost_center
+        );
+
+        if (!costcenter) {
+          status = 400;
+          throw new Error(
+            `No name Cost Center ${employee.cost_center} in database. Please Check at row for Employee ID ${employee.employee_id}`
+          );
+        }
+
+        const employeeCategory: Partial<EmployeeCategory> | undefined =
+          employeeCategories.find(
+            (items) =>
+              items.employee_category_code ===
+              employee.employee_category.toLocaleLowerCase()
+          );
+
+        if (!employeeCategory) {
+          status = 400;
+          throw new Error(
+            `No name Employee Category ${employee.employee_category} in database. Please Check at row for Employee ID ${employee.employee_id}`
+          );
+        }
+
+        const user: Partial<User> = {
+          employee_id: employee.employee_id,
+          role_id: role.role_id,
+          department_id: department.department_id,
+          is_email_verified: true,
+          is_acc_verify: true,
+          active: true,
+          employee_category_id: employeeCategory.employee_category_id,
+          cost_center_id: costcenter.cost_center_id,
+        };
+
+        const userDetails: Partial<UserDetails> = {
+          name: employee.employee_name,
+          user_id: 0,
+        };
+
+        const SubsidyUser: Partial<Subsidy> = {
+          subsidy_type_id: subsidyType.subsidy_type_id,
+          user_id: 0,
+          applicable: employee.eligble_subsidy === "yes" ? true : false,
+        };
+
+        const accessCard: Partial<AccessCard> = {
+          card_value: employee.mifare_card_no,
+        };
+
+        const createUser: CreateUserUserDetails = {
+          user: user as User,
+          userDetails: userDetails as UserDetails,
+          subsidy: SubsidyUser as Subsidy,
+          accessCard: accessCard as AccessCard,
+        };
+
+        createUsers.push(createUser);
+      });
+    });
+
+    const createUserCascade = await CreateUserNUserDetailsManyCascade({
+      details: createUsers,
+    });
+
+    if (!createUserCascade || createUserCascade.length !== createUsers.length) {
+      status = 400;
+      throw Error("No User Being Created");
+    }
+
+    return NextResponse.json({
+      message: "Successfully Create All Employees",
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        message: error.message || message,
+      },
+      {
+        status: error.statusCode || status,
+      }
+    );
+  }
+}
+
+export async function UpdateEmployee(data: CreateUpdateUser) {
+  let message: string = "";
+  let status: number = 500;
+  try {
+    await CreateUpdateEmployeeValidation(data);
+
+    const {
+      name,
+      employee_id,
+      department_name,
+      email,
+      password,
+      confirmPassword,
+      department_code,
+      employee_category_code,
+      access_card_no,
+      cost_center_code,
+      subsidy_meal_applicable,
+    } = data;
+
+    const getUser: Partial<User> | null = await GetUserSingle({
+      where: {
+        employee_id,
+        access_cards: {
+          some: {
+            active: true,
+          },
+        },
+      },
+      select: {
+        user_id: true,
+        UserDetails: {
+          select: {
+            UserDetails_id: true,
+          },
+        },
+        access_cards: {
+          select: {
+            card_value: true,
+          },
+        },
+      },
+    });
+
+    if (!getUser) {
+      status = 400;
+      throw Error("User not Found");
+    }
+
+    console.log("GET USer--->", getUser);
+
+    let hashpassword: string = "";
+
+    if (password) {
+      if (!confirmPassword) {
+        status = 400;
+        throw Error("Confirm Password Need To Create Employee");
+      }
+
+      const hashpassword: string | null = await hashPassword(password);
+
+      if (!hashpassword) {
+        status = 400;
+        throw Error("Password is Empty");
+      }
+    }
+
+    const role: Partial<Role> = (await GetRoleSingle({
+      where: {
+        role_code: RoleCode.employee,
+      },
+    })) as Partial<Role>;
+
+    if (!role) {
+      status = 400;
+      throw Error("Role not Found");
+    }
+
+    const department: Partial<Department> = (await GetDepartmentSingle({
+      where: {
+        department_code,
+      },
+    })) as Partial<Department>;
+
+    if (!department) {
+      status = 400;
+      throw Error("Department not Found");
+    }
+
+    const costCenter: Partial<CostCenter> | null = await GetCostCenterSingle({
+      where: {
+        cost_center_code,
+        active: true,
+      },
+    });
+
+    if (!costCenter) {
+      status = 400;
+      throw Error("Cost Center not Found");
+    }
+
+    const employeeCategory: Partial<EmployeeCategory> =
+      (await GetEmployeeCategorySingle({
+        where: {
+          employee_category_code,
+        },
+      })) as Partial<EmployeeCategory>;
+
+    if (!employeeCategory) {
+      status = 400;
+      throw Error("Employee Category not Found");
+    }
+
+    const subsidyType: Partial<SubsidyType> = (await GetSubsidyTypeSingle({
+      where: {
+        subsidy_type_code: SubsidyTypeCode.meal,
+      },
+    })) as Partial<SubsidyType>;
+
+    if (!subsidyType) {
+      status = 400;
+      throw Error("Subsidy Meal not Found");
+    }
+
+    const user: Partial<User> = {
+      user_id: getUser.user_id,
+      email: email ? email : null,
+      // employee_id,
+      password_hash: hashpassword,
+      role_id: role.role_id,
+      department_id: department.department_id,
+      is_email_verified: true,
+      is_acc_verify: true,
+      active: true,
+      employee_category_id: employeeCategory.employee_category_id,
+      cost_center_id: costCenter.cost_center_id,
+    };
+
+    const userDetails: Partial<UserDetails> = {
+      name: name.toLowerCase(),
+      user_id: getUser.user_id,
+      UserDetails_id: (getUser as any)?.UserDetails?.UserDetails_id,
+    };
+
+    const createUser = await CreateUserNUserDetailsCascade({
+      user: user as User,
+      userDetails: userDetails as UserDetails,
+    });
+
+    if (!createUser || createUser.length < 0) {
+      status = 400;
+      throw Error("Failed To Create Employee");
+    }
+
+    const user_id: number = createUser[0]?.user_id;
+
+    const SubsidyUser: Partial<Subsidy> = {
+      subsidy_type_id: subsidyType.subsidy_type_id,
+      user_id,
+      applicable: subsidy_meal_applicable === "yes" ? true : false,
+    };
+
+    if (access_card_no) {
+      const access_cards: Partial<AccessCard>[] = (getUser as any)
+        ?.access_cards as Partial<AccessCard>[];
+
+      if (access_cards.length < 0 && access_cards.length > 1) {
+        status = 400;
+        throw Error("Access Only Can Have 1 Active Usage");
+      }
+
+      if (access_cards[0].card_value !== access_card_no) {
+        const access_card: Partial<AccessCard> = {
+          card_value: access_card_no,
+          user_id,
+        };
+
+        const createAccessCard = await CreateAccessCardCascade({
+          accessCard: access_card as AccessCard,
+        });
+
+        if (!createAccessCard) {
+          status = 400;
+          throw Error("Failed To Register Employee Access Card");
+        }
+      }
+    }
 
     const createSubsidyUser: any = await CreateSubsidy_4User({
       data: SubsidyUser as Subsidy,

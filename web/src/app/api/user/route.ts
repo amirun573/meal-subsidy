@@ -12,13 +12,20 @@ import { JWTDecode } from "../auth/model/auth.model";
 import { SignInService } from "../auth/service/auth.service";
 import {
   CreateEmployee,
+  CreateEmployeeBulkUpload,
   ScanCheckEmployeeIDService,
+  UpdateEmployee,
   UserPaginationService,
 } from "./service/user.service";
-import { CreateUpdateUser } from "@/_Common/interface/user.interface";
+import {
+  CreateUpdateUser,
+  CreateUserUploadExcel,
+} from "@/_Common/interface/user.interface";
+
 const APIAuth: StatusAPICode[] = [
   StatusAPICode.GET_EMPLOYEE_DETAILS,
   StatusAPICode.CREATE_EMPLOYEE,
+  StatusAPICode.UPLOAD_EXCEL_EMPLOYEE_CREATE,
 ];
 
 export async function GET(req: any, res: any) {
@@ -150,6 +157,69 @@ export async function POST(req: any, res: any) {
           }
 
           return CreateEmployee(data);
+        }
+
+        case StatusAPICode.UPLOAD_EXCEL_EMPLOYEE_CREATE: {
+          const data: CreateUserUploadExcel = body as CreateUserUploadExcel;
+
+          if (!user) {
+            throw Error("No User Found");
+          }
+
+          return CreateEmployeeBulkUpload(data, user);
+        }
+
+        default: {
+          throw Error("No Code Found");
+        }
+      }
+    }
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        message: error.message,
+      },
+      {
+        status: error.statusCode,
+      }
+    );
+  }
+}
+
+export async function PUT(req: any, res: any) {
+  try {
+    let body: any = await GetBodyData(req);
+
+    if (!body) {
+      throw Error("Body Not Found");
+    }
+
+    const { code } = body;
+
+    if (!code || typeof parseInt(code) !== "number") {
+      throw Error("Code Not Found");
+    }
+
+    const token: JWTDecodeInterface | boolean = await JWTDecode(req);
+    let user: User | null = null;
+
+    if (APIAuth.find((item) => item === parseInt(code))) {
+      if (!token) {
+        throw Error("No Token Found");
+      }
+      user = (token as JWTDecodeInterface).user;
+    }
+
+    if (code && typeof parseInt(code) === "number") {
+      switch (parseInt(code) as StatusAPICode) {
+        case StatusAPICode.UPDATE_EMPLOYEE: {
+          const data: CreateUpdateUser = body as CreateUpdateUser;
+
+          if (!data) {
+            throw Error("No Data Detected");
+          }
+
+          return UpdateEmployee(data);
         }
 
         default: {

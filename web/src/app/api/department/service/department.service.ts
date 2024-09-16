@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  GetCostCenterLists,
   GetDepartmentLists,
   GetEmployeeCategoryLists,
 } from "../model/department.model";
@@ -48,6 +49,35 @@ export async function EmployeeCategoryListsService() {
 
     return NextResponse.json({
       employeeCategories,
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        message: error.message || message,
+      },
+      {
+        status: error.statusCode || status,
+      }
+    );
+  }
+}
+
+export async function CostCenterLists() {
+  let message: string = "";
+  let status: number = 500;
+  try {
+    const costCenterLists = await GetCostCenterLists({
+      where: {
+        active: true,
+      },
+      select: {
+        cost_center_code: true,
+        cost_center_description: true,
+      },
+    });
+
+    return NextResponse.json({
+      costCenterLists,
     });
   } catch (error: any) {
     return NextResponse.json(

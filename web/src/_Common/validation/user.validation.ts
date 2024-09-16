@@ -21,18 +21,30 @@ const CreateUpdateEmployeeValidationSchema = yup.object().shape({
   department_name: yup.string().required("Department Name Required"),
   department_code: yup.string().required("Department Code Required"),
   employee_category_code: yup.string().required("Employee Category Required"),
+  cost_center_code: yup.string().required("Cost Center Code Required"),
   email: yup.string().email("Email Format Must Be Correct").optional(),
   password: yup
-  .string()
-  .optional()
-  .test('password-strength', 'Password must be at least 8 characters long, include one uppercase letter, one lowercase letter, one number, and one special character.', value => {
-    if (!value) return true; // If the value is empty, skip validation
-    return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(value);
-  }),
+    .string()
+    .optional()
+    .test(
+      "password-strength",
+      "Password must be at least 8 characters long, include one uppercase letter, one lowercase letter, one number, and one special character.",
+      (value) => {
+        if (!value) return true; // If the value is empty, skip validation
+        return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(
+          value
+        );
+      }
+    ),
   confirmPassword: yup
     .string()
     .optional()
     .oneOf([yup.ref("password")], "Passwords must match"),
+  access_card_no: yup.string().optional(),
+  subsidy_meal_applicable: yup
+    .string()
+    .required("Subsidy Meal Applicable is required")
+    .oneOf(["yes", "no"], "Subsidy Meal Applicable must be 'yes' or 'no'"),
 });
 
 export function UserPaginationValidation(data: UserPaginationRequest) {
