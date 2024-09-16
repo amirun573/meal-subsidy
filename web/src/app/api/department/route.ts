@@ -12,12 +12,14 @@ import { JWTDecode } from "../auth/model/auth.model";
 import { SignInService } from "../auth/service/auth.service";
 import { SubsidyEmployeeUpdate } from "@/_Common/interface/subsidy.interface";
 import {
+  CostCenterLists,
   DepartmentLists,
   EmployeeCategoryListsService,
 } from "./service/department.service";
 const APIAuth: StatusAPICode[] = [
   StatusAPICode.GET_DEPARTMENT_LISTS,
   StatusAPICode.GET_EMPLOYEE_CATEGORY_LISTS,
+  StatusAPICode.GET_COST_CENTER_LISTS,
 ];
 
 export async function GET(req: any, res: any) {
@@ -64,6 +66,9 @@ export async function GET(req: any, res: any) {
 
       case StatusAPICode.GET_EMPLOYEE_CATEGORY_LISTS: {
         return EmployeeCategoryListsService();
+      }
+      case StatusAPICode.GET_COST_CENTER_LISTS: {
+        return CostCenterLists();
       }
       default: {
         statusCode = 400;

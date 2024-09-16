@@ -22,6 +22,7 @@ import { PaginationData } from "../../../../_Common/interface/pagination.interfa
 import { SubsidyTypeCode } from "@/_Common/enum/subsidy-type.enum";
 import { decrypt } from "@/_Common/function/Hashing";
 import {
+  AccessCard,
   CostCenter,
   Country,
   Department,
@@ -37,6 +38,7 @@ import { GetRoleSingle } from "../../role/model/role.model";
 import { RoleCode } from "@/_Common/enum/role.enum";
 import {
   GetCostCenterLists,
+  GetCostCenterSingle,
   GetDepartmentLists,
   GetDepartmentSingle,
   GetEmployeeCategoryLists,
@@ -57,6 +59,7 @@ import {
 } from "@/_Common/function/SpreedSheet";
 import { File as FormidableFile } from "formidable";
 import * as XLSX from "xlsx";
+import { CreateAccessCard } from "../../accessCard/model/accessCard.model";
 
 export async function UserPaginationService(data: UserPaginationRequest) {
   let message: string = "";
@@ -87,7 +90,22 @@ export async function UserPaginationService(data: UserPaginationRequest) {
           { employee_id: { contains: filter } },
           {
             UserDetails: {
-              name: { contains: filter },
+              name: { contains: filter, mode: "insensitive" },
+            },
+          },
+          {
+            department: {
+              department_name: { contains: filter, mode: "insensitive" },
+            },
+          },
+          {
+            cost_center: {
+              cost_center_code: { contains: filter, mode: "insensitive" },
+            },
+          },
+          {
+            employee_category: {
+              employee_category_name: { contains: filter, mode: "insensitive" },
             },
           },
         ],
@@ -311,6 +329,8 @@ export async function CreateEmployee(data: CreateUpdateUser) {
       confirmPassword,
       department_code,
       employee_category_code,
+      access_card_no,
+      cost_center_code,
     } = data;
 
     let hashpassword: string = "";
@@ -351,6 +371,18 @@ export async function CreateEmployee(data: CreateUpdateUser) {
       throw Error("Department not Found");
     }
 
+    const costCenter: Partial<CostCenter> | null = await GetCostCenterSingle({
+      where: {
+        cost_center_code,
+        active: true,
+      },
+    });
+
+    if (!costCenter) {
+      status = 400;
+      throw Error("Cost Center not Found");
+    }
+
     const employeeCategory: Partial<EmployeeCategory> =
       (await GetEmployeeCategorySingle({
         where: {
@@ -375,7 +407,7 @@ export async function CreateEmployee(data: CreateUpdateUser) {
     }
 
     const user: Partial<User> = {
-      email,
+      email: email ? email : null,
       employee_id,
       password_hash: hashpassword,
       role_id: role.role_id,
@@ -384,6 +416,7 @@ export async function CreateEmployee(data: CreateUpdateUser) {
       is_acc_verify: true,
       active: true,
       employee_category_id: employeeCategory.employee_category_id,
+      cost_center_id: costCenter.cost_center_id,
     };
 
     const userDetails: Partial<UserDetails> = {
@@ -400,10 +433,28 @@ export async function CreateEmployee(data: CreateUpdateUser) {
       throw Error("Failed To Create Employee");
     }
 
+    const user_id: number = createUser[0]?.user_id;
+
     const SubsidyUser: Partial<Subsidy> = {
       subsidy_type_id: subsidyType.subsidy_type_id,
-      user_id: createUser[0]?.user_id,
+      user_id,
     };
+
+    if (access_card_no) {
+      const access_card: Partial<AccessCard> = {
+        card_value: access_card_no,
+        user_id,
+      };
+
+      const createAccessCard = await CreateAccessCard({
+        data: access_card as AccessCard,
+      });
+
+      if (!createAccessCard) {
+        status = 400;
+        throw Error("Failed To Register Employee Access Card");
+      }
+    }
 
     const createSubsidyUser: any = await CreateSubsidy_4User({
       data: SubsidyUser as Subsidy,
@@ -637,10 +688,15 @@ export async function CreateEmployeeBulkUpload(
           applicable: employee.eligble_subsidy === "yes" ? true : false,
         };
 
+        const accessCard: Partial<AccessCard> = {
+          card_value: employee.mifare_card_no,
+        };
+
         const createUser: CreateUserUserDetails = {
           user: user as User,
           userDetails: userDetails as UserDetails,
           subsidy: SubsidyUser as Subsidy,
+          accessCard: accessCard as AccessCard,
         };
 
         createUsers.push(createUser);

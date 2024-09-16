@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Subsidy" ALTER COLUMN "start_date" SET DEFAULT CURRENT_TIMESTAMP;

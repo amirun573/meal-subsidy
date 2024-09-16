@@ -8,7 +8,7 @@ import { UserDetailsLocalStorage } from "@/_Common/interface/auth.interface";
 import { SubsidyEmployeeUpdate } from "@/_Common/interface/subsidy.interface";
 import { EmployeeUpdateSubsidyValidation } from "@/_Common/validation/subsidy.validation";
 import { CreateUpdateEmployeeValidation, UserPaginationValidation } from "@/_Common/validation/user.validation";
-import { Department, EmployeeCategory, Subsidy, User } from "@prisma/client";
+import { CostCenter, Department, EmployeeCategory, Subsidy, User } from "@prisma/client";
 import axios from "axios";
 import { Modal } from "flowbite-react";
 import { Suspense, useEffect, useState } from "react";
@@ -39,6 +39,11 @@ interface EmployeeCategoryLists {
     employee_category_name: string,
 }
 
+interface CostCenterLists {
+    cost_center_code: string,
+    description?: string,
+}
+
 const EmployeeDetailsPage = () => {
 
     const [currentPage, setCurrentPage] = useState<number>(1); // State variable to store current page
@@ -64,10 +69,12 @@ const EmployeeDetailsPage = () => {
         department_code: '',
         employee_category_code: '',
         cost_center_code: '',
+        access_card_no: '',
 
     });
 
     const [departments, setDepartments] = useState<DepartmentLists[]>([]);
+    const [costCenters, setCostCenters] = useState<CostCenterLists[]>([]);
 
     const [openModalUploadFile, setOpenModalUploadFile] = useState<boolean>(false);
     const [isOpenModalUploadFile, setIsOpenodalUploadFile] = useState(false);
@@ -136,6 +143,89 @@ const EmployeeDetailsPage = () => {
             await HandleUnAuthorized(error);
         } finally {
             setLoading(false);
+        }
+    }
+
+    const GetDepartment = async () => {
+
+        try {
+
+            const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+
+            if (!userDetailsLocalStorage) {
+                await HandleUnAuthorized(null);
+            }
+            const requestDepartments = await axios.get(`/api/department?${StatusAPICode.code}=${StatusAPICode.GET_DEPARTMENT_LISTS}`, {
+                headers: {
+                    Authorization: `Bearer ${userDetailsLocalStorage?.accessToken}`
+                }
+            });
+
+            if (!requestDepartments.data?.departments) {
+                throw Error("No Departments Data Retreived");
+            }
+
+            const departmentsLists: Partial<Department>[] = requestDepartments.data?.departments as Partial<Department>[];
+
+            const departmentsArray: DepartmentLists[] = [];
+
+            departmentsLists.map(department => {
+                const depart: DepartmentLists = {
+                    department_code: department?.department_code || '',
+                    department_name: department?.department_name || '',
+                    department_uuid: department?.uuid || ''
+                }
+
+                departmentsArray.push(depart);
+            });
+
+            setDepartments(departmentsArray);
+
+        } catch (error) {
+            console.error(error);
+            DisplayAlert(error);
+            await HandleUnAuthorized(error)
+        }
+    }
+
+    const GetCostCenter = async () => {
+
+        try {
+
+            const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+
+            if (!userDetailsLocalStorage) {
+                await HandleUnAuthorized(null);
+            }
+            const requestDepartments = await axios.get(`/api/department?${StatusAPICode.code}=${StatusAPICode.GET_COST_CENTER_LISTS}`, {
+                headers: {
+                    Authorization: `Bearer ${userDetailsLocalStorage?.accessToken}`
+                }
+            });
+
+            if (!requestDepartments.data?.costCenterLists) {
+                throw Error("No Departments Data Retreived");
+            }
+
+            const costCenterLists: Partial<CostCenter>[] = requestDepartments.data?.costCenterLists as Partial<CostCenter>[];
+
+            const costCenterArray: CostCenterLists[] = [];
+
+            costCenterLists.map(item => {
+                const costCenter: CostCenterLists = {
+                    cost_center_code: item?.cost_center_code || '',
+                    description: item?.cost_center_description || '',
+                }
+
+                costCenterArray.push(costCenter);
+            });
+
+            setCostCenters(costCenterArray);
+
+        } catch (error) {
+            console.error(error);
+            DisplayAlert(error);
+            await HandleUnAuthorized(error)
         }
     }
 
@@ -397,20 +487,7 @@ const EmployeeDetailsPage = () => {
                                             />
                                         </div>
 
-                                        <div className="mt-4">
-                                            <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Email</label>
-                                            <input
-                                                type="email"
-                                                name="email"
-                                                id="email"
-                                                value={submitDetails.email}
 
-                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                                                onChange={(e) => handleInputChange(e)}
-                                                placeholder="watlow@watlow.com"
-                                                required
-                                            />
-                                        </div>
 
                                         <div className="mt-4">
                                             <label htmlFor="department_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Department</label>
@@ -433,6 +510,24 @@ const EmployeeDetailsPage = () => {
                                         </div>
 
                                         <div className="mt-4">
+                                            <label htmlFor="cost_center_code" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cost Center</label>
+                                            <select
+                                                id="cost_center_code"
+                                                name="cost_center_code"
+                                                value={submitDetails.cost_center_code}
+                                                onChange={handleInputChange}
+                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                            >
+                                                <option value="" disabled>Select a Cost Center</option>
+                                                {costCenters.map((item, index) => (
+                                                    <option key={index} value={item.cost_center_code}>
+                                                        {item.cost_center_code}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="mt-4">
                                             <label htmlFor="employee_category_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Employee Category</label>
                                             <select
                                                 id="employee_category_name"
@@ -448,8 +543,36 @@ const EmployeeDetailsPage = () => {
                                                     </option>
                                                 ))}
                                             </select>
+                                        </div>
 
+                                        <div className="mt-4">
+                                            <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Email</label>
+                                            <input
+                                                type="email"
+                                                name="email"
+                                                id="email"
+                                                value={submitDetails.email}
 
+                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                                onChange={(e) => handleInputChange(e)}
+                                                placeholder="watlow@watlow.com"
+                                                required
+                                            />
+                                        </div>
+
+                                        <div className="mt-4">
+                                            <label htmlFor="access_card_no" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Access Card No</label>
+                                            <input
+                                                type="text"
+                                                name="access_card_no"
+                                                id="access_card_no"
+                                                value={submitDetails.access_card_no}
+
+                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                                onChange={(e) => handleInputChange(e)}
+                                                placeholder="12121212"
+                                                required
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -542,18 +665,7 @@ const EmployeeDetailsPage = () => {
                                         />
                                     </div>
 
-                                    <div className="mt-4">
-                                        <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Email</label>
-                                        <input
-                                            type="email"
-                                            name="email"
-                                            id="email"
-                                            value={submitDetails.email}
 
-                                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                                            readOnly
-                                        />
-                                    </div>
 
                                     <div className="mt-4">
                                         <label htmlFor="department_code" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Department</label>
@@ -570,6 +682,33 @@ const EmployeeDetailsPage = () => {
                                     </div>
 
                                     <div className="mt-4">
+                                        <label htmlFor="cost_center_code" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cost Center</label>
+
+                                        <input
+                                            type="text"
+                                            name="cost_center_code"
+                                            id="cost_center_code"
+                                            value={(submitDetails.cost_center_code)}
+                                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                            readOnly
+                                        />
+
+                                    </div>
+
+                                    <div className="mt-4">
+                                        <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Email</label>
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            id="email"
+                                            value={submitDetails.email}
+
+                                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                            readOnly
+                                        />
+                                    </div>
+
+                                    <div className="mt-4">
                                         <label htmlFor="employee_category_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Employee Category</label>
 
                                         <input
@@ -577,6 +716,20 @@ const EmployeeDetailsPage = () => {
                                             name="employee_category_name"
                                             id="employee_category_name"
                                             value={(submitDetails.employee_category_name)}
+                                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                            readOnly
+                                        />
+
+                                    </div>
+
+                                    <div className="mt-4">
+                                        <label htmlFor="employee_category_name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Access Card No</label>
+
+                                        <input
+                                            type="text"
+                                            name="access_card_no"
+                                            id="access_card_no"
+                                            value={(submitDetails.access_card_no)}
                                             className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
                                             readOnly
                                         />
@@ -816,47 +969,7 @@ const EmployeeDetailsPage = () => {
         );
     }
 
-    const GetDepartment = async () => {
 
-        try {
-
-            const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
-
-            if (!userDetailsLocalStorage) {
-                await HandleUnAuthorized(null);
-            }
-            const requestDepartments = await axios.get(`/api/department?${StatusAPICode.code}=${StatusAPICode.GET_DEPARTMENT_LISTS}`, {
-                headers: {
-                    Authorization: `Bearer ${userDetailsLocalStorage?.accessToken}`
-                }
-            });
-
-            if (!requestDepartments.data?.departments) {
-                throw Error("No Departments Data Retreived");
-            }
-
-            const departmentsLists: Partial<Department>[] = requestDepartments.data?.departments as Partial<Department>[];
-
-            const departmentsArray: DepartmentLists[] = [];
-
-            departmentsLists.map(department => {
-                const depart: DepartmentLists = {
-                    department_code: department?.department_code || '',
-                    department_name: department?.department_name || '',
-                    department_uuid: department?.uuid || ''
-                }
-
-                departmentsArray.push(depart);
-            });
-
-            setDepartments(departmentsArray);
-
-        } catch (error) {
-            console.error(error);
-            DisplayAlert(error);
-            await HandleUnAuthorized(error)
-        }
-    }
 
     useEffect(() => {
         const handleResize = () => {
@@ -875,7 +988,7 @@ const EmployeeDetailsPage = () => {
                 await GetEmployee();       // If this throws an error, the following will not execute
                 await GetDepartment();     // If this throws an error, the next will not execute
                 await GetEmployeeCategory(); // If this throws an error, it will be caught in the catch block
-
+                await GetCostCenter();
             } catch (error) {
                 console.error(error);
                 DisplayAlert(error);       // Display the error alert
@@ -892,6 +1005,35 @@ const EmployeeDetailsPage = () => {
         };
     }, []);  // Empty dependency array ensures this runs only once
 
+    useEffect(() => {
+        setLoading(true)
+        try {
+            const fetchData = async () => {
+                setLoading(true);
+                try {
+
+
+                    // Fetch employee and department data sequentially
+                    await GetEmployee();       // If this throws an error, the following will not execute
+
+
+                } catch (error) {
+                    console.error(error);
+                    DisplayAlert(error);       // Display the error alert
+                } finally {
+                    setLoading(false);         // Ensure loading is turned off after the operations
+                }
+            };
+
+            if (filter) {
+                fetchData();
+            }
+        } catch (error) {
+            DisplayAlert(error);
+        } finally {
+            setLoading(false);
+        }
+    }, [filter])
 
     const HandleUserAction = () => {
         setOpenModalAddBooking(true);
@@ -970,29 +1112,37 @@ const EmployeeDetailsPage = () => {
                     {loading && <Spinner />}
 
                     <h1 className="text-black">Employee Details</h1>
-                    <div className="flex justify-end">
-                        <ul className="flex space-x-2">
-                            <li>
-                                <button
-                                    onClick={HandleUserAction}
-                                    className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
-                                >
-                                    +
-                                </button>
-                            </li>
-                            <li>
-                                <button
-                                    onClick={HandleUserUploadFileAction}
-                                    className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 64 64" fill="none">
-                                        <rect x="4" y="14" width="56" height="36" rx="4" fill="#f5c38c" />
-                                        <path d="M4 14h20l4-4h32v36H4V14z" fill="#f5c38c" />
-                                        <rect x="8" y="22" width="48" height="24" rx="2" fill="#fff" />
-                                    </svg>
-                                </button>
-                            </li>
-                        </ul>
+                    <div className="flex justify-end items-center space-x-4">
+                        <label
+                            htmlFor="filter"
+                            className="text-gray-900 text-sm dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                        >
+                            Search:
+                        </label>
+                        <input
+                            id="filter"
+                            name="filter"
+                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                            onChange={(e) => setFilter(e.target.value)}
+                        />
+                        <button
+                            onClick={HandleUserAction}
+                            className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
+                        >
+                            +
+                        </button>
+                        <button
+                            onClick={HandleUserUploadFileAction}
+                            className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded flex items-center"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 64 64" fill="none">
+                                <rect x="4" y="14" width="56" height="36" rx="4" fill="#f5c38c" />
+                                <path d="M4 14h20l4-4h32v36H4V14z" fill="#f5c38c" />
+                                <rect x="8" y="22" width="48" height="24" rx="2" fill="#fff" />
+                            </svg>
+                        </button>
                     </div>
+
 
 
 
@@ -1019,6 +1169,9 @@ const EmployeeDetailsPage = () => {
                                             Cost Center
                                         </th>
                                         <th scope="col" className="px-6 py-3">
+                                            Employee Category
+                                        </th>
+                                        <th scope="col" className="px-6 py-3">
                                             Meal Subsidiry Applicable
                                         </th>
                                         {/* <th scope="col" className="px-6 py-3">Edit</th> */}
@@ -1042,6 +1195,9 @@ const EmployeeDetailsPage = () => {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     {item.cost_center_code}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {item.employee_category_code.toUpperCase()}
                                                 </td>
                                                 <td className="px-6 py-4 flex justify-center items-center">
                                                     <input

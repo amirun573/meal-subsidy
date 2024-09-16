@@ -136,7 +136,7 @@ model Subsidy {
   subsidy_type      SubsidyType?  @relation(fields: [subsidy_type_id], references: [subsidy_type_id], onDelete: SetNull)
   subsidy_type_id   Int
   applicable        Boolean      @default(false)
-  start_date        DateTime?
+  start_date        DateTime?    @default(now())
   end_date          DateTime?
   active            Boolean      @default(true)
   uuid              String?      @default(uuid())
@@ -271,7 +271,7 @@ model UserFeatures {
 
 model AccessCard {
   card_id        Int       @id @default(autoincrement())
-  card_value     String    // Mifare card value (e.g. UID or other identifier)
+  card_value     String   @unique // Mifare card value (e.g. UID or other identifier)
   active         Boolean   @default(true)  // Indicates if the card is active or replaced
   issued_at      DateTime  @default(now()) // When the card was issued
   user           User?      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)

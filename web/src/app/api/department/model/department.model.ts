@@ -71,3 +71,17 @@ export async function GetCostCenterLists(data: PrismaCondtionFetch) {
     return [];
   }
 }
+
+export async function GetCostCenterSingle(data: PrismaCondtionFetch) {
+  try {
+    const { where, select } = data;
+
+    return prisma.costCenter.findFirst({
+      where,
+      select,
+    });
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}

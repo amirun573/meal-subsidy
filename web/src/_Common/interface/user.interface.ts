@@ -1,4 +1,4 @@
-import { Subsidy, User, UserDetails } from "@prisma/client";
+import { AccessCard, Subsidy, User, UserDetails } from "@prisma/client";
 import { StatusAPICode } from "../enum/status-api-code.enum";
 
 export interface UserPaginationRequest {
@@ -20,12 +20,15 @@ export interface CreateUpdateUser {
 
   code: StatusAPICode;
   email: string;
+
   password?: string;
   confirmPassword?: string;
+
   employee_category_name: string;
   employee_category_code: string;
 
   cost_center_code: string;
+  access_card_no: string;
 }
 
 export interface CreateUserUploadExcel {
@@ -37,4 +40,5 @@ export interface CreateUserUserDetails {
   user: User;
   userDetails: UserDetails;
   subsidy?: Subsidy;
+  accessCard?: AccessCard;
 }

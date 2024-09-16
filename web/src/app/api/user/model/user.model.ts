@@ -1,9 +1,10 @@
-import { Subsidy, User, UserDetails } from "@prisma/client";
+import { AccessCard, Subsidy, User, UserDetails } from "@prisma/client";
 import { PrismaCondtionFetch } from "@/_Common/interface/database.interface";
 import { prisma, timeout } from "../../../../../libs/prisma";
 import { PaginationData } from "@/_Common/interface/pagination.interface";
 import { CreateUserUserDetails } from "@/_Common/interface/user.interface";
 import { CreateSubsidyMany } from "../../subsidy/model/subsidy.model";
+import { CreateAccessCardMany } from "../../accessCard/model/accessCard.model";
 
 export async function GetUserSingle(
   data: PrismaCondtionFetch
@@ -291,6 +292,7 @@ export async function CreateUserNUserDetailsManyCascade(data: {
         const updateDetails: CreateUserUserDetails[] = [];
 
         const createSubsidies: Subsidy[] = [];
+        const createAccessCard: AccessCard[] = [];
 
         // Use forEach since you're performing side effects (modifying details)
         details.forEach((detail) => {
@@ -311,7 +313,12 @@ export async function CreateUserNUserDetailsManyCascade(data: {
           if (detail.subsidy) {
             detail.subsidy.user_id = user.user_id;
 
-            createSubsidies.push(detail.subsidy as Subsidy);
+            createSubsidies.push(detail.subsidy);
+          }
+
+          if (detail.accessCard) {
+            detail.accessCard.user_id = user.user_id;
+            createAccessCard.push(detail.accessCard);
           }
 
           // Push the updated detail to the updateDetails array
@@ -337,7 +344,7 @@ export async function CreateUserNUserDetailsManyCascade(data: {
           throw Error("No User Details Been Created");
         }
 
-        if (createSubsidies) {
+        if (createSubsidies.length > 0) {
           const subsidyTransaction = await CreateSubsidyMany({
             data: createSubsidies,
             prismaTransaction: prisma,
@@ -345,6 +352,17 @@ export async function CreateUserNUserDetailsManyCascade(data: {
 
           if (subsidyTransaction.length !== createSubsidies.length) {
             throw Error("Failed To Create User Subsidy ");
+          }
+        }
+
+        if (createAccessCard.length > 0) {
+          const accessCardTransaction = await CreateAccessCardMany({
+            data: createAccessCard,
+            prismaTransaction: prisma,
+          });
+
+          if (accessCardTransaction.length !== createSubsidies.length) {
+            throw Error("Failed To Access Card Details To All Users");
           }
         }
 
