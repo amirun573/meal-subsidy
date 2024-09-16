@@ -259,25 +259,40 @@ export async function GetSubsidyTransactionPaginationService(
     if (filter) {
       conditionFilter = {
         OR: [
-          { employee_id: { contains: filter } },
           {
-            UserDetails: {
-              name: { contains: filter, mode: "insensitive" },
+            user: {
+              employee_id: { contains: filter, mode: "insensitive" },
             },
           },
           {
-            department: {
-              department_name: { contains: filter, mode: "insensitive" },
+            user: {
+              UserDetails: {
+                name: { contains: filter, mode: "insensitive" },
+              },
             },
           },
           {
-            cost_center: {
-              cost_center_code: { contains: filter, mode: "insensitive" },
+            user: {
+              department: {
+                department_name: { contains: filter, mode: "insensitive" },
+              },
             },
           },
           {
-            employee_category: {
-              employee_category_name: { contains: filter, mode: "insensitive" },
+            user: {
+              cost_center: {
+                cost_center_code: { contains: filter, mode: "insensitive" },
+              },
+            },
+          },
+          {
+            user: {
+              employee_category: {
+                employee_category_name: {
+                  contains: filter,
+                  mode: "insensitive",
+                },
+              },
             },
           },
         ],

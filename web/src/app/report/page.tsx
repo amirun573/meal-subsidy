@@ -295,9 +295,9 @@ const ChartComponent = () => {
                 }
             };
 
-            if (filter) {
-                fetchData();
-            }
+
+            fetchData();
+
         } catch (error) {
             DisplayAlert(error);
         } finally {
@@ -327,9 +327,25 @@ const ChartComponent = () => {
                         <Bar ref={chartRef} data={chartData.monthly} options={{ responsive: true, maintainAspectRatio: false }} />
                     </div>
 
+
                     {/* Table */}
                     <div className="mt-10">
                         <p className='text-black mb-2'><strong>Transactions</strong></p>
+
+                        <div className="flex justify-end items-center space-x-4">
+                            <label
+                                htmlFor="filter"
+                                className="text-gray-900 text-sm dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                            >
+                                Search:
+                            </label>
+                            <input
+                                id="filter"
+                                name="filter"
+                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                onChange={(e) => setFilter(e.target.value)}
+                            />
+                        </div>
 
                         <div className="relative overflow-x-auto shadow-md sm:rounded-lg mt-10">
                             <table className="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
