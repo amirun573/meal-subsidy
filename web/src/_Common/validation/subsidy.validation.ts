@@ -2,6 +2,7 @@ import * as yup from "yup";
 import {
   SubsidyEmployeeUpdate,
   SubsidySubmitPrice,
+  SubsidyTransactionPaginationRequest,
 } from "../interface/subsidy.interface";
 
 const UserUpdateSubsidyValidation = yup.object().shape({
@@ -21,10 +22,21 @@ const SubsidySubmitPriceValidation = yup.object().shape({
   employee_id: yup.string().required("Employee ID Required"),
 });
 
+const SubsidyTransactionPaginationValidation = yup.object().shape({
+  page: yup.number().required("Page Required"),
+  filter: yup.string().optional(),
+  startDate: yup.string().optional(),
+  endDate: yup.string().optional(),
+});
+
 export function EmployeeUpdateSubsidyValidation(data: SubsidyEmployeeUpdate) {
   return UserUpdateSubsidyValidation.validate(data);
 }
 
 export function EmployeeSubmitPriceValidation(data: SubsidySubmitPrice) {
   return SubsidySubmitPriceValidation.validate(data);
+}
+
+export function SubsidyTransactionPagination(data: SubsidyTransactionPaginationRequest) {
+  return SubsidyTransactionPaginationValidation.validate(data);
 }

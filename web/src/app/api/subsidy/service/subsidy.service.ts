@@ -1,10 +1,12 @@
 import {
   SubsidyEmployeeUpdate,
   SubsidySubmitPrice,
+  SubsidyTransactionPaginationRequest,
 } from "@/_Common/interface/subsidy.interface";
 import {
   EmployeeSubmitPriceValidation,
   EmployeeUpdateSubsidyValidation,
+  SubsidyTransactionPagination,
 } from "@/_Common/validation/subsidy.validation";
 import {
   $Enums,
@@ -15,10 +17,12 @@ import {
 } from "@prisma/client";
 import { NextResponse } from "next/server";
 import {
+  GetCountTotalSubsidyTransaction,
   GetSubsidySingle,
   SubsidyCreditTransactionCascade,
   UpdateSubsidy,
   UpdateSubsidyCredit,
+  GetSubsidyTransactionPagination,
 } from "../model/subsidy.model";
 import { GetUserSingle } from "../../user/model/user.model";
 import { SubsidyTypeCode } from "@/_Common/enum/subsidy-type.enum";
@@ -215,6 +219,201 @@ export async function CreateSubsidyTransactionService(
 
     return NextResponse.json({
       updateSubsidy: true,
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        message: error.message || message,
+      },
+      {
+        status: error.statusCode || status,
+      }
+    );
+  }
+}
+
+export async function GetSubsidyTransactionPaginationService(
+  data: SubsidyTransactionPaginationRequest
+) {
+  let message: string = "";
+  let status: number = 500;
+  try {
+    await SubsidyTransactionPagination(data);
+
+    const { page, filter, startDate, endDate } = data;
+    let transactions: any = [];
+    let totalItems: number = 0;
+
+    let conditionFilter: any = {};
+
+    const filterSubsidyTypeCodeMeal = {
+      // subsidies: {
+      //   some: {
+      //     subsidy_type: {
+      //       subsidy_type_code: SubsidyTypeCode.meal,
+      //     },
+      //   },
+      // },
+    };
+
+    if (filter) {
+      conditionFilter = {
+        OR: [
+          { employee_id: { contains: filter } },
+          {
+            UserDetails: {
+              name: { contains: filter, mode: "insensitive" },
+            },
+          },
+          {
+            department: {
+              department_name: { contains: filter, mode: "insensitive" },
+            },
+          },
+          {
+            cost_center: {
+              cost_center_code: { contains: filter, mode: "insensitive" },
+            },
+          },
+          {
+            employee_category: {
+              employee_category_name: { contains: filter, mode: "insensitive" },
+            },
+          },
+        ],
+      };
+    }
+
+    // If conditionFilter is not empty, combine with filterSubsidyTypeCodeMeal using AND
+    if (Object.keys(conditionFilter).length > 0) {
+      conditionFilter = {
+        AND: [
+          conditionFilter, // Existing filter conditions
+          filterSubsidyTypeCodeMeal, // New filter to be combined
+        ],
+      };
+    } else {
+      // If conditionFilter is empty, just use filterSubsidyTypeCodeMeal
+      conditionFilter = filterSubsidyTypeCodeMeal;
+    }
+
+    const totalSubsidyTransaction: number =
+      await GetCountTotalSubsidyTransaction({
+        where: conditionFilter,
+      });
+
+    if (!totalSubsidyTransaction) {
+      return NextResponse.json({
+        totalItems,
+        transactions,
+      });
+    }
+
+    console.log("totalSubsidyTransaction==>", totalSubsidyTransaction);
+
+    const getSubsidyTransaction = await GetSubsidyTransactionPagination({
+      paginate: { page, totalItems: totalSubsidyTransaction },
+      where: conditionFilter,
+      orderBy: { field: "created_at", direction: "desc" },
+      select: {
+        credit_used: true,
+        transaction_at: true,
+        uuid: true,
+        user: {
+          select: {
+            uuid: true,
+            employee_id: true,
+            UserDetails: {
+              select: {
+                name: true,
+              },
+            },
+            cost_center: {
+              select: {
+                cost_center_code: true,
+              },
+            },
+            department: {
+              select: {
+                department_code: true,
+                uuid: true,
+                department_name: true,
+              },
+            },
+            employee_category: {
+              select: {
+                employee_category_code: true,
+                employee_category_name: true,
+              },
+            },
+          },
+        },
+      },
+
+      // select: {
+      //   uuid: true,
+      //   active: true,
+      //   created_at: true,
+      //   employee_id: true,
+      //   email: true,
+      //   UserDetails: {
+      //     select: {
+      //       name: true,
+      //     },
+      //   },
+      //   cost_center: {
+      //     select: {
+      //       cost_center_code: true,
+      //     },
+      //   },
+      //   department: {
+      //     select: {
+      //       department_code: true,
+      //       uuid: true,
+      //       department_name: true,
+      //     },
+      //   },
+      //   subsidies: {
+      //     select: {
+      //       applicable: true,
+      //       uuid: true,
+      //       subsidy_type: {
+      //         select: {
+      //           subsidy_type_code: true,
+      //           subsidy_type_name: true,
+      //           uuid: true,
+      //           price: true,
+      //         },
+      //       },
+      //     },
+      //   },
+      //   employee_category: {
+      //     select: {
+      //       employee_category_code: true,
+      //       employee_category_name: true,
+      //     },
+      //   },
+      //   access_cards: {
+      //     select: {
+      //       card_value: true,
+      //     },
+      //   },
+      // },
+    });
+
+    if (!getSubsidyTransaction) {
+      return NextResponse.json({
+        totalItems,
+        transactions,
+      });
+    }
+
+    totalItems = totalSubsidyTransaction;
+    transactions = getSubsidyTransaction;
+
+    return NextResponse.json({
+      transactions,
+      totalItems,
     });
   } catch (error: any) {
     return NextResponse.json(

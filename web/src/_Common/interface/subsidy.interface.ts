@@ -16,3 +16,11 @@ export interface SubsidySubmitPrice {
   [StatusAPICode.code]: StatusAPICode;
   subsidyCreditUUID: string;
 }
+
+export interface SubsidyTransactionPaginationRequest {
+  page: number;
+  filter: string | null;
+  startDate: string | null;
+  endDate: string | null;
+
+}

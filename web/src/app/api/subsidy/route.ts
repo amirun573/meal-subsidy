@@ -16,10 +16,11 @@ import {
 } from "@/_Common/interface/subsidy.interface";
 import {
   CreateSubsidyTransactionService,
+  GetSubsidyTransactionPaginationService,
   UpdateUserApplicableSubsidy,
 } from "./service/subsidy.service";
 import { decrypt } from "@/_Common/function/Hashing";
-const APIAuth: StatusAPICode[] = [StatusAPICode.GET_EMPLOYEE_DETAILS];
+const APIAuth: StatusAPICode[] = [StatusAPICode.GET_EMPLOYEE_DETAILS, StatusAPICode.SUBSIDY_TRANSACTION_PAGINATION];
 
 export async function GET(req: any, res: any) {
   let statusCode: number = 500;
@@ -59,6 +60,27 @@ export async function GET(req: any, res: any) {
     }
 
     switch (parseInt(code) as StatusAPICode) {
+      case StatusAPICode.SUBSIDY_TRANSACTION_PAGINATION: {
+        const startDate: string | null = url.searchParams.get("startDate");
+
+        const endDate: string | null = url.searchParams.get("endDate");
+
+        const page: string | null = url.searchParams.get("page");
+
+        const filter: string | null = url.searchParams.get("filter");
+
+        if (!page) {
+          statusCode = 400;
+          throw Error("Page Not FOund");
+        }
+
+        return GetSubsidyTransactionPaginationService({
+          page: parseInt(page),
+          filter,
+          startDate,
+          endDate,
+        });
+      }
       default: {
         statusCode = 400;
         throw Error("Code not Found");

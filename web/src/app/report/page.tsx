@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Bar } from 'react-chartjs-2';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -16,6 +16,13 @@ import {
     Tooltip,
     Legend,
 } from 'chart.js';
+import { UserDetailsLocalStorage } from '@/_Common/interface/auth.interface';
+import { GetLocalStorageDetails, HandleUnAuthorized } from '@/_Common/function/LocalStorage';
+import { SubsidyTransactionPagination } from '@/_Common/validation/subsidy.validation';
+import axios from 'axios';
+import { StatusAPICode } from '@/_Common/enum/status-api-code.enum';
+import { Subsidy, SubsidyTransaction, User } from '@prisma/client';
+import { DisplayAlert } from '@/_Common/function/Error';
 
 // Register the components globally
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
@@ -138,6 +145,165 @@ const ChartComponent = () => {
         );
     };
 
+    interface SubsidyTransactionsPagination {
+        name: string,
+        employee_id: string,
+        department_name: string,
+        cost_center_code: string,
+        uuid: string,
+        credit_used: number;
+        employee_category_name: string;
+        transaction_date: string;
+
+    }
+
+    const [currentPage, setCurrentPage] = useState<number>(1); // State variable to store current page
+    const [filter, setFilter] = useState<string>('');
+    const [totalItems, setTotalItems] = useState<number>(0); // State variable to store total number of items
+    const [userDetailLocal, setUserDetailLocal] = useState<UserDetailsLocalStorage>();
+    const [subsidyTransactions, setSubsidyTransactions] = useState<SubsidyTransactionsPagination[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+    const [startDate, setStartDate] = useState<string>('');
+    const [endDate, setEndDate] = useState<string>('');
+
+
+    const handlePageChange = (page: number) => {
+        // Update the current page state
+        setCurrentPage(page);
+
+        // Fetch data for the new page using the page number and other parameters as needed
+        // GetEmployee();
+    };
+
+
+
+    const GetSubsidyTransaction = async () => {
+        setLoading(true);
+        try {
+
+            const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+
+            if (!userDetailsLocalStorage) {
+                await HandleUnAuthorized(null);
+            }
+
+            await SubsidyTransactionPagination({
+                page: currentPage,
+                filter,
+                startDate,
+                endDate
+            });
+
+            setUserDetailLocal(userDetailsLocalStorage as UserDetailsLocalStorage);
+            const requestBooking = await axios.get(`/api/subsidy?${StatusAPICode.code}=${StatusAPICode.SUBSIDY_TRANSACTION_PAGINATION}&page=${currentPage}&filter=${filter}&startDate=${startDate}&endDate=${endDate}`, {
+                headers: {
+                    Authorization: `Bearer ${userDetailsLocalStorage?.accessToken}`
+                }
+            });
+
+            const subsidyTransactionsArray: SubsidyTransactionsPagination[] = [];
+
+
+            if (requestBooking.data?.transactions) {
+                const subsidyTransactions: SubsidyTransaction[] = requestBooking.data?.transactions as SubsidyTransaction[];
+
+                subsidyTransactions.map(item => {
+
+                    const subsidyTransaction: SubsidyTransactionsPagination = {
+                        name: String((item as any)?.user?.UserDetails?.name).toUpperCase() || '',
+                        employee_id: String((item as any)?.user?.employee_id) || '',
+                        department_name: (item as any)?.user?.department?.department_name || '',
+                        uuid: String((item as any)?.uuid) || '',  // The parenthesis was missing here
+                        credit_used: item?.credit_used || 0,  // Assuming `credit_used` is a number, and defaulting to 0 if undefined
+                        cost_center_code: (item as any)?.user?.cost_center?.cost_center_code || '',
+                        employee_category_name: (item as any)?.user?.employee_category?.employee_category_name || '',
+                        transaction_date: `${new Date(item?.transaction_at)?.toLocaleDateString()} ${new Date(item?.transaction_at)?.toLocaleTimeString()}` || '',
+                    };
+
+
+                    subsidyTransactionsArray.push(subsidyTransaction);
+                });
+
+
+            }
+
+            setSubsidyTransactions(subsidyTransactionsArray.length > 0 ? subsidyTransactionsArray : []);
+
+            setTotalItems(requestBooking.data?.totalItems as number);
+
+
+            // setBooking(requestBooking.data?.booking as Partial<Booking[]>);
+        } catch (error: any) {
+            console.error(error);
+            alert(error?.response?.data?.message || error?.message || "Something Goes Wrong");
+            await HandleUnAuthorized(error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                window.addEventListener('resize', handleResize);
+
+                // Call handler right away so state gets updated with initial window size
+                handleResize();
+
+                // Fetch employee and department data sequentially
+                await GetSubsidyTransaction();       // If this throws an error, the following will not execute
+
+            } catch (error) {
+                console.error(error);
+                DisplayAlert(error);       // Display the error alert
+            } finally {
+                setLoading(false);         // Ensure loading is turned off after the operations
+            }
+        };
+
+
+        fetchData();
+
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+    }, []);  // Empty dependency array ensures this runs only once
+
+    useEffect(() => {
+        setLoading(true)
+        try {
+            const fetchData = async () => {
+                setLoading(true);
+                try {
+
+
+                    // Fetch employee and department data sequentially
+                    await GetSubsidyTransaction();       // If this throws an error, the following will not execute
+
+
+                } catch (error) {
+                    console.error(error);
+                    DisplayAlert(error);       // Display the error alert
+                } finally {
+                    setLoading(false);         // Ensure loading is turned off after the operations
+                }
+            };
+
+            if (filter) {
+                fetchData();
+            }
+        } catch (error) {
+            DisplayAlert(error);
+        } finally {
+            setLoading(false);
+        }
+    }, [filter])
     return (
         <>
             <Navbar />
@@ -162,43 +328,105 @@ const ChartComponent = () => {
                     </div>
 
                     {/* Table */}
-                    <div style={{ marginTop: '70px', overflowX: 'auto' }}>
-                        <p className='text-black mb-2'><strong>Today Transactions</strong></p>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: 'white', color: 'black', marginTop: '2%' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '1px solid black' }}>
-                                    <th style={{ padding: '10px', textAlign: 'left' }}>No</th>
-                                    <th style={{ padding: '10px', textAlign: 'left' }}>Name</th>
-                                    <th style={{ padding: '10px', textAlign: 'left' }}>Credited (RM)</th>
-                                    <th style={{ padding: '10px', textAlign: 'left' }}>Date</th>
+                    <div className="mt-10">
+                        <p className='text-black mb-2'><strong>Transactions</strong></p>
 
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr style={{ borderBottom: '1px solid black' }}>
-                                    <td style={{ padding: '10px' }}>1</td>
-                                    <td style={{ padding: '10px' }}>Amirun</td>
-                                    <td style={{ padding: '10px' }}>5</td>
-                                    <td style={{ padding: '10px' }}>2024/08/23</td>
+                        <div className="relative overflow-x-auto shadow-md sm:rounded-lg mt-10">
+                            <table className="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+                                <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                                    <tr>
+                                        <th scope="col" className="px-6 py-3">
+                                            No.
+                                        </th>
+                                        <th scope="col" className="px-6 py-3">
+                                            Name
+                                        </th>
+                                        <th scope="col" className="px-6 py-3">
+                                            Employee ID
+                                        </th>
+                                        <th scope="col" className="px-6 py-3">
+                                            Department
+                                        </th>
+                                        <th scope="col" className="px-6 py-3">
+                                            Cost Center
+                                        </th>
+                                        <th scope="col" className="px-6 py-3">
+                                            Employee Category
+                                        </th>
+                                        <th scope="col" className="px-6 py-3">
+                                            Credit Been Used (RM)
+                                        </th>
+                                        <th scope="col" className="px-6 py-3">
+                                            Transaction Date
+                                        </th>
 
-                                </tr>
-                                <tr style={{ borderBottom: '1px solid black' }}>
-                                    <td style={{ padding: '10px' }}>1</td>
-                                    <td style={{ padding: '10px' }}>Aqmar</td>
-                                    <td style={{ padding: '10px' }}>5</td>
-                                    <td style={{ padding: '10px' }}>2024/08/23</td>
 
-                                </tr>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {subsidyTransactions && subsidyTransactions.length > 0 ?
+                                        subsidyTransactions.map((item, index) => (
+                                            <tr key={index} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                                <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                                                    {index + 1 + (currentPage - 1) * 10}                                                </th>
+                                                <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                                                    {item?.name}
+                                                </th>
+                                                <td className="px-6 py-4">
+                                                    {item.employee_id}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {item.department_name}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {item.cost_center_code}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {item.employee_category_name}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {item.credit_used}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {item.transaction_date}
+                                                </td>
 
-                                <tr style={{ borderBottom: '1px solid black' }}>
-                                    <td style={{ padding: '10px' }}>1</td>
-                                    <td style={{ padding: '10px' }}>Ahmad</td>
-                                    <td style={{ padding: '10px' }}>5</td>
-                                    <td style={{ padding: '10px' }}>2024/08/23</td>
+                                            </tr>
+                                        )) : <tr></tr>}
+                                </tbody>
 
-                                </tr>
-                            </tbody>
-                        </table>
+                            </table>
+                            <nav className="flex items-center flex-column flex-wrap md:flex-row justify-between pt-4" aria-label="Table navigation">
+                                <span className="text-sm font-normal text-gray-500 dark:text-gray-400 mb-4 md:mb-0 block w-full md:inline md:w-auto">
+                                    Showing <span className="font-semibold text-gray-900 dark:text-white">{currentPage * 10 - 9}-{Math.min(currentPage * 10, totalItems)}</span> of <span className="font-semibold text-gray-900 dark:text-white">{totalItems}</span>
+                                </span>
+                                <ul className="inline-flex -space-x-px rtl:space-x-reverse text-sm h-8">
+                                    <li>
+                                        <a
+                                            onClick={() => handlePageChange(currentPage - 1 <= 0 ? 1 : currentPage - 1)}
+                                            className="flex items-center justify-center px-3 h-8 ms-0 leading-tight text-gray-500 bg-white border border-gray-300 rounded-s-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+                                        >Previous
+                                        </a>
+                                    </li>
+                                    {/* Render pagination buttons based on totalItems and currentPage */}
+                                    {Array.from({ length: Math.ceil(totalItems / 10) }, (_, index) => (
+                                        <li key={index}>
+                                            <a className={`flex items-center justify-center px-3 h-8 leading-tight ${currentPage === index + 1 ? 'text-blue-600 bg-blue-50' : 'text-gray-500 bg-white'} border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white`} onClick={() => handlePageChange(index + 1)}>
+                                                {index + 1}
+                                            </a>
+                                        </li>
+                                    ))}
+                                    <li>
+                                        <a
+                                            className="flex items-center justify-center px-3 h-8 leading-tight text-gray-500 bg-white border border-gray-300 rounded-e-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+                                            onClick={() => handlePageChange(currentPage + 1)}
+
+                                        >Next</a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+
                     </div>
                 </div>
             </div>

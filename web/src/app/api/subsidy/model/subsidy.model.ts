@@ -9,6 +9,7 @@ import {
   PrismaCondtionFetch,
   PrismaUpdate,
 } from "@/_Common/interface/database.interface";
+import { PaginationData } from "@/_Common/interface/pagination.interface";
 
 export async function GetSubsidySingle(data: PrismaCondtionFetch) {
   try {
@@ -279,5 +280,46 @@ export async function CreateSubsidyMany(object: {
   } catch (error) {
     console.error(error);
     return [];
+  }
+}
+
+export async function GetCountTotalSubsidyTransaction(
+  data: PrismaCondtionFetch
+) {
+  try {
+    const { where } = data;
+
+    return prisma.subsidyTransaction.count({
+      where,
+    });
+  } catch (error) {
+    console.error(error);
+    return 0;
+  }
+}
+
+export async function GetSubsidyTransactionPagination(options: {
+  paginate: PaginationData;
+  select?: any;
+  where: any;
+  orderBy?: { field: string; direction: "asc" | "desc" };
+}): Promise<any> {
+  try {
+    const { paginate, select, where, orderBy } = options;
+
+    const limit = 10;
+    const skip = (paginate.page - 1) * limit;
+
+    return await prisma.subsidyTransaction.findMany({
+      skip: skip >= paginate.totalItems ? 0 : skip,
+      take: Math.min(limit, paginate.totalItems - skip),
+      where,
+      select,
+      orderBy: orderBy ? { [orderBy.field]: orderBy.direction } : undefined,
+    });
+
+    //const page = data.get("page");
+  } catch (error) {
+    return null;
   }
 }
