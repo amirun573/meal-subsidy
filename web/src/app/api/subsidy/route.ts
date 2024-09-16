@@ -16,12 +16,20 @@ import {
 } from "@/_Common/interface/subsidy.interface";
 import {
   CreateSubsidyTransactionService,
+  DownloadReportSubsidyTransaction,
+  GetSubsidyTransactionPaginationService,
+  GetSubsidyTransactionReportChart,
   UpdateUserApplicableSubsidy,
 } from "./service/subsidy.service";
 import { decrypt } from "@/_Common/function/Hashing";
-const APIAuth: StatusAPICode[] = [StatusAPICode.GET_EMPLOYEE_DETAILS];
+const APIAuth: StatusAPICode[] = [
+  StatusAPICode.GET_EMPLOYEE_DETAILS,
+  StatusAPICode.SUBSIDY_TRANSACTION_PAGINATION,
+  StatusAPICode.SUBSIDY_CHART_REPORT,
+  StatusAPICode.SUBSIDY_REPORT_DOWNLOAD,
+];
 
-export async function GET(req: any, res: any) {
+export async function GET(req: any, res: NextApiResponse) {
   let statusCode: number = 500;
 
   try {
@@ -59,6 +67,53 @@ export async function GET(req: any, res: any) {
     }
 
     switch (parseInt(code) as StatusAPICode) {
+      case StatusAPICode.SUBSIDY_TRANSACTION_PAGINATION: {
+        const startDate: string | null = url.searchParams.get("startDate");
+
+        const endDate: string | null = url.searchParams.get("endDate");
+
+        const page: string | null = url.searchParams.get("page");
+
+        const filter: string | null = url.searchParams.get("filter");
+
+        if (!page) {
+          statusCode = 400;
+          throw Error("Page Not FOund");
+        }
+
+        return GetSubsidyTransactionPaginationService({
+          page: parseInt(page),
+          filter,
+          startDate,
+          endDate,
+        });
+      }
+
+      case StatusAPICode.SUBSIDY_CHART_REPORT: {
+        const range: string | null = url.searchParams.get("range");
+
+        if (!range) {
+          statusCode = 400;
+          throw Error("Filter Not FOund");
+        }
+
+        return GetSubsidyTransactionReportChart({ range });
+      }
+
+      case StatusAPICode.SUBSIDY_REPORT_DOWNLOAD: {
+        const startDate: string | null = url.searchParams.get("startDate");
+        const endDate: string | null = url.searchParams.get("endDate");
+
+        if (!startDate || !endDate) {
+          statusCode = 400;
+          throw Error("Start Date or End Date Not Found");
+        }
+
+        return DownloadReportSubsidyTransaction({
+          startDate,
+          endDate,
+        });
+      }
       default: {
         statusCode = 400;
         throw Error("Code not Found");
