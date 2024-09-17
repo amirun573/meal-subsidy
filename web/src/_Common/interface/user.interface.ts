@@ -31,6 +31,9 @@ export interface CreateUpdateUser {
   access_card_no: string;
 
   subsidy_meal_applicable: string;
+
+  start_date?: string;
+  end_date?: string;
 }
 
 export interface CreateUserUploadExcel {
