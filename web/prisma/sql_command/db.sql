@@ -30,25 +30,18 @@ INSERT INTO Feature (
   feature_code,
   feature_name,
   description,
-  feature_link,
-) VALUES (
-  'report',                  -- feature_code
-  'Report',           -- feature_name
-  'Report will show the usage for credit.',   -- description
-  '/report',      -- feature_link
-);
+  feature_link
+) VALUES
+  ('report',                 
+   'Report',           
+   'Report will show the usage for credit.',   
+   '/report'),
+   
+  ('employee_details',            
+   'Employee Details',          
+   'Show Details of Employee.', 
+   '/employee-details');
 
-INSERT INTO Feature (
-  feature_code,
-  feature_name,
-  description,
-  feature_link,
-) VALUES (
-  'employee_details',                  -- feature_code
-  'Employee Details',           -- feature_name
-  'Show Details of Employee.',   -- description
-  '/employee-details',      -- feature_link
-);
 
 INSERT INTO SubsidyType(
   subsidy_type_code,
