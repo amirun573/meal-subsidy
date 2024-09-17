@@ -902,6 +902,7 @@ const EmployeeDetailsPage = () => {
 
         // Handle file submission
         const HandleSubmit = async () => {
+            setLoading(true);
             try {
                 if (!selectedFile) {
                     alert('Please select a file to upload');
@@ -931,10 +932,13 @@ const EmployeeDetailsPage = () => {
                 setOpenModalAddBooking(false);
                 setSelectedFile(null);
 
+                window.location.reload();
             } catch (error) {
                 console.error(error);
                 DisplayAlert(error);
                 await HandleUnAuthorized(error);
+            } finally {
+                setLoading(false);
             }
 
         };
@@ -1017,64 +1021,55 @@ const EmployeeDetailsPage = () => {
             setIsMobile(window.innerWidth < 768);
         };
 
+        // Add event listener for window resize
+        window.addEventListener('resize', handleResize);
+
+        // Immediately call handleResize to set the initial state
+        handleResize();
+
+        // Async function to fetch data
         const fetchData = async () => {
             setLoading(true);
             try {
-                window.addEventListener('resize', handleResize);
-
-                // Call handler right away so state gets updated with initial window size
-                handleResize();
-
-                // Fetch employee and department data sequentially
-                await GetEmployee();       // If this throws an error, the following will not execute
-                await GetDepartment();     // If this throws an error, the next will not execute
-                await GetEmployeeCategory(); // If this throws an error, it will be caught in the catch block
+                // Fetch data sequentially
+                await GetEmployee();
+                await GetDepartment();
+                await GetEmployeeCategory();
                 await GetCostCenter();
             } catch (error) {
                 console.error(error);
-                DisplayAlert(error);       // Display the error alert
+                DisplayAlert(error);
             } finally {
-                setLoading(false);         // Ensure loading is turned off after the operations
+                setLoading(false); // Ensure loading is turned off
             }
         };
-
 
         fetchData();
 
+        // Cleanup function to remove event listener
         return () => {
             window.removeEventListener('resize', handleResize);
         };
-    }, []);  // Empty dependency array ensures this runs only once
+    }, []); // Empty dependency array ensures this runs only once
 
     useEffect(() => {
-        setLoading(true)
-        try {
-            const fetchData = async () => {
+        const fetchData = async () => {
+            if (filter) {
                 setLoading(true);
                 try {
-
-
-                    // Fetch employee and department data sequentially
-                    await GetEmployee();       // If this throws an error, the following will not execute
-
-
+                    await GetEmployee(); // Fetch employee data
                 } catch (error) {
                     console.error(error);
-                    DisplayAlert(error);       // Display the error alert
+                    DisplayAlert(error);
                 } finally {
-                    setLoading(false);         // Ensure loading is turned off after the operations
+                    setLoading(false); // Ensure loading is turned off
                 }
-            };
-
-            if (filter) {
-                fetchData();
             }
-        } catch (error) {
-            DisplayAlert(error);
-        } finally {
-            setLoading(false);
-        }
-    }, [filter])
+        };
+
+        fetchData();
+
+    }, [filter]); // Runs when `filter` changes
 
     const HandleAddUser = () => {
         initializeSubmitDetails.code = StatusAPICode.CREATE_EMPLOYEE;
