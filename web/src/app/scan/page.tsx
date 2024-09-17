@@ -227,7 +227,7 @@ const ScanPage = () => {
                             color: 'white',
                             boxShadow: '0 0 10px rgba(0, 0, 0, 0.3)',
                         }}>
-                            <p>Employee Name: <h2 style={{ fontSize: '2em' }}>{employeeName}</h2></p>
+                            <p>Employee Name: <h2 style={{ fontSize: '2em' }}>{employeeName.toUpperCase()}</h2></p>
                         </div>
                     )}
                 </div>

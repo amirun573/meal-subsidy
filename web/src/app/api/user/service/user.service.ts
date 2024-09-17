@@ -240,9 +240,7 @@ export async function ScanCheckEmployeeIDService(data: ScanCheckEmployeeID) {
     const user = await GetUserSingle({
       where: {
         OR: [
-          {
-            employee_id,
-          },
+          { employee_id: employee_id },
           {
             access_cards: {
               some: {
@@ -251,25 +249,23 @@ export async function ScanCheckEmployeeIDService(data: ScanCheckEmployeeID) {
               },
             },
           },
+        ],
+        AND: [
           {
-            AND: [
-              {
-                subsidies: {
-                  some: {
-                    applicable: true,
-                  },
+            subsidies: {
+              some: {
+                applicable: true,
+              },
+            },
+          },
+          {
+            subsidies: {
+              some: {
+                subsidy_type: {
+                  subsidy_type_code: SubsidyTypeCode.meal,
                 },
               },
-              {
-                subsidies: {
-                  some: {
-                    subsidy_type: {
-                      subsidy_type_code: SubsidyTypeCode.meal,
-                    },
-                  },
-                },
-              },
-            ],
+            },
           },
         ],
       },
@@ -293,6 +289,10 @@ export async function ScanCheckEmployeeIDService(data: ScanCheckEmployeeID) {
       status = 400;
       throw Error("Not Eligable For Subsidy Meal");
     }
+
+    console.log("employee_id==>", employee_id);
+
+    console.log("User==>", user);
 
     const subsidyCredit: Partial<SubsidyCredit> = (await GetSubsidyCreditSingle(
       {
