@@ -27,6 +27,8 @@ import {
   UpdateSubsidyCredit,
   GetSubsidyTransactionPagination,
   GetFilteredTransactions,
+  GetSubsidyLists,
+  TriggerSubsidyCreditCascade,
 } from "../model/subsidy.model";
 import { GetUserSingle } from "../../user/model/user.model";
 import { SubsidyTypeCode } from "@/_Common/enum/subsidy-type.enum";
@@ -106,7 +108,7 @@ export async function CreateSubsidyTransactionService(
         employee_id,
         subsidies: {
           some: {
-            applicable: true,
+            // applicable: true,
             subsidy_type: {
               subsidy_type_code: SubsidyTypeCode.meal,
             },
@@ -706,6 +708,85 @@ export async function DownloadReportSubsidyTransaction(
 
     return NextResponse.json({
       subsidyTransaction,
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        message: error.message || message,
+      },
+      {
+        status: error.statusCode || status,
+      }
+    );
+  }
+}
+
+export async function TriggerCreditService() {
+  let message: string = "";
+  let status: number = 500;
+  try {
+    const today = new Date();
+
+    const subsidies: Partial<Subsidy>[] = await GetSubsidyLists({
+      where: {
+        active: true,
+        OR: [
+          {
+            end_date: {
+              gte: today, // End date is in the future or today
+            },
+          },
+          {
+            end_date: null, // End date is not set
+          },
+        ],
+      },
+      select: {
+        user_id: true,
+        subsidy_id: true,
+        applicable: true,
+        subsidy_type: {
+          select: {
+            subsidy_type_id: true,
+            price: true,
+          },
+        },
+      },
+    });
+
+    if (subsidies.length < 1) {
+      status = 400;
+      throw Error("No One in Subsidy");
+    }
+
+    const subsidiesCredit: Partial<SubsidyCredit>[] = subsidies.map(
+      (subsidy) => {
+        return {
+          user_id: subsidy.user_id,
+          subsidy_id: subsidy.subsidy_id,
+          credit_amount: subsidy.applicable
+            ? (subsidy as any)?.subsidy_type?.price
+            : 0,
+        };
+      }
+    );
+
+    if (!subsidiesCredit || subsidiesCredit.length !== subsidies.length) {
+      status = 400;
+      throw Error("No One in Subsidy");
+    }
+
+    const createSubsidiesCredit = await TriggerSubsidyCreditCascade({
+      subsidiesCredit: subsidiesCredit as SubsidyCredit[],
+    });
+
+    if (!createSubsidiesCredit || createSubsidiesCredit.length < 1) {
+      status = 400;
+      throw Error("Failed TO Generate Subsidy Credit");
+    }
+
+    return NextResponse.json({
+      message: true,
     });
   } catch (error: any) {
     return NextResponse.json(

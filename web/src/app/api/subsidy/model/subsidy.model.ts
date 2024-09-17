@@ -26,6 +26,20 @@ export async function GetSubsidySingle(data: PrismaCondtionFetch) {
   }
 }
 
+export async function GetSubsidyLists(data: PrismaCondtionFetch) {
+  try {
+    const { where, select } = data;
+
+    return prisma.subsidy.findMany({
+      where,
+      select,
+    });
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
 export async function UpdateSubsidy(object: PrismaUpdate) {
   try {
     const { data, prismaTransaction } = object;
@@ -360,10 +374,87 @@ export async function GetFilteredTransactions(data: {
         st.active = TRUE;
   `;
 
-    const result: DownloadReportSubsidyTransactionResult[] = await prisma.$queryRawUnsafe(query, startDate, endDate);
+    const result: DownloadReportSubsidyTransactionResult[] =
+      await prisma.$queryRawUnsafe(query, startDate, endDate);
     return result;
   } catch (error) {
     console.error(error);
     return [];
+  }
+}
+
+export async function DisableAllSubsidyCredit(object: {
+  prismaTransaction: any;
+}) {
+  try {
+    const { prismaTransaction } = object;
+    const query = Prisma.sql`UPDATE "SubsidyCredit" SET active = false;`;
+
+    if (!prismaTransaction) {
+      return await prisma.$queryRaw(query);
+    } else {
+      return await prismaTransaction.$queryRaw(query);
+    }
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+export async function CreateSubsidyCreditMany(object: {
+  data: SubsidyCredit[];
+  prismaTransaction?: any;
+}) {
+  try {
+    const { data, prismaTransaction } = object;
+
+    if (!prismaTransaction) {
+      return prisma.subsidyCredit.createMany({
+        data,
+      });
+    } else {
+      return prismaTransaction.subsidyCredit.createMany({
+        data,
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+export async function TriggerSubsidyCreditCascade(data: {
+  subsidiesCredit: SubsidyCredit[];
+}) {
+  try {
+    const { subsidiesCredit } = data;
+    const result = await prisma.$transaction(
+      async (prisma) => {
+        const deactiveSubsidyCredit = await DisableAllSubsidyCredit({
+          prismaTransaction: prisma,
+        });
+
+        if (!deactiveSubsidyCredit) {
+          throw Error("Failed to Flush Subsidy Credit");
+        }
+
+        const subsidyCreditTransaction: SubsidyCredit[] =
+          await CreateSubsidyCreditMany({
+            data: subsidiesCredit,
+            prismaTransaction: prisma,
+          });
+
+        if (!subsidyCreditTransaction || subsidyCreditTransaction.length < 1) {
+          throw Error("No Subsidy Credit Being Created");
+        }
+
+        return subsidyCreditTransaction;
+      },
+      { timeout }
+    );
+
+    return result;
+  } catch (error) {
+    console.error(error);
+    return null;
   }
 }

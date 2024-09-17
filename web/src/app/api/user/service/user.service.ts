@@ -254,15 +254,16 @@ export async function ScanCheckEmployeeIDService(data: ScanCheckEmployeeID) {
         ],
         AND: [
           {
-            subsidies: {
-              some: {
-                applicable: true,
-              },
-            },
+            // subsidies: {
+            //   some: {
+            //     applicable: true,
+            //   },
+            // },
           },
           {
             subsidies: {
               some: {
+                active: true,
                 subsidy_type: {
                   subsidy_type_code: SubsidyTypeCode.meal,
                 },

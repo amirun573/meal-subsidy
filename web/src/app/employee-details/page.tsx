@@ -20,6 +20,7 @@ import { FolderArrowDownIcon } from '@heroicons/react/24/solid'
 import { MainContent } from "@/Components/Main";
 import { FileMimeType } from "@/_Common/enum/file-type.enum";
 import { ConvertToUTCEndOfDay, ConvertToUTCStartOfDay } from '../../_Common/function/Date';
+import { encrypt } from "@/_Common/function/Hashing";
 
 
 interface EmployeeDetails {
@@ -1285,6 +1286,31 @@ const EmployeeDetailsPage = () => {
         }
     }
 
+    const HandleTriggerCredit = async () => {
+        setLoading(true);
+        try {
+            // Post request to API
+            const response = await axios.post('/api/subsidy', {
+                [StatusAPICode.code]: StatusAPICode.CREATE_TRIGGER_SUBSIDY_CREDIT,
+                key: encrypt(`TRIGGER_CREDIT`),
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${userDetailLocal?.accessToken}`,
+
+                },
+            });
+
+            alert("Successfully Generate Subsidy Credit");
+        } catch (error) {
+            console.error(error);
+            DisplayAlert(error);
+            await HandleUnAuthorized(error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
 
 
     return (<>
@@ -1325,7 +1351,7 @@ const EmployeeDetailsPage = () => {
                                 </svg>
                             </button>
                             <button
-                                onClick={HandleUserUploadFileAction}
+                                onClick={HandleTriggerCredit}
                                 className="bg-red-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded flex items-center w-full sm:w-auto"
                             >
                                 Trigger Credit
