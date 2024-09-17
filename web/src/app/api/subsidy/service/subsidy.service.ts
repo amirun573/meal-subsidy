@@ -100,6 +100,7 @@ export async function CreateSubsidyTransactionService(
       subsidyCreditUUID,
     } = data;
 
+    console.log("DATA==>", data);
     const user = await GetUserSingle({
       where: {
         employee_id,
@@ -191,8 +192,16 @@ export async function CreateSubsidyTransactionService(
 
     const updatedAvailableCredit = Math.max(0, availableCredit - price);
 
+    // Calculate effective price
+    const effectivePrice = Math.max(0, price - discount); // Effective price after discount
+
+    // Calculate used credit based on the full price
+    const usedCredit = Math.min(availableCredit, price);
+
     console.log("subsidy_credits-->", subsidy_credits);
     console.log("updatedAvailableCredit==>", updatedAvailableCredit);
+
+    console.log("usedCredit==>", usedCredit);
 
     const updateSubsidyCredit: Partial<SubsidyCredit> = {
       subsidy_credit_id: subsidy_credits.subsidy_credit_id,
@@ -203,7 +212,7 @@ export async function CreateSubsidyTransactionService(
       user_id: user.user_id,
       price,
       discount_price: discount,
-      credit_used: availableCredit,
+      credit_used: usedCredit,
       total_price: totalPrice,
       transaction_status: $Enums.TransactionStatus.COMPLETED,
     };
