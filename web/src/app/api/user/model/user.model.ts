@@ -40,6 +40,7 @@ export async function GetUserPagination(options: {
   select?: any;
   where: any;
   orderBy?: { field: string; direction: "asc" | "desc" };
+  include?: any
 }): Promise<any> {
   try {
     const { paginate, select, where, orderBy } = options;

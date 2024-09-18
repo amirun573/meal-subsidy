@@ -176,6 +176,8 @@ export async function UserPaginationService(data: UserPaginationRequest) {
           select: {
             applicable: true,
             uuid: true,
+            start_date: true,
+            end_date: true,
             subsidy_type: {
               select: {
                 subsidy_type_code: true,
@@ -252,15 +254,16 @@ export async function ScanCheckEmployeeIDService(data: ScanCheckEmployeeID) {
         ],
         AND: [
           {
-            subsidies: {
-              some: {
-                applicable: true,
-              },
-            },
+            // subsidies: {
+            //   some: {
+            //     applicable: true,
+            //   },
+            // },
           },
           {
             subsidies: {
               some: {
+                active: true,
                 subsidy_type: {
                   subsidy_type_code: SubsidyTypeCode.meal,
                 },
@@ -760,6 +763,8 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
       access_card_no,
       cost_center_code,
       subsidy_meal_applicable,
+      start_date,
+      end_date,
     } = data;
 
     const getUser: Partial<User> | null = await GetUserSingle({
@@ -902,6 +907,8 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
       subsidy_type_id: subsidyType.subsidy_type_id,
       user_id,
       applicable: subsidy_meal_applicable === "yes" ? true : false,
+      start_date: start_date? new Date(start_date): null,
+      end_date: end_date? new Date(end_date): null,
     };
 
     if (access_card_no) {

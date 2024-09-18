@@ -19,6 +19,7 @@ import {
   DownloadReportSubsidyTransaction,
   GetSubsidyTransactionPaginationService,
   GetSubsidyTransactionReportChart,
+  TriggerCreditService,
   UpdateUserApplicableSubsidy,
 } from "./service/subsidy.service";
 import { decrypt } from "@/_Common/function/Hashing";
@@ -27,6 +28,7 @@ const APIAuth: StatusAPICode[] = [
   StatusAPICode.SUBSIDY_TRANSACTION_PAGINATION,
   StatusAPICode.SUBSIDY_CHART_REPORT,
   StatusAPICode.SUBSIDY_REPORT_DOWNLOAD,
+  StatusAPICode.CREATE_TRIGGER_SUBSIDY_CREDIT,
 ];
 
 export async function GET(req: any, res: NextApiResponse) {
@@ -184,6 +186,23 @@ export async function POST(req: any, res: any) {
           }
 
           return CreateSubsidyTransactionService(decryptData);
+        }
+
+        case StatusAPICode.CREATE_TRIGGER_SUBSIDY_CREDIT: {
+          const data: any = body as any;
+
+          if (!data) {
+            throw Error("No Data Detected");
+          }
+
+          const decryptData: string = decrypt(data?.key) || "";
+
+          if (!decryptData) {
+            throw Error("Not Authorized To Proceed");
+          }
+
+          return TriggerCreditService();
+          // return CreateSubsidyTransactionService(decryptData);
         }
 
         default: {

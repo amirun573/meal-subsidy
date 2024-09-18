@@ -19,6 +19,8 @@ import { FormatDepartmentCode } from "@/_Common/function/String";
 import { FolderArrowDownIcon } from '@heroicons/react/24/solid'
 import { MainContent } from "@/Components/Main";
 import { FileMimeType } from "@/_Common/enum/file-type.enum";
+import { ConvertToUTCEndOfDay, ConvertToUTCStartOfDay } from '../../_Common/function/Date';
+import { encrypt } from "@/_Common/function/Hashing";
 
 
 interface EmployeeDetails {
@@ -34,6 +36,8 @@ interface EmployeeDetails {
     cost_center_code: string;
     access_card_no: string;
     employee_category_name: string;
+    start_date?: string;
+    end_date?: string;
 
 }
 
@@ -124,6 +128,8 @@ const EmployeeDetailsPage = () => {
                         department_name: (user as any)?.department?.department_name,
                         is_meal_subsidiry_active: subsidies?.applicable as boolean || false,
                         meal_subsidiry_uuid: (subsidies as any)?.subsidy_type?.uuid || '',
+                        start_date: (subsidies as any)?.start_date ? new Date((subsidies as any)?.start_date).toISOString().split('T')[0] : '',
+                        end_date: (subsidies as any)?.end_date ? new Date((subsidies as any)?.end_date).toISOString().split('T')[0] : '',
                         uuid: user?.uuid || '',
                         email: user?.email || '',
                         employee_category_name: (user as any)?.employee_category?.employee_category_name || '',
@@ -339,6 +345,7 @@ const EmployeeDetailsPage = () => {
         enum Step {
             employee_details = 'employee_details',
             password = 'password',
+            setup_date = 'setup_date',
             confirmation = 'confirmation',
         }
 
@@ -356,15 +363,18 @@ const EmployeeDetailsPage = () => {
                 details: "Enter Password Details.",
             },
             {
-                stepID: Step.confirmation,
+                stepID: Step.setup_date,
                 stepNumber: 3,
+                title: "Date Setup",
+                details: "Enter Date Setup.",
+            },
+            {
+                stepID: Step.confirmation,
+                stepNumber: 4,
                 title: "Confirmation Employee Details",
                 details: "Submit Employee Details.",
             },
         ];
-
-
-
 
         const handleInputChange = async (e: any) => {
             const { name, value } = e.target;
@@ -411,6 +421,14 @@ const EmployeeDetailsPage = () => {
 
                 submitDetails.employee_category_code = findEmployeeCategory.employee_category_code;
                 submitDetails.department_code = findDepartment.department_code;
+
+                if (submitDetails.start_date) {
+                    submitDetails.start_date = ConvertToUTCStartOfDay(submitDetails.start_date);
+                }
+
+                if (submitDetails.end_date) {
+                    submitDetails.end_date = ConvertToUTCEndOfDay(submitDetails.end_date);
+                }
 
                 await CreateUpdateEmployeeValidation(submitDetails);
 
@@ -663,6 +681,55 @@ const EmployeeDetailsPage = () => {
                 case 2: {
                     return (
                         <>
+                            <h3 className="mt-10 text-lg font-medium leading-none text-gray-900 dark:text-white">Setup Date Details</h3>
+                            <form>
+                                <div className="col-span-2 sm:col-span-1">
+                                    <div className="grid gap-4 mb-4 sm:grid-cols-2">
+
+
+                                        <div className="mt-4">
+                                            <label htmlFor="start_date" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Start Date</label>
+                                            <input
+                                                type="date"
+                                                name="start_date"
+                                                id="start_date"
+                                                value={submitDetails.start_date} // Display the selected date
+                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                                onChange={handleInputChange}
+                                                min={new Date().toISOString().split('T')[0]} // Disable previous dates
+                                                required
+                                            />
+
+                                        </div>
+
+                                        <div className="mt-4">
+                                            <label htmlFor="end_date" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">End Date</label>
+                                            <input
+                                                type="date"
+                                                name="end_date"
+                                                id="start_date"
+                                                value={submitDetails.end_date} // Display the selected date
+                                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                                onChange={handleInputChange}
+                                                min={new Date().toISOString().split('T')[0]} // Disable previous dates
+                                                required
+                                            />
+                                        </div>
+
+
+                                    </div>
+                                </div>
+                            </form>
+
+
+
+
+                        </>
+                    );
+                }
+                case 3: {
+                    return (
+                        <>
                             <h3 className="mt-10 text-lg font-medium leading-none text-gray-900 dark:text-white">Employee Details</h3>
                             <div className="col-span-2 sm:col-span-1">
                                 <div className="grid gap-4 mb-4 sm:grid-cols-2">
@@ -776,6 +843,34 @@ const EmployeeDetailsPage = () => {
                                         />
 
                                     </div>
+
+                                    <div className="mt-4">
+                                        <label htmlFor="subsidy_meal_applicable" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Start Date</label>
+
+                                        <input
+                                            type="text"
+                                            name="subsidy_meal_applicable"
+                                            id="subsidy_meal_applicable"
+                                            value={submitDetails.start_date}
+                                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                            readOnly
+                                        />
+
+                                    </div>
+
+                                    <div className="mt-4">
+                                        <label htmlFor="subsidy_meal_applicable" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">End Date</label>
+
+                                        <input
+                                            type="text"
+                                            name="subsidy_meal_applicable"
+                                            id="subsidy_meal_applicable"
+                                            value={submitDetails.end_date}
+                                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                            readOnly
+                                        />
+
+                                    </div>
                                 </div>
                             </div>
 
@@ -800,68 +895,79 @@ const EmployeeDetailsPage = () => {
                         >
                             Employee Details
                         </button>
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                            <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl p-6 relative mx-4 sm:mx-6 md:mx-8 lg:mx-12">
-                                <button
-                                    className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-                                    onClick={() => setOpenModalAddBooking(false)}
-                                    aria-label="Close modal"
+                        {openModalAddBooking && (
+                            <div
+                                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+                                onClick={() => setOpenModalAddBooking(false)} // Close modal on overlay click
+                            >
+                                <div
+                                    className="bg-white rounded-lg shadow-lg w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl p-6 relative mx-4"
+                                    onClick={(e) => e.stopPropagation()} // Prevent clicks inside the modal from closing it
                                 >
-                                    &times;
-                                </button>
+                                    <button
+                                        className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-xl font-semibold"
+                                        onClick={() => setOpenModalAddBooking(false)}
+                                        aria-label="Close modal"
+                                    >
+                                        &times;
+                                    </button>
 
-                                <div className="mb-4">
-                                    <Stepper steps={steps} currentStep={currentStep} setCurrentStep={setCurrentStep} />
-                                </div>
-
-                                <div className="overflow-y-auto max-h-[70vh]">
-                                    {renderStep()}
-                                </div>
-
-                                <div className="flex flex-col sm:flex-row justify-between mt-3">
-                                    <div>
-                                        {currentStep <= 0 ? (
-                                            <button
-                                                type="button"
-                                                className="text-gray-700 bg-gray-200 hover:bg-gray-300 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
-                                                disabled
-                                            >
-                                                Previous Step
-                                            </button>
-                                        ) : (
-                                            <button
-                                                type="button"
-                                                className="text-white bg-gray-700 hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
-                                                onClick={prevStep}
-                                            >
-                                                Previous Step
-                                            </button>
-                                        )}
+                                    <div className="mb-4">
+                                        <Stepper steps={steps} currentStep={currentStep} setCurrentStep={setCurrentStep} />
                                     </div>
 
-                                    <div className="mt-3 sm:mt-0">
-                                        {currentStep < steps.length - 1 ? (
-                                            <button
-                                                className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
-                                                onClick={nextStep}
-                                            >
-                                                Next Step
-                                            </button>
-                                        ) : (
-                                            <button
-                                                type="button"
-                                                className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
-                                                onClick={handleSubmit}
-                                                disabled={loading}
-                                            >
-                                                {loading ? 'Loading...' : 'Submit'}
-                                            </button>
-                                        )}
+                                    <div className="overflow-y-auto max-h-[70vh]">
+                                        {renderStep()}
+                                    </div>
+
+                                    <div className="flex flex-col sm:flex-row justify-between mt-4">
+                                        <div>
+                                            {currentStep <= 0 ? (
+                                                <button
+                                                    type="button"
+                                                    className="text-gray-700 bg-gray-200 hover:bg-gray-300 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
+                                                    disabled
+                                                >
+                                                    Previous Step
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    className="text-white bg-gray-700 hover:bg-gray-800 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
+                                                    onClick={prevStep}
+                                                >
+                                                    Previous Step
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <div className="mt-4 sm:mt-0">
+                                            {currentStep < steps.length - 1 ? (
+                                                <button
+                                                    className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
+                                                    onClick={nextStep}
+                                                >
+                                                    Next Step
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
+                                                    onClick={handleSubmit}
+                                                    disabled={loading}
+                                                >
+                                                    {loading ? 'Loading...' : 'Submit'}
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
                     </div>
+
+
+
                 )}
             </>
 
@@ -1103,7 +1209,11 @@ const EmployeeDetailsPage = () => {
                 cost_center_code: employee.cost_center_code,
                 access_card_no: employee.access_card_no,
                 subsidy_meal_applicable: employee.is_meal_subsidiry_active ? 'yes' : 'no',
+                start_date: employee.start_date,
+                end_date: employee.end_date
             }
+
+            console.log("updateEmployee===>", updateEmployee);
             setInitializeSubmitDetails(updateEmployee);
             setOpenModalAddBooking(true);
         } catch (error) {
@@ -1176,6 +1286,31 @@ const EmployeeDetailsPage = () => {
         }
     }
 
+    const HandleTriggerCredit = async () => {
+        setLoading(true);
+        try {
+            // Post request to API
+            const response = await axios.post('/api/subsidy', {
+                [StatusAPICode.code]: StatusAPICode.CREATE_TRIGGER_SUBSIDY_CREDIT,
+                key: encrypt(`TRIGGER_CREDIT`),
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${userDetailLocal?.accessToken}`,
+
+                },
+            });
+
+            alert("Successfully Generate Subsidy Credit");
+        } catch (error) {
+            console.error(error);
+            DisplayAlert(error);
+            await HandleUnAuthorized(error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
 
 
     return (<>
@@ -1185,7 +1320,7 @@ const EmployeeDetailsPage = () => {
                     {loading && <Spinner />}
 
                     <h1 className="text-black">Employee Details</h1>
-                    <div className="flex justify-end items-center space-x-4">
+                    <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 p-4">
                         <label
                             htmlFor="filter"
                             className="text-gray-900 text-sm dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
@@ -1195,26 +1330,35 @@ const EmployeeDetailsPage = () => {
                         <input
                             id="filter"
                             name="filter"
-                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500 w-full sm:w-auto"
                             onChange={(e) => setFilter(e.target.value)}
                         />
-                        <button
-                            onClick={HandleAddUser}
-                            className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
-                        >
-                            +
-                        </button>
-                        <button
-                            onClick={HandleUserUploadFileAction}
-                            className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded flex items-center"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 64 64" fill="none">
-                                <rect x="4" y="14" width="56" height="36" rx="4" fill="#f5c38c" />
-                                <path d="M4 14h20l4-4h32v36H4V14z" fill="#f5c38c" />
-                                <rect x="8" y="22" width="48" height="24" rx="2" fill="#fff" />
-                            </svg>
-                        </button>
+                        <div className="flex space-x-2 sm:space-x-4">
+                            <button
+                                onClick={HandleAddUser}
+                                className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded w-full sm:w-auto"
+                            >
+                                +
+                            </button>
+                            <button
+                                onClick={HandleUserUploadFileAction}
+                                className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded flex items-center justify-center w-full sm:w-auto"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 64 64" fill="none">
+                                    <rect x="4" y="14" width="56" height="36" rx="4" fill="#f5c38c" />
+                                    <path d="M4 14h20l4-4h32v36H4V14z" fill="#f5c38c" />
+                                    <rect x="8" y="22" width="48" height="24" rx="2" fill="#fff" />
+                                </svg>
+                            </button>
+                            <button
+                                onClick={HandleTriggerCredit}
+                                className="bg-red-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded flex items-center w-full sm:w-auto"
+                            >
+                                Trigger Credit
+                            </button>
+                        </div>
                     </div>
+
 
 
 
