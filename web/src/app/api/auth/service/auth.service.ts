@@ -12,6 +12,8 @@ import jwt from "jsonwebtoken";
 import { encrypt } from "@/_Common/function/Hashing";
 import { Feature, UserFeatures } from "@prisma/client";
 import { GetUserFeatures } from "../../feature/model/feature.model";
+import logger from "../../../../../libs/winston";
+
 
 export async function HashingPasswordService(data: { password: string }) {
   let message: string = "";
@@ -33,6 +35,9 @@ export async function HashingPasswordService(data: { password: string }) {
       passwordHashing: hashingPassword_4Save,
     });
   } catch (error: any) {
+    logger.error("Failed at HashingPasswordService function ===>", { error });
+
+    console.error(error);
     return NextResponse.json(
       {
         message: error.message || message,
@@ -161,6 +166,9 @@ export async function SignInService(data: SignInRequest) {
       userDetails,
     });
   } catch (error: any) {
+    logger.error("Failed at SignInService function ===>", { error });
+
+    console.error(error);
     return NextResponse.json(
       {
         message: error.message || message,

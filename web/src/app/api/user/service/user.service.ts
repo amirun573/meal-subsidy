@@ -63,6 +63,7 @@ import {
   CreateAccessCard,
   CreateAccessCardCascade,
 } from "../../accessCard/model/accessCard.model";
+import logger from "../../../../../libs/winston";
 
 export async function UserPaginationService(data: UserPaginationRequest) {
   let message: string = "";
@@ -218,6 +219,10 @@ export async function UserPaginationService(data: UserPaginationRequest) {
       totalItems,
     });
   } catch (error: any) {
+
+    logger.error("Failed at UserPaginationService function ===>", { error });
+
+    console.error(error);
     return NextResponse.json(
       {
         message: error.message || message,
@@ -319,6 +324,10 @@ export async function ScanCheckEmployeeIDService(data: ScanCheckEmployeeID) {
       subsidyCreditUUID: subsidyCredit.uuid,
     });
   } catch (error: any) {
+
+    logger.error("Failed at ScanCheckEmployeeIDService function ===>", { error });
+
+    console.error(error);
     return NextResponse.json(
       {
         message: error.message || message,
@@ -487,6 +496,10 @@ export async function CreateEmployee(data: CreateUpdateUser) {
       message: "Successfully Create New Employee",
     });
   } catch (error: any) {
+
+    logger.error("Failed at CreateEmployee function ===>", { error });
+
+    console.error(error);
     return NextResponse.json(
       {
         message: error.message || message,
@@ -734,6 +747,10 @@ export async function CreateEmployeeBulkUpload(
       message: "Successfully Create All Employees",
     });
   } catch (error: any) {
+
+    logger.error("Failed at CreateEmployeeBulkUpload function ===>", { error });
+
+    console.error(error);
     return NextResponse.json(
       {
         message: error.message || message,
@@ -950,6 +967,10 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
       message: "Successfully Create New Employee",
     });
   } catch (error: any) {
+
+    logger.error("Failed at UpdateEmployee function ===>", { error });
+
+    console.error(error);
     return NextResponse.json(
       {
         message: error.message || message,
