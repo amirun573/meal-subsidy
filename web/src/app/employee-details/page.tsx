@@ -7,7 +7,7 @@ import { GetLocalStorageDetails, HandleUnAuthorized } from "@/_Common/function/L
 import { UserDetailsLocalStorage } from "@/_Common/interface/auth.interface";
 import { SubsidyEmployeeUpdate } from "@/_Common/interface/subsidy.interface";
 import { EmployeeUpdateSubsidyValidation } from "@/_Common/validation/subsidy.validation";
-import { CreateUpdateEmployeeValidation, UserPaginationValidation } from "@/_Common/validation/user.validation";
+import { CreateUpdateEmployeeValidation, UpdateEmployeeStatusValidation, UserPaginationValidation } from "@/_Common/validation/user.validation";
 import { CostCenter, Department, EmployeeCategory, Subsidy, User } from "@prisma/client";
 import axios from "axios";
 import { Modal } from "flowbite-react";
@@ -21,7 +21,8 @@ import { MainContent } from "@/Components/Main";
 import { FileMimeType } from "@/_Common/enum/file-type.enum";
 import { ConvertToUTCEndOfDay, ConvertToUTCStartOfDay } from '../../_Common/function/Date';
 import { encrypt } from "@/_Common/function/Hashing";
-
+import ToggleSwitch from '../../Components/Toggle/index';
+import { UpdateStatusRequest } from "@/_Common/interface/general.interface";
 
 interface EmployeeDetails {
     name: string,
@@ -38,6 +39,7 @@ interface EmployeeDetails {
     employee_category_name: string;
     start_date?: string;
     end_date?: string;
+    user_active: boolean;
 
 }
 
@@ -136,6 +138,7 @@ const EmployeeDetailsPage = () => {
                         employee_category_code: (user as any)?.employee_category?.employee_category_code || '',
                         cost_center_code: (user as any)?.cost_center?.cost_center_code || '',
                         access_card_no: (user as any)?.access_cards[0]?.card_value || '',
+                        user_active: user?.active || false,
                     }
 
                     employeeDetailsResponse.push(employee);
@@ -1311,6 +1314,69 @@ const EmployeeDetailsPage = () => {
         }
     }
 
+    const HandleToggleEmployeeStatus = async (status: boolean, index: number, uuid?: string) => {
+        setLoading(true);
+        try {
+
+            if (uuid) {
+
+                // Update the specific item in the array using the index
+                const updatedEmployees = [...employeesDetails];
+                updatedEmployees[index] = {
+                    ...updatedEmployees[index],
+                    user_active: status,
+                };
+
+                const employee: EmployeeDetails = (updatedEmployees[index]);
+
+                if (!employee) {
+                    throw Error("No Employee Can Be Found");
+                }
+
+                const updateUser: UpdateStatusRequest = {
+                    code: StatusAPICode.UPDATE_USER_ACTIVE_STATUS,
+                    uuid: employee.uuid,
+                    active_status: employee.user_active
+                };
+
+                console.log("Update User==>", updateUser);
+
+                await UpdateEmployeeStatusValidation(updateUser);
+
+                const requestUpdateUserStatus = await axios.put(`/api/user`, updateUser, {
+                    headers: {
+                        Authorization: `Bearer ${userDetailLocal?.accessToken}`,
+                    }
+                });
+
+                if (!requestUpdateUserStatus.data?.message) {
+                    throw Error("Failed TO Update Employee Status");
+                }
+
+                alert(requestUpdateUserStatus.data?.message);
+
+
+                setEmployeeDetails(updatedEmployees);
+
+
+
+
+            }
+
+            else {
+                throw Error("Employee ID not found");
+            }
+
+
+        } catch (error) {
+            console.error(error);
+            DisplayAlert(error);
+            await HandleUnAuthorized(error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
 
 
     return (<>
@@ -1392,6 +1458,7 @@ const EmployeeDetailsPage = () => {
                                             Meal Subsidiry Applicable
                                         </th>
                                         <th scope="col" className="px-6 py-3">Edit</th>
+                                        <th scope="col" className="px-6 py-3">Active</th>
 
                                     </tr>
                                 </thead>
@@ -1433,6 +1500,11 @@ const EmployeeDetailsPage = () => {
                                                         Edit
                                                     </button>
                                                 </td>
+                                                <td className="px-6 py-4">
+                                                    <ToggleSwitch status={item.user_active} index={index} HandleToggleStatus={HandleToggleEmployeeStatus} uuid={item.uuid} />
+                                                </td>
+
+
 
 
                                             </tr>

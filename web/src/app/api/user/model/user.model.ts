@@ -141,7 +141,7 @@ async function CreateUserDetailsMany(object: {
   }
 }
 
-async function UpdateUser(object: { user: User; prismaTransaction?: any }) {
+export async function UpdateUser(object: { user: User; prismaTransaction?: any }) {
   try {
     const { user, prismaTransaction } = object;
 

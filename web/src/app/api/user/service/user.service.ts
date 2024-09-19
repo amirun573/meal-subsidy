@@ -8,6 +8,7 @@ import {
 import {
   CreateUpdateEmployeeValidation,
   ScanEmployeeIDValidation,
+  UpdateEmployeeStatusValidation,
   UserPaginationValidation,
 } from "@/_Common/validation/user.validation";
 import { NextResponse } from "next/server";
@@ -17,6 +18,7 @@ import {
   GetTotalUser,
   GetUserPagination,
   GetUserSingle,
+  UpdateUser,
 } from "../model/user.model";
 import { PaginationData } from "../../../../_Common/interface/pagination.interface";
 import { SubsidyTypeCode } from "@/_Common/enum/subsidy-type.enum";
@@ -63,6 +65,7 @@ import {
   CreateAccessCard,
   CreateAccessCardCascade,
 } from "../../accessCard/model/accessCard.model";
+import { UpdateStatusRequest } from "@/_Common/interface/general.interface";
 // import logger from "../../../../../libs/winston";
 
 export async function UserPaginationService(data: UserPaginationRequest) {
@@ -219,7 +222,6 @@ export async function UserPaginationService(data: UserPaginationRequest) {
       totalItems,
     });
   } catch (error: any) {
-
     // logger.error("Failed at UserPaginationService function ===>", { error });
 
     console.error(error);
@@ -324,7 +326,6 @@ export async function ScanCheckEmployeeIDService(data: ScanCheckEmployeeID) {
       subsidyCreditUUID: subsidyCredit.uuid,
     });
   } catch (error: any) {
-
     // logger.error("Failed at ScanCheckEmployeeIDService function ===>", { error });
 
     console.error(error);
@@ -496,7 +497,6 @@ export async function CreateEmployee(data: CreateUpdateUser) {
       message: "Successfully Create New Employee",
     });
   } catch (error: any) {
-
     // logger.error("Failed at CreateEmployee function ===>", { error });
 
     console.error(error);
@@ -747,7 +747,6 @@ export async function CreateEmployeeBulkUpload(
       message: "Successfully Create All Employees",
     });
   } catch (error: any) {
-
     // logger.error("Failed at CreateEmployeeBulkUpload function ===>", { error });
 
     console.error(error);
@@ -925,8 +924,8 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
       subsidy_type_id: subsidyType.subsidy_type_id,
       user_id,
       applicable: subsidy_meal_applicable === "yes" ? true : false,
-      start_date: start_date? new Date(start_date): null,
-      end_date: end_date? new Date(end_date): null,
+      start_date: start_date ? new Date(start_date) : null,
+      end_date: end_date ? new Date(end_date) : null,
     };
 
     if (access_card_no) {
@@ -968,9 +967,56 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
       message: "Successfully Create New Employee",
     });
   } catch (error: any) {
-
     // logger.error("Failed at UpdateEmployee function ===>", { error });
 
+    console.error(error);
+    return NextResponse.json(
+      {
+        message: error.message || message,
+      },
+      {
+        status: error.statusCode || status,
+      }
+    );
+  }
+}
+
+export async function UpdateStatusEmployeeService(data: UpdateStatusRequest) {
+  let message: string = "";
+  let status: number = 500;
+  try {
+    await UpdateEmployeeStatusValidation(data);
+
+    const { active_status, uuid } = data;
+
+    const user: Partial<User> | null = await GetUserSingle({
+      where: {
+        uuid,
+      },
+    });
+
+    if (!user) {
+      status = 400;
+      throw Error("Failed To Assign Subsidy Meal");
+    }
+
+    const updateUser: Partial<User> = {
+      user_id: user.user_id,
+      active: active_status,
+    };
+
+    const updateUserTransaction = await UpdateUser({
+      user: updateUser as User,
+    });
+
+    if (!updateUserTransaction) {
+      status = 400;
+      throw Error("Failed TO Update Status User.");
+    }
+    return NextResponse.json({
+      message: "Successfully Update Employee Status",
+    });
+  } catch (error: any) {
     console.error(error);
     return NextResponse.json(
       {

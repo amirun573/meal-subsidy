@@ -4,6 +4,7 @@ import {
   ScanCheckEmployeeID,
   CreateUpdateUser,
 } from "../interface/user.interface";
+import { UpdateStatusRequest } from "../interface/general.interface";
 
 const PaginationEmployeeValidation = yup.object().shape({
   page: yup.string().required("Page Required"),
@@ -47,6 +48,12 @@ const CreateUpdateEmployeeValidationSchema = yup.object().shape({
     .oneOf(["yes", "no"], "Subsidy Meal Applicable must be 'yes' or 'no'"),
 });
 
+const UpdateEmployeeStatusValidationSchema = yup.object().shape({
+  active_status: yup.boolean().required("Active Statue Required"),
+  uuid: yup.string().required("Employee UUID Required"),
+
+});
+
 export function UserPaginationValidation(data: UserPaginationRequest) {
   return PaginationEmployeeValidation.validate(data);
 }
@@ -58,3 +65,8 @@ export function ScanEmployeeIDValidation(data: ScanCheckEmployeeID) {
 export function CreateUpdateEmployeeValidation(data: CreateUpdateUser) {
   return CreateUpdateEmployeeValidationSchema.validate(data);
 }
+
+export function UpdateEmployeeStatusValidation(data: UpdateStatusRequest) {
+  return UpdateEmployeeStatusValidationSchema.validate(data);
+}
+
