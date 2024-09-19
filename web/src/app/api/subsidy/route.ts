@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../libs/prisma";
 import { StatusAPICode } from "../../../_Common/enum/status-api-code.enum";
-import { User } from "@prisma/client";
+import { SubsidyType, User } from "@prisma/client";
 import {
   JWTDecodeInterface,
   SignInRequest,
@@ -19,7 +19,9 @@ import {
   DownloadReportSubsidyTransaction,
   GetSubsidyTransactionPaginationService,
   GetSubsidyTransactionReportChart,
+  GetSubsidyTypePaginationService,
   TriggerCreditService,
+  UpdateSubsidyTypeService,
   UpdateUserApplicableSubsidy,
 } from "./service/subsidy.service";
 import { decrypt } from "@/_Common/function/Hashing";
@@ -29,6 +31,8 @@ const APIAuth: StatusAPICode[] = [
   StatusAPICode.SUBSIDY_CHART_REPORT,
   StatusAPICode.SUBSIDY_REPORT_DOWNLOAD,
   StatusAPICode.CREATE_TRIGGER_SUBSIDY_CREDIT,
+  StatusAPICode.SUBSIDY_TYPE_PAGINATION,
+  StatusAPICode.UPDATE_SUBSIDY_TYPE,
 ];
 
 export async function GET(req: any, res: NextApiResponse) {
@@ -117,6 +121,22 @@ export async function GET(req: any, res: NextApiResponse) {
           startDate,
           endDate,
           employees_id: JSON.parse(employees_id),
+        });
+      }
+
+      case StatusAPICode.SUBSIDY_TYPE_PAGINATION: {
+        const page: string | null = url.searchParams.get("page");
+
+        const filter: string | null = url.searchParams.get("filter");
+
+        if (!page) {
+          statusCode = 400;
+          throw Error("Page Not Found");
+        }
+
+        return GetSubsidyTypePaginationService({
+          page: parseInt(page),
+          filter,
         });
       }
       default: {
@@ -262,6 +282,15 @@ export async function PUT(req: any, res: any) {
           //return WriteAddToCart(data, user);
         }
 
+        case StatusAPICode.UPDATE_SUBSIDY_TYPE: {
+          const data: Partial<SubsidyType> = body as Partial<SubsidyType>;
+
+          if (!data) {
+            throw Error("No Data Detected");
+          }
+
+          return UpdateSubsidyTypeService(data);
+        }
         default: {
           throw Error("No Code Found");
         }
