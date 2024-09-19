@@ -838,40 +838,7 @@ export async function GetSubsidyTypePaginationService(
       conditionFilter = {
         OR: [
           {
-            user: {
-              employee_id: { contains: filter, mode: "insensitive" },
-            },
-          },
-          {
-            user: {
-              UserDetails: {
-                name: { contains: filter, mode: "insensitive" },
-              },
-            },
-          },
-          {
-            user: {
-              department: {
-                department_name: { contains: filter, mode: "insensitive" },
-              },
-            },
-          },
-          {
-            user: {
-              cost_center: {
-                cost_center_code: { contains: filter, mode: "insensitive" },
-              },
-            },
-          },
-          {
-            user: {
-              employee_category: {
-                employee_category_name: {
-                  contains: filter,
-                  mode: "insensitive",
-                },
-              },
-            },
+            subsidy_type_name: { contains: filter, mode: "insensitive" },
           },
         ],
       };
