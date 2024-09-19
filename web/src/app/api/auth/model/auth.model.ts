@@ -4,7 +4,7 @@ import { JWTDecodeInterface } from "@/_Common/interface/auth.interface";
 import { User } from "@prisma/client";
 import { compare, hash } from "bcrypt";
 import { GetUserSingle } from "../../user/model/user.model";
-
+import logger from "../../../../../libs/winston";
 // import { getUserByEmail } from "../users/model/users.model";
 export async function JWTDecode(
   req: any
@@ -124,6 +124,8 @@ export async function JWTDecode(
     //   return false;
     // }
   } catch (error) {
+    logger.error("Failed at JWTDecode function ===>", { error });
+
     console.log("Error==>", error);
     return false;
   }
@@ -135,6 +137,8 @@ export async function hashPassword(password: string): Promise<string | null> {
     const hashedPassword = await hash(password, saltRounds);
     return hashedPassword;
   } catch (error) {
+    logger.error("Failed at hashPassword function ===>", { error });
+
     console.error(error);
     return null;
   }

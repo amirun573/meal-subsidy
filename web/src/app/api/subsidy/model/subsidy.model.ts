@@ -11,6 +11,7 @@ import {
 } from "@/_Common/interface/database.interface";
 import { PaginationData } from "@/_Common/interface/pagination.interface";
 import { DownloadReportSubsidyTransactionResult } from "@/_Common/interface/subsidy.interface";
+import logger from "../../../../../libs/winston";
 
 export async function GetSubsidySingle(data: PrismaCondtionFetch) {
   try {
@@ -21,6 +22,8 @@ export async function GetSubsidySingle(data: PrismaCondtionFetch) {
       select,
     });
   } catch (error) {
+    logger.error("Failed at GetSubsidySingle function ===>", { error });
+
     console.error(error);
     return null;
   }
@@ -35,6 +38,8 @@ export async function GetSubsidyLists(data: PrismaCondtionFetch) {
       select,
     });
   } catch (error) {
+    logger.error("Failed at GetSubsidyLists function ===>", { error });
+
     console.error(error);
     return [];
   }
@@ -62,6 +67,8 @@ export async function UpdateSubsidy(object: PrismaUpdate) {
       });
     }
   } catch (error) {
+    logger.error("Failed at UpdateSubsidy function ===>", { error });
+
     console.error(error);
     return null;
   }
@@ -76,6 +83,8 @@ export async function GetSubsidyTypeSingle(data: PrismaCondtionFetch) {
       select,
     });
   } catch (error) {
+    logger.error("Failed at GetSubsidyTypeSingle function ===>", { error });
+
     console.error(error);
     return null;
   }
@@ -98,6 +107,8 @@ export async function CreateSubsidy_4User(object: {
       });
     }
   } catch (error) {
+    logger.error("Failed at CreateSubsidy_4User function ===>", { error });
+
     console.error(error);
     return null;
   }
@@ -112,6 +123,8 @@ export async function GetSubsidyCreditSingle(data: PrismaCondtionFetch) {
       select,
     });
   } catch (error) {
+    logger.error("Failed at GetSubsidyCreditSingle function ===>", { error });
+
     console.error(error);
     return null;
   }
@@ -134,6 +147,8 @@ export async function CreateSubsidyCredit(object: {
       });
     }
   } catch (error) {
+    logger.error("Failed at CreateSubsidyCredit function ===>", { error });
+
     console.error(error);
     return null;
   }
@@ -161,6 +176,8 @@ export async function UpdateSubsidyCredit(object: PrismaUpdate) {
       });
     }
   } catch (error) {
+    logger.error("Failed at UpdateSubsidyCredit function ===>", { error });
+
     console.error(error);
     return null;
   }
@@ -183,6 +200,8 @@ export async function CreateSubsidyTransaction(object: {
       });
     }
   } catch (error) {
+    logger.error("Failed at CreateSubsidyTransaction function ===>", { error });
+
     console.error(error);
     return null;
   }
@@ -210,6 +229,8 @@ export async function UpdateSubsidyTransaction(object: PrismaUpdate) {
       });
     }
   } catch (error) {
+    logger.error("Failed at UpdateSubsidyTransaction function ===>", { error });
+
     console.error(error);
     return null;
   }
@@ -269,6 +290,8 @@ export async function SubsidyCreditTransactionCascade(data: {
 
     return result;
   } catch (error) {
+    logger.error("Failed at SubsidyCreditTransactionCascade function ===>", { error });
+
     console.error(error);
     return null;
   }
@@ -293,6 +316,8 @@ export async function CreateSubsidyMany(object: {
       });
     }
   } catch (error) {
+    logger.error("Failed at CreateSubsidyMany function ===>", { error });
+
     console.error(error);
     return [];
   }
@@ -308,6 +333,8 @@ export async function GetCountTotalSubsidyTransaction(
       where,
     });
   } catch (error) {
+    logger.error("Failed at GetCountTotalSubsidyTransaction function ===>", { error });
+
     console.error(error);
     return 0;
   }
@@ -335,6 +362,9 @@ export async function GetSubsidyTransactionPagination(options: {
 
     //const page = data.get("page");
   } catch (error) {
+    logger.error("Failed at GetSubsidyTransactionPagination function ===>", { error });
+
+    console.log(error);
     return null;
   }
 }
@@ -378,6 +408,8 @@ export async function GetFilteredTransactions(data: {
       await prisma.$queryRawUnsafe(query, startDate, endDate);
     return result;
   } catch (error) {
+    logger.error("Failed at GetFilteredTransactions function ===>", { error });
+
     console.error(error);
     return [];
   }
@@ -396,6 +428,7 @@ export async function DisableAllSubsidyCredit(object: {
       return await prismaTransaction.$queryRaw(query);
     }
   } catch (error) {
+    logger.error("Failed at DisableAllSubsidyCredit function ===>", { error });
     console.error(error);
     return null;
   }
@@ -418,6 +451,8 @@ export async function CreateSubsidyCreditMany(object: {
       });
     }
   } catch (error) {
+    logger.error("Failed at CreateSubsidyCreditMany function ===>", { error });
+
     console.error(error);
     return [];
   }
@@ -454,6 +489,8 @@ export async function TriggerSubsidyCreditCascade(data: {
 
     return result;
   } catch (error) {
+    logger.error("Failed at TriggerSubsidyCreditCascade function ===>", { error });
+
     console.error(error);
     return null;
   }

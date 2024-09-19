@@ -1,6 +1,7 @@
 import { Feature, UserFeatures } from "@prisma/client";
 import { PrismaCondtionFetch } from "@/_Common/interface/database.interface";
 import { prisma } from "../../../../../libs/prisma";
+import logger from "../../../../../libs/winston";
 
 export async function GetUserFeatures(
   data: PrismaCondtionFetch
@@ -13,6 +14,8 @@ export async function GetUserFeatures(
       select,
     });
   } catch (error) {
+    logger.error("Failed at GetUserFeatures function ===>", { error });
+
     console.error(error);
     return [];
   }

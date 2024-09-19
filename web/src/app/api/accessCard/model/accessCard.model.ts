@@ -1,6 +1,6 @@
 import { Prisma, AccessCard } from "@prisma/client";
 import { prisma, timeout } from "../../../../../libs/prisma";
-
+import logger from "../../../../../libs/winston";
 export async function CreateAccessCard(object: {
   data: AccessCard;
   prismaTransaction?: any;
@@ -18,6 +18,8 @@ export async function CreateAccessCard(object: {
       });
     }
   } catch (error) {
+    logger.error("Failed at CreateAccessCard function ===>", { error });
+
     console.error(error);
     return null;
   }
@@ -42,6 +44,7 @@ export async function CreateAccessCardMany(object: {
       });
     }
   } catch (error) {
+    logger.error("Failed at CreateAccessCardMany function ===>", { error });
     console.error(error);
     return [];
   }
@@ -62,6 +65,7 @@ export async function DisableAccessByUserId(object: {
       return await prismaTransaction.$queryRaw(query);
     }
   } catch (error) {
+    logger.error("Failed at DisableAccessByUserId function ===>", { error });
     console.error(error);
     return null;
   }
@@ -99,6 +103,7 @@ export async function CreateAccessCardCascade(data: {
 
     return result;
   } catch (error) {
+    logger.error("Failed at CreateAccessCardCascade function ===>", { error });
     console.error(error);
     return null;
   }

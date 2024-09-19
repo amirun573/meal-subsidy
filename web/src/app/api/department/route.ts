@@ -21,7 +21,7 @@ const APIAuth: StatusAPICode[] = [
   StatusAPICode.GET_EMPLOYEE_CATEGORY_LISTS,
   StatusAPICode.GET_COST_CENTER_LISTS,
 ];
-
+import logger from "../../../../libs/winston";
 export async function GET(req: any, res: any) {
   let statusCode: number = 500;
 
@@ -76,6 +76,9 @@ export async function GET(req: any, res: any) {
       }
     }
   } catch (error: any) {
+    logger.error("Failed at Route GET Department ===>", { error });
+
+    console.error(error);
     return NextResponse.json(
       {
         message: error.message,
@@ -119,6 +122,9 @@ export async function POST(req: any, res: any) {
       }
     }
   } catch (error: any) {
+    logger.error("Failed at Route POST Department ===>", { error });
+
+    console.error(error);
     return NextResponse.json(
       {
         message: error.message,
@@ -162,6 +168,9 @@ export async function PUT(req: any, res: any) {
       }
     }
   } catch (error: any) {
+    logger.error("Failed at Route PUT Department ===>", { error });
+
+    console.error(error);
     return NextResponse.json(
       {
         message: error.message,
