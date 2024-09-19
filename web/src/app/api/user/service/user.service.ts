@@ -762,6 +762,7 @@ export async function CreateEmployeeBulkUpload(
   }
 }
 
+//Deploy
 export async function UpdateEmployee(data: CreateUpdateUser) {
   let message: string = "";
   let status: number = 500;
