@@ -406,6 +406,9 @@ const ChartComponent = () => {
                     const splitEmployeeID: string[] = submitDetails.employee_id.trim().split(',');
 
                     employees_id = splitEmployeeID.length > 0 ? splitEmployeeID : [];
+
+                    employees_id = employees_id.map(id => id.trim());
+
                 }
                 await SubsidyTransactionReportDownload({
                     startDate,
