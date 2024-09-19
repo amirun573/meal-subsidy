@@ -105,8 +105,10 @@ export async function GET(req: any, res: NextApiResponse) {
       case StatusAPICode.SUBSIDY_REPORT_DOWNLOAD: {
         const startDate: string | null = url.searchParams.get("startDate");
         const endDate: string | null = url.searchParams.get("endDate");
+        const employees_id: string | null =
+          url.searchParams.get("employees_id");
 
-        if (!startDate || !endDate) {
+        if (!startDate || !endDate || !employees_id) {
           statusCode = 400;
           throw Error("Start Date or End Date Not Found");
         }
@@ -114,6 +116,7 @@ export async function GET(req: any, res: NextApiResponse) {
         return DownloadReportSubsidyTransaction({
           startDate,
           endDate,
+          employees_id: JSON.parse(employees_id),
         });
       }
       default: {

@@ -671,12 +671,13 @@ export async function DownloadReportSubsidyTransaction(
   try {
     await SubsidyTransactionReportDownload(data);
 
-    const { startDate, endDate } = data;
+    const { startDate, endDate, employees_id } = data;
 
     const subsidyTransaction: DownloadReportSubsidyTransactionResult[] =
       (await GetFilteredTransactions({
         startDate: new Date(startDate),
         endDate: new Date(endDate),
+        employees_id: employees_id ? employees_id : [],
       })) as DownloadReportSubsidyTransactionResult[];
 
     if (!subsidyTransaction || subsidyTransaction.length < 0) {

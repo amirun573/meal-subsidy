@@ -93,13 +93,14 @@ const ChartComponent = () => {
     interface DownloadReport {
         startDate: string;
         endDate: string;
+        employee_id: string;
 
     }
 
     const initial: DownloadReport = {
         startDate: new Date().toISOString().split('T')[0], // Initialize with today's date in YYYY-MM-DD format
         endDate: new Date().toISOString().split('T')[0], // Initialize with today's date in YYYY-MM-DD format
-
+        employee_id: ''
     }
 
     const [initializeSubmitDownloadReportDetails, setInitializeSubmitDownloadReportDetails] = useState<DownloadReport>(initial);
@@ -399,8 +400,20 @@ const ChartComponent = () => {
 
                 setUserDetailLocal(userDetailsLocalStorage as UserDetailsLocalStorage);
 
+                let employees_id: string[] = []
+
+                if (submitDetails.employee_id) {
+                    const splitEmployeeID: string[] = submitDetails.employee_id.trim().split(',');
+
+                    employees_id = splitEmployeeID.length > 0 ? splitEmployeeID : [];
+                }
+                await SubsidyTransactionReportDownload({
+                    startDate,
+                    endDate,
+                    employees_id,
+                });
                 // Request the report from the server
-                const response = await axios.get(`/api/subsidy?${StatusAPICode.code}=${StatusAPICode.SUBSIDY_REPORT_DOWNLOAD}&startDate=${startDate}&endDate=${endDate}`, {
+                const response = await axios.get(`/api/subsidy?${StatusAPICode.code}=${StatusAPICode.SUBSIDY_REPORT_DOWNLOAD}&startDate=${startDate}&endDate=${endDate}&employees_id=${JSON.stringify(employees_id)}`, {
                     headers: {
                         Authorization: `Bearer ${userDetailsLocalStorage?.accessToken}`,
                     },
@@ -505,6 +518,25 @@ const ChartComponent = () => {
                                                         required
                                                     />
                                                 </div>
+
+                                                <div className="mt-4">
+                                                    <label
+                                                        htmlFor="employee_id"
+                                                        className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                                                    >
+                                                        Employee ID
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        name="employee_id"
+                                                        id="employees_id"
+                                                        value={submitDetails.employee_id} // Display the selected date
+                                                        className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-80 p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                                        onChange={handleInputChange}
+                                                        required
+                                                    />
+                                                </div>
+
 
 
 
