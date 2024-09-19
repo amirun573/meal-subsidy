@@ -262,6 +262,10 @@ model UserFeatures {
   feature         Feature   @relation(fields: [feature_id], references: [feature_id], onDelete: Cascade)
   feature_id      Int
 
+  is_read         Boolean  @default(true)
+  is_write        Boolean  @default(true)
+
+
   uuid            String?   @default(uuid())
   active          Boolean   @default(true)
   created_at      DateTime  @default(now()) 
