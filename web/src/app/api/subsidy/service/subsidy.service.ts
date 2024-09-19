@@ -41,6 +41,7 @@ import {
 import { GetUserSingle } from "../../user/model/user.model";
 import { SubsidyTypeCode } from "@/_Common/enum/subsidy-type.enum";
 import { ConvertExcel } from "@/_Common/function/SpreedSheet";
+import { FileMimeType } from "@/_Common/enum/file-type.enum";
 
 export async function UpdateUserApplicableSubsidy(data: SubsidyEmployeeUpdate) {
   let message: string = "";
@@ -711,7 +712,7 @@ export async function DownloadReportSubsidyTransaction(
       headers: {
         "Content-Disposition": 'attachment; filename="report.xlsx"',
         "Content-Type":
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        FileMimeType.XLSX,
       },
     });
 

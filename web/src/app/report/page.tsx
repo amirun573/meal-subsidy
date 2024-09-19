@@ -25,6 +25,7 @@ import { Subsidy, SubsidyTransaction, User } from '@prisma/client';
 import { DisplayAlert } from '@/_Common/function/Error';
 import { ConvertToUTCEndOfDay, ConvertToUTCStartOfDay, HandleDateFormatToAPI, HandleDateTimeFormatToAPI } from '../../_Common/function/Date';
 import Spinner from '@/Components/Spinner';
+import { FileMimeType } from '@/_Common/enum/file-type.enum';
 
 // Register the components globally
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
@@ -195,7 +196,9 @@ const ChartComponent = () => {
                 const workbook = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(workbook, worksheet, 'Sales Data');
                 const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-                const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const blob = new Blob([excelBuffer], {
+                    type: FileMimeType.XLSX,
+                });
                 saveAs(blob, 'chart-data.xlsx');
                 break;
         }
@@ -424,7 +427,9 @@ const ChartComponent = () => {
                 });
 
                 // Create a new Blob object using the response data
-                const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const blob = new Blob([response.data], {
+                    type: FileMimeType.XLSX,
+                });
 
                 // Create a link element
                 const link = document.createElement('a');

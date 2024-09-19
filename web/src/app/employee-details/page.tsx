@@ -536,7 +536,7 @@ const EmployeeDetailsPage = () => {
                                         </div>
 
                                         <div className="mt-4">
-                                            <label htmlFor="cost_center_code" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cost Center</label>
+                                            <label htmlFor="cost_center_code" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Value Stream</label>
                                             <select
                                                 id="cost_center_code"
                                                 name="cost_center_code"
@@ -544,7 +544,7 @@ const EmployeeDetailsPage = () => {
                                                 onChange={handleInputChange}
                                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
                                             >
-                                                <option value="" disabled>Select a Cost Center</option>
+                                                <option value="" disabled>Select a Value Stream</option>
                                                 {costCenters.map((item, index) => (
                                                     <option key={index} value={item.cost_center_code}>
                                                         {item.cost_center_code}
@@ -776,7 +776,7 @@ const EmployeeDetailsPage = () => {
                                     </div>
 
                                     <div className="mt-4">
-                                        <label htmlFor="cost_center_code" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cost Center</label>
+                                        <label htmlFor="cost_center_code" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Value Stream</label>
 
                                         <input
                                             type="text"
@@ -1383,7 +1383,7 @@ const EmployeeDetailsPage = () => {
                                             Department
                                         </th>
                                         <th scope="col" className="px-6 py-3">
-                                            Cost Center
+                                            Value Stream
                                         </th>
                                         <th scope="col" className="px-6 py-3">
                                             Employee Category
