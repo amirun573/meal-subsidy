@@ -26,7 +26,6 @@ import {
 } from "./service/subsidy.service";
 import { decrypt } from "@/_Common/function/Hashing";
 const APIAuth: StatusAPICode[] = [
-  StatusAPICode.GET_EMPLOYEE_DETAILS,
   StatusAPICode.SUBSIDY_TRANSACTION_PAGINATION,
   StatusAPICode.SUBSIDY_CHART_REPORT,
   StatusAPICode.SUBSIDY_REPORT_DOWNLOAD,
