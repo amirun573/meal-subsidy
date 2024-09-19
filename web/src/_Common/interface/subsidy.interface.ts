@@ -22,7 +22,6 @@ export interface SubsidyTransactionPaginationRequest {
   filter: string | null;
   startDate: string | null;
   endDate: string | null;
-
 }
 
 export interface SubsidyTransactionDownloadReportRequest {
@@ -39,4 +38,9 @@ export interface DownloadReportSubsidyTransactionResult {
   employee_category_name: string;
   employee_id: string;
   transaction_at: Date;
+}
+
+export interface SubsidyTypePaginationRequest {
+  page: number;
+  filter: string | null;
 }

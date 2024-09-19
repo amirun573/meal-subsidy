@@ -40,7 +40,14 @@ INSERT INTO Feature (
   ('employee_details',            
    'Employee Details',          
    'Show Details of Employee.', 
-   '/employee-details');
+   '/employee-details'),
+   
+    ('subsidy',                 
+   'Subsidy',           
+   'Setup Subsidy.',   
+   '/subsidy');
+   
+   ;
 
 
 INSERT INTO SubsidyType(

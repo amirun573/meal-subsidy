@@ -4,12 +4,15 @@ import {
   SubsidyTransactionDownloadReportRequest,
   SubsidyTransactionPaginationRequest,
   DownloadReportSubsidyTransactionResult,
+  SubsidyTypePaginationRequest,
 } from "@/_Common/interface/subsidy.interface";
 import {
   EmployeeSubmitPriceValidation,
   EmployeeUpdateSubsidyValidation,
   SubsidyTransactionPagination,
   SubsidyTransactionReportDownload,
+  SubsidyTypePagination,
+  UpdateSubsidyTypeValidation,
 } from "@/_Common/validation/subsidy.validation";
 import {
   $Enums,
@@ -17,6 +20,7 @@ import {
   Subsidy,
   SubsidyCredit,
   SubsidyTransaction,
+  SubsidyType,
 } from "@prisma/client";
 import { NextResponse } from "next/server";
 import {
@@ -29,6 +33,10 @@ import {
   GetFilteredTransactions,
   GetSubsidyLists,
   TriggerSubsidyCreditCascade,
+  GetSubsidyTypePagination,
+  GetCountTotalSubsidyType,
+  GetSubsidyTypeSingle,
+  UpdateSubsidyTypeSingle,
 } from "../model/subsidy.model";
 import { GetUserSingle } from "../../user/model/user.model";
 import { SubsidyTypeCode } from "@/_Common/enum/subsidy-type.enum";
@@ -790,6 +798,183 @@ export async function TriggerCreditService() {
       message: true,
     });
   } catch (error: any) {
+    console.error(error);
+    return NextResponse.json(
+      {
+        message: error.message || message,
+      },
+      {
+        status: error.statusCode || status,
+      }
+    );
+  }
+}
+
+export async function GetSubsidyTypePaginationService(
+  data: SubsidyTypePaginationRequest
+) {
+  let message: string = "";
+  let status: number = 500;
+  try {
+    await SubsidyTypePagination(data);
+
+    const { page, filter } = data;
+    let transactions: any = [];
+    let totalItems: number = 0;
+
+    let conditionFilter: any = {};
+
+    const filterSubsidyTypeCodeMeal = {
+      // subsidies: {
+      //   some: {
+      //     subsidy_type: {
+      //       subsidy_type_code: SubsidyTypeCode.meal,
+      //     },
+      //   },
+      // },
+    };
+
+    if (filter) {
+      conditionFilter = {
+        OR: [
+          {
+            user: {
+              employee_id: { contains: filter, mode: "insensitive" },
+            },
+          },
+          {
+            user: {
+              UserDetails: {
+                name: { contains: filter, mode: "insensitive" },
+              },
+            },
+          },
+          {
+            user: {
+              department: {
+                department_name: { contains: filter, mode: "insensitive" },
+              },
+            },
+          },
+          {
+            user: {
+              cost_center: {
+                cost_center_code: { contains: filter, mode: "insensitive" },
+              },
+            },
+          },
+          {
+            user: {
+              employee_category: {
+                employee_category_name: {
+                  contains: filter,
+                  mode: "insensitive",
+                },
+              },
+            },
+          },
+        ],
+      };
+    }
+
+    // If conditionFilter is not empty, combine with filterSubsidyTypeCodeMeal using AND
+    if (Object.keys(conditionFilter).length > 0) {
+      conditionFilter = {
+        AND: [
+          conditionFilter, // Existing filter conditions
+          filterSubsidyTypeCodeMeal, // New filter to be combined
+        ],
+      };
+    } else {
+      // If conditionFilter is empty, just use filterSubsidyTypeCodeMeal
+      conditionFilter = filterSubsidyTypeCodeMeal;
+    }
+
+    const totalSubsidyType: number = await GetCountTotalSubsidyType({
+      where: conditionFilter,
+    });
+
+    if (!totalSubsidyType) {
+      return NextResponse.json({
+        totalItems,
+        transactions,
+      });
+    }
+
+    console.log("totalSubsidyTransaction==>", totalSubsidyType);
+
+    const getSubsidyType = await GetSubsidyTypePagination({
+      paginate: { page, totalItems: totalSubsidyType },
+      where: conditionFilter,
+      orderBy: { field: "created_at", direction: "desc" },
+    });
+
+    if (!getSubsidyType) {
+      return NextResponse.json({
+        totalItems,
+        transactions,
+      });
+    }
+
+    totalItems = totalSubsidyType;
+    transactions = getSubsidyType;
+
+    return NextResponse.json({
+      transactions,
+      totalItems,
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        message: error.message || message,
+      },
+      {
+        status: error.statusCode || status,
+      }
+    );
+  }
+}
+
+export async function UpdateSubsidyTypeService(data: Partial<SubsidyType>) {
+  let message: string = "";
+  let status: number = 500;
+  try {
+    await UpdateSubsidyTypeValidation(data);
+
+    const { uuid, subsidy_type_code, subsidy_type_name, price } = data;
+    const subsidyType: Partial<SubsidyType> | null = await GetSubsidyTypeSingle(
+      {
+        where: {
+          uuid,
+        },
+      }
+    );
+
+    if (!subsidyType) {
+      status = 400;
+      throw Error("Subsidy Type not Found");
+    }
+
+    const updateSubsidyType: Partial<SubsidyType> = {
+      subsidy_type_id: subsidyType.subsidy_type_id,
+      subsidy_type_name: subsidy_type_name,
+      price: parseFloat(String(price)),
+    };
+
+    const updateSubsidyTypeTransaction = await UpdateSubsidyTypeSingle({
+      data: updateSubsidyType,
+    });
+
+    if (!updateSubsidyTypeTransaction) {
+      status = 400;
+      throw Error("Failed to Update Subsidy Type");
+    }
+
+    return NextResponse.json({
+      message: "Successfully Update Subsidy",
+    });
+  } catch (error: any) {
+    console.error(error);
     return NextResponse.json(
       {
         message: error.message || message,

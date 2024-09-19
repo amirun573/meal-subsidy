@@ -535,3 +535,76 @@ export async function TriggerSubsidyCreditCascade(data: {
     return null;
   }
 }
+
+export async function GetCountTotalSubsidyType(data: PrismaCondtionFetch) {
+  try {
+    const { where } = data;
+
+    return prisma.subsidyType.count({
+      where,
+    });
+  } catch (error) {
+    // logger.error("Failed at GetCountTotalSubsidyTransaction function ===>", { error });
+
+    console.error(error);
+    return 0;
+  }
+}
+
+export async function GetSubsidyTypePagination(options: {
+  paginate: PaginationData;
+  select?: any;
+  where: any;
+  orderBy?: { field: string; direction: "asc" | "desc" };
+}): Promise<any> {
+  try {
+    const { paginate, select, where, orderBy } = options;
+
+    const limit = 10;
+    const skip = (paginate.page - 1) * limit;
+
+    return await prisma.subsidyType.findMany({
+      skip: skip >= paginate.totalItems ? 0 : skip,
+      take: Math.min(limit, paginate.totalItems - skip),
+      where,
+      select,
+      orderBy: orderBy ? { [orderBy.field]: orderBy.direction } : undefined,
+    });
+
+    //const page = data.get("page");
+  } catch (error) {
+    // logger.error("Failed at GetSubsidyTransactionPagination function ===>", { error });
+
+    console.log(error);
+    return null;
+  }
+}
+
+export async function UpdateSubsidyTypeSingle(object: PrismaUpdate) {
+  try {
+    const { data, prismaTransaction } = object;
+
+    const { subsidy_type_id, ...dataWithoutId }: any = data;
+
+    if (!prismaTransaction) {
+      return await prisma.subsidyType.update({
+        data: dataWithoutId,
+        where: {
+          subsidy_type_id,
+        },
+      });
+    } else {
+      return await prismaTransaction.subsidyType.update({
+        data: dataWithoutId,
+        where: {
+          subsidy_type_id,
+        },
+      });
+    }
+  } catch (error) {
+    // logger.error("Failed at UpdateSubsidy function ===>", { error });
+
+    console.error(error);
+    return null;
+  }
+}
