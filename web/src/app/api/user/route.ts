@@ -21,7 +21,7 @@ import {
   CreateUpdateUser,
   CreateUserUploadExcel,
 } from "@/_Common/interface/user.interface";
-import logger from "../../../../libs/winston";
+// import logger from "../../../../libs/winston";
 
 const APIAuth: StatusAPICode[] = [
   StatusAPICode.GET_EMPLOYEE_DETAILS,
@@ -103,7 +103,7 @@ export async function GET(req: any, res: any) {
     }
   } catch (error: any) {
 
-    logger.error("Failed at Route GET User ===>", { error });
+    // logger.error("Failed at Route GET User ===>", { error });
 
     console.error(error);
     return NextResponse.json(
@@ -181,7 +181,7 @@ export async function POST(req: any, res: any) {
     }
   } catch (error: any) {
 
-    logger.error("Failed at Route POST User ===>", { error });
+    // logger.error("Failed at Route POST User ===>", { error });
 
     console.error(error);
     return NextResponse.json(
@@ -238,7 +238,7 @@ export async function PUT(req: any, res: any) {
     }
   } catch (error: any) {
 
-    logger.error("Failed at Route PUT User ===>", { error });
+    // logger.error("Failed at Route PUT User ===>", { error });
 
     console.error(error);
     return NextResponse.json(

@@ -7,7 +7,7 @@ import { JWTDecodeInterface, SignInRequest } from "@/_Common/interface/auth.inte
 import { JWTDecode, hashPassword } from "../model/auth.model";
 import { HashingPasswordService, SignInService } from "../service/auth.service";
 import { GetBodyData } from "@/_Common/function/Authentication";
-import logger from "../../../../../libs/winston";
+// import logger from "../../../../../libs/winston";
 
 
 const APIAuth: StatusAPICode[] = [];
@@ -69,7 +69,7 @@ export async function GET(req: any, res: any) {
       }
     }
   } catch (error: any) {
-    logger.error("Failed at Route GET Auth ===>", { error });
+    // logger.error("Failed at Route GET Auth ===>", { error });
 
     return NextResponse.json(
       {
@@ -125,7 +125,7 @@ export async function POST(req: any, res: any) {
       }
     }
   } catch (error: any) {
-    logger.error("Failed at Route POST Auth ===>", { error });
+    // logger.error("Failed at Route POST Auth ===>", { error });
 
     console.error(error);
     return NextResponse.json(

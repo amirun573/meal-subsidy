@@ -63,7 +63,7 @@ import {
   CreateAccessCard,
   CreateAccessCardCascade,
 } from "../../accessCard/model/accessCard.model";
-import logger from "../../../../../libs/winston";
+// import logger from "../../../../../libs/winston";
 
 export async function UserPaginationService(data: UserPaginationRequest) {
   let message: string = "";
@@ -220,7 +220,7 @@ export async function UserPaginationService(data: UserPaginationRequest) {
     });
   } catch (error: any) {
 
-    logger.error("Failed at UserPaginationService function ===>", { error });
+    // logger.error("Failed at UserPaginationService function ===>", { error });
 
     console.error(error);
     return NextResponse.json(
@@ -325,7 +325,7 @@ export async function ScanCheckEmployeeIDService(data: ScanCheckEmployeeID) {
     });
   } catch (error: any) {
 
-    logger.error("Failed at ScanCheckEmployeeIDService function ===>", { error });
+    // logger.error("Failed at ScanCheckEmployeeIDService function ===>", { error });
 
     console.error(error);
     return NextResponse.json(
@@ -497,7 +497,7 @@ export async function CreateEmployee(data: CreateUpdateUser) {
     });
   } catch (error: any) {
 
-    logger.error("Failed at CreateEmployee function ===>", { error });
+    // logger.error("Failed at CreateEmployee function ===>", { error });
 
     console.error(error);
     return NextResponse.json(
@@ -748,7 +748,7 @@ export async function CreateEmployeeBulkUpload(
     });
   } catch (error: any) {
 
-    logger.error("Failed at CreateEmployeeBulkUpload function ===>", { error });
+    // logger.error("Failed at CreateEmployeeBulkUpload function ===>", { error });
 
     console.error(error);
     return NextResponse.json(
@@ -968,7 +968,7 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
     });
   } catch (error: any) {
 
-    logger.error("Failed at UpdateEmployee function ===>", { error });
+    // logger.error("Failed at UpdateEmployee function ===>", { error });
 
     console.error(error);
     return NextResponse.json(

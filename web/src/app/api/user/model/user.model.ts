@@ -5,7 +5,7 @@ import { PaginationData } from "@/_Common/interface/pagination.interface";
 import { CreateUserUserDetails } from "@/_Common/interface/user.interface";
 import { CreateSubsidyMany } from "../../subsidy/model/subsidy.model";
 import { CreateAccessCardMany } from "../../accessCard/model/accessCard.model";
-import logger from "../../../../../libs/winston";
+// import logger from "../../../../../libs/winston";
 
 export async function GetUserSingle(
   data: PrismaCondtionFetch
@@ -18,7 +18,7 @@ export async function GetUserSingle(
       select,
     });
   } catch (error) {
-    logger.error("Failed at GetUserSingle function ===>", { error });
+    // logger.error("Failed at GetUserSingle function ===>", { error });
 
     console.error(error);
     return null;
@@ -33,7 +33,7 @@ export async function GetTotalUser(data: PrismaCondtionFetch) {
       where,
     });
   } catch (error) {
-    logger.error("Failed at GetTotalUser function ===>", { error });
+    // logger.error("Failed at GetTotalUser function ===>", { error });
 
     console.error(error);
     return 0;
@@ -63,7 +63,7 @@ export async function GetUserPagination(options: {
 
     //const page = data.get("page");
   } catch (error) {
-    logger.error("Failed at GetUserPagination function ===>", { error });
+    // logger.error("Failed at GetUserPagination function ===>", { error });
 
     console.error(error);
     return null;
@@ -84,7 +84,7 @@ async function CreateUser(object: { user: User; prismaTransaction?: any }) {
       });
     }
   } catch (error) {
-    logger.error("Failed at CreateUser function ===>", { error });
+    // logger.error("Failed at CreateUser function ===>", { error });
 
     console.error(error);
     return null;
@@ -108,7 +108,7 @@ async function CreateUserMany(object: {
       });
     }
   } catch (error) {
-    logger.error("Failed at CreateUserMany function ===>", { error });
+    // logger.error("Failed at CreateUserMany function ===>", { error });
 
     console.error(error);
     return [];
@@ -134,7 +134,7 @@ async function CreateUserDetailsMany(object: {
       });
     }
   } catch (error) {
-    logger.error("Failed at CreateUserDetailsMany function ===>", { error });
+    // logger.error("Failed at CreateUserDetailsMany function ===>", { error });
 
     console.error(error);
     return [];
@@ -163,7 +163,7 @@ async function UpdateUser(object: { user: User; prismaTransaction?: any }) {
       });
     }
   } catch (error) {
-    logger.error("Failed at UpdateUser function ===>", { error });
+    // logger.error("Failed at UpdateUser function ===>", { error });
 
     console.error(error);
     return null;
@@ -187,7 +187,7 @@ async function CreateUserDetails(object: {
       });
     }
   } catch (error) {
-    logger.error("Failed at CreateUserDetails function ===>", { error });
+    // logger.error("Failed at CreateUserDetails function ===>", { error });
 
     console.error(error);
     return null;
@@ -219,7 +219,7 @@ async function UpdateUserDetails(object: {
       });
     }
   } catch (error) {
-    logger.error("Failed at UpdateUserDetails function ===>", { error });
+    // logger.error("Failed at UpdateUserDetails function ===>", { error });
 
     console.error(error);
     return null;
@@ -280,9 +280,9 @@ export async function CreateUserNUserDetailsCascade(data: {
 
     return result;
   } catch (error) {
-    logger.error("Failed at CreateUserNUserDetailsCascade function ===>", {
-      error,
-    });
+    // logger.error("Failed at CreateUserNUserDetailsCascade function ===>", {
+    //   error,
+    // });
 
     console.error(error);
     return null;
@@ -398,9 +398,9 @@ export async function CreateUserNUserDetailsManyCascade(data: {
 
     return result; // Return the result from the transaction
   } catch (error) {
-    logger.error("Failed at CreateUserNUserDetailsManyCascade function ===>", {
-      error,
-    });
+    // logger.error("Failed at CreateUserNUserDetailsManyCascade function ===>", {
+    //   error,
+    // });
 
     console.error(error);
     return []; // Return an empty array in case of an error
