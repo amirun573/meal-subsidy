@@ -371,12 +371,24 @@ export async function GetSubsidyTransactionPagination(options: {
 
 export async function GetFilteredTransactions(data: {
   startDate: Date;
-
   endDate: Date;
+  employees_id?: string[];
+  department_id?: string; // Optional filter
+  cost_center_id?: string; // Optional filter
+  employee_category_id?: string; // Optional filter
 }): Promise<DownloadReportSubsidyTransactionResult[]> {
   try {
-    const { startDate, endDate } = data;
-    const query = `
+    const {
+      startDate,
+      endDate,
+      employees_id,
+      department_id,
+      cost_center_id,
+      employee_category_id,
+    } = data;
+
+    // Start building the base query
+    let query = `
     SELECT
         ud.name AS "name",
         u.employee_id AS "employee_id",
@@ -385,7 +397,6 @@ export async function GetFilteredTransactions(data: {
         ec.employee_category_name AS "employee_category_name",
         st.credit_used AS "credit_used",
         TO_CHAR(st.transaction_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kuala_Lumpur', 'YYYY-MM-DD HH24:MI:SS') AS "transaction_at"
-
     FROM
         "SubsidyTransaction" st
     JOIN
@@ -401,15 +412,44 @@ export async function GetFilteredTransactions(data: {
     WHERE
         st.transaction_at BETWEEN $1::timestamp AND $2::timestamp
     AND
-        st.active = TRUE;
-  `;
+        st.active = TRUE
+    `;
 
+    // Initialize query parameters
+    const queryParams: any[] = [startDate, endDate];
+
+    // Add employees_id filter if provided
+    if (employees_id && employees_id.length > 0) {
+      query += ` AND u.employee_id IN (${employees_id
+        .map((_, i) => `$${i + 3}`)
+        .join(", ")})`;
+      queryParams.push(...employees_id);
+    }
+
+    // Add department_id filter if provided
+    if (department_id) {
+      query += ` AND u.department_id = $${queryParams.length + 3}`;
+      queryParams.push(department_id);
+    }
+
+    // Add cost_center_id filter if provided
+    if (cost_center_id) {
+      query += ` AND u.cost_center_id = $${queryParams.length + 3}`;
+      queryParams.push(cost_center_id);
+    }
+
+    // Add employee_category_id filter if provided
+    if (employee_category_id) {
+      query += ` AND u.employee_category_id = $${queryParams.length + 3}`;
+      queryParams.push(employee_category_id);
+    }
+
+    // Execute the query with the dynamically built query and parameters
     const result: DownloadReportSubsidyTransactionResult[] =
-      await prisma.$queryRawUnsafe(query, startDate, endDate);
+      await prisma.$queryRawUnsafe(query, ...queryParams);
+
     return result;
   } catch (error) {
-    // logger.error("Failed at GetFilteredTransactions function ===>", { error });
-
     console.error(error);
     return [];
   }

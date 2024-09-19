@@ -28,6 +28,7 @@ export interface SubsidyTransactionPaginationRequest {
 export interface SubsidyTransactionDownloadReportRequest {
   startDate: string;
   endDate: string;
+  employees_id?: string[];
 }
 
 export interface DownloadReportSubsidyTransactionResult {
