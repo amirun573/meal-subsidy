@@ -11,6 +11,8 @@ import { ScanEmployeeIDValidation } from '@/_Common/validation/user.validation';
 import { encrypt } from '@/_Common/function/Hashing';
 import { SubsidySubmitPrice } from '@/_Common/interface/subsidy.interface';
 import { EmployeeSubmitPriceValidation } from '@/_Common/validation/subsidy.validation';
+import { GetLocalStorageDetails, HandleUnAuthorized } from '@/_Common/function/LocalStorage';
+import { UserDetailsLocalStorage } from '@/_Common/interface/auth.interface';
 const ScanPage = () => {
     const [employeeId, setEmployeeId] = useState<string>('');
     const [showScannerModal, setShowScannerModal] = useState<boolean>(false);
@@ -61,7 +63,7 @@ const ScanPage = () => {
                 // Make sure to await the API call
                 const employeeIDCheckRequest = await axios.get(`/api/user?${StatusAPICode.code}=${StatusAPICode.GET_CHECK_EMPLOYEE_ID}&employeeID=${encrypt(employeeID)}`);
 
-                if (!employeeIDCheckRequest.data?.employee_id||!employeeIDCheckRequest.data?.employee_name || (typeof employeeIDCheckRequest.data?.available_credit !== 'number') || !employeeIDCheckRequest.data?.subsidyCreditUUID) {
+                if (!employeeIDCheckRequest.data?.employee_id || !employeeIDCheckRequest.data?.employee_name || (typeof employeeIDCheckRequest.data?.available_credit !== 'number') || !employeeIDCheckRequest.data?.subsidyCreditUUID) {
                     throw Error("Failed To Retrieve Subsidy Details");
                 }
 
@@ -101,6 +103,12 @@ const ScanPage = () => {
         setLoading(true);
         try {
 
+
+            const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+
+            if (!userDetailsLocalStorage) {
+                await HandleUnAuthorized(null);
+            }
             const data: SubsidySubmitPrice = {
                 totalPrice: calculatedFinalPrice,
                 price: totalPrice,
@@ -113,13 +121,17 @@ const ScanPage = () => {
 
             const encryptedData = {
                 encryptedData: encrypt(JSON.stringify(data)),
-                [StatusAPICode.code]: StatusAPICode.CREATE_SUBSIDY_TRANSACTION
+                [StatusAPICode.code]: StatusAPICode.CREATE_SUBMIT_SUBSIDY_TRANSACTION_AUTH
             }
 
 
             await EmployeeSubmitPriceValidation(data);
 
-            const requestSubmitPrice = await axios.post(`/api/subsidy`, encryptedData);
+            const requestSubmitPrice = await axios.post(`/api/subsidy`, encryptedData, {
+                headers: {
+                    Authorization: `Bearer ${userDetailsLocalStorage.accessToken}`
+                }
+            });
 
             if (!requestSubmitPrice.data?.updateSubsidy) {
                 throw Error("Cannot Retreive Data For Update Subisdy Credit");
@@ -132,6 +144,7 @@ const ScanPage = () => {
         } catch (error) {
             console.error(error);
             DisplayAlert(error);
+            await HandleUnAuthorized(error);
         } finally {
             setLoading(false);
         }

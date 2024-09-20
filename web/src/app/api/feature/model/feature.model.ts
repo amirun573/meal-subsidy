@@ -20,3 +20,23 @@ export async function GetUserFeatures(
     return [];
   }
 }
+
+export async function GetUserFeaturesSingle(
+  data: PrismaCondtionFetch
+): Promise<Partial<UserFeatures> | null> {
+  try {
+    const { where, select } = data;
+
+    return prisma.userFeatures.findFirst({
+      where,
+      select,
+    });
+  } catch (error) {
+    // logger.error("Failed at GetUserFeatures function ===>", { error });
+
+    console.error(error);
+    return null;
+  }
+}
+
+

@@ -17,6 +17,7 @@ import {
 } from "@/_Common/interface/subsidy.interface";
 import {
   CreateSubsidyTransactionService,
+  CreateSubsidyTransactionServiceAuth,
   DownloadReportSubsidyTransaction,
   GetSubsidyTransactionPaginationService,
   GetSubsidyTransactionReportChart,
@@ -35,6 +36,7 @@ const APIAuth: StatusAPICode[] = [
   StatusAPICode.SUBSIDY_TYPE_PAGINATION,
   StatusAPICode.UPDATE_SUBSIDY_TYPE,
   StatusAPICode.UPDATE_SUBSIDY_CREDIT_REAL_TIME,
+  StatusAPICode.CREATE_SUBMIT_SUBSIDY_TRANSACTION_AUTH,
 ];
 
 export async function GET(req: any, res: NextApiResponse) {
@@ -230,6 +232,28 @@ export async function POST(req: any, res: any) {
           // return CreateSubsidyTransactionService(decryptData);
         }
 
+        case StatusAPICode.CREATE_SUBMIT_SUBSIDY_TRANSACTION_AUTH: {
+          const data: any = body as any;
+
+          if (!data) {
+            throw Error("No Data Detected");
+          }
+
+          const decryptData: SubsidySubmitPrice = JSON.parse(
+            decrypt(data?.encryptedData as string) || "{}"
+          );
+
+          if (!decryptData) {
+            throw Error("Not Authorized To Proceed");
+          }
+
+          if (!user) {
+            throw Error("No User Found");
+          }
+
+          return CreateSubsidyTransactionServiceAuth(decryptData, user);
+        }
+
         default: {
           throw Error("No Code Found");
         }
@@ -295,7 +319,8 @@ export async function PUT(req: any, res: any) {
         }
 
         case StatusAPICode.UPDATE_SUBSIDY_CREDIT_REAL_TIME: {
-          const data: UpdateSubsidyCreditRequest= body as UpdateSubsidyCreditRequest;
+          const data: UpdateSubsidyCreditRequest =
+            body as UpdateSubsidyCreditRequest;
 
           if (!data) {
             throw Error("No Data Detected");

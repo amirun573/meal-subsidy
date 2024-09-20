@@ -47,6 +47,11 @@ import { GetUserSingle } from "../../user/model/user.model";
 import { SubsidyTypeCode } from "@/_Common/enum/subsidy-type.enum";
 import { ConvertExcel } from "@/_Common/function/SpreedSheet";
 import { FileMimeType } from "@/_Common/enum/file-type.enum";
+import {
+  GetUserFeatures,
+  GetUserFeaturesSingle,
+} from "../../feature/model/feature.model";
+import { GetDepartmentSingle } from "../../department/model/department.model";
 
 export async function UpdateUserApplicableSubsidy(data: SubsidyEmployeeUpdate) {
   let message: string = "";
@@ -99,6 +104,7 @@ export async function UpdateUserApplicableSubsidy(data: SubsidyEmployeeUpdate) {
   }
 }
 
+//TODO: Will Be Depriacted. Only Authenticate User can execute.
 export async function CreateSubsidyTransactionService(
   data: SubsidySubmitPrice
 ) {
@@ -1036,6 +1042,192 @@ export async function UpdateSubsidyCreditRealTimeService(
     console.log("Subsidy Credit==>", subsidyCredit);
     return NextResponse.json({
       message: "Successfully Update",
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        message: error.message || message,
+      },
+      {
+        status: error.statusCode || status,
+      }
+    );
+  }
+}
+
+export async function CreateSubsidyTransactionServiceAuth(
+  data: SubsidySubmitPrice,
+  user_details: User
+) {
+  let message: string = "";
+  let status: number = 500;
+  try {
+    await EmployeeSubmitPriceValidation(data);
+
+    const {
+      totalPrice,
+      price,
+      availableCredit,
+      discount,
+      employee_id,
+      subsidyCreditUUID,
+    } = data;
+
+    console.log("DATA==>", data);
+    const user = await GetUserSingle({
+      where: {
+        employee_id,
+        subsidies: {
+          some: {
+            subsidy_type: {
+              subsidy_type_code: SubsidyTypeCode.meal,
+            },
+            subsidy_credits: {
+              some: {
+                active: true,
+                uuid: {
+                  in: [subsidyCreditUUID],
+                },
+              },
+            },
+            OR: [
+              { end_date: null }, // Include subsidies where end_date is not set
+              { end_date: { gt: new Date() } }, // Include subsidies where end_date is greater than the current time
+            ],
+          },
+        },
+      },
+
+      select: {
+        user_id: true,
+        subsidies: {
+          select: {
+            subsidy_id: true,
+            subsidy_credits: {
+              where: {
+                active: true,
+              },
+              select: {
+                subsidy_credit_id: true,
+                credit_amount: true,
+                uuid: true,
+                active: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      status = 400;
+      throw Error("Credit Has Been Finished/ Expired");
+    }
+
+    const { subsidies, ...UserWihoutSubsidy } = user as any;
+
+    const subsidiesCheck: Subsidy[] = subsidies as Subsidy[];
+
+    if (subsidiesCheck.length !== 1) {
+      status = 400;
+      throw Error("Wrong Setup For Subsidy");
+    }
+
+    const SubsidyCredits: SubsidyCredit[] = [];
+
+    subsidiesCheck.forEach((subsidy) => {
+      // Type assertion to access subsidy_credits
+      const checkSubsidyCredits: SubsidyCredit[] = (subsidy as any)
+        ?.subsidy_credits;
+
+      console.log("checkSubsidyCredits===>", checkSubsidyCredits);
+
+      // Check if there is exactly one credit
+      if (checkSubsidyCredits.length !== 1) {
+        throw new Error("Wrong Setup Subsidy Credit");
+      }
+
+      // Push the single credit to the SubsidyCredits array
+      SubsidyCredits.push(checkSubsidyCredits[0]);
+    });
+
+    if (SubsidyCredits.length !== 1) {
+      status = 400;
+      throw Error("Wrong Setup For Subsidy Credit");
+    }
+
+    const subsidy_credits: Partial<SubsidyCredit> = SubsidyCredits[0];
+
+    if (!subsidy_credits) {
+      status = 400;
+      throw Error("No Subsidy Credit Found");
+    }
+
+    if (
+      subsidy_credits?.credit_amount != availableCredit ||
+      subsidyCreditUUID != subsidy_credits?.uuid
+    ) {
+      status = 400;
+      throw Error("Amount Credit Not Have Same Value");
+    }
+
+    const updatedAvailableCredit = Math.max(0, availableCredit - price);
+
+    // Calculate used credit based on the full price
+    const usedCredit = Math.min(availableCredit, price);
+
+    console.log("subsidy_credits-->", subsidy_credits);
+    console.log("updatedAvailableCredit==>", updatedAvailableCredit);
+
+    console.log("usedCredit==>", usedCredit);
+
+    const updateSubsidyCredit: Partial<SubsidyCredit> = {
+      subsidy_credit_id: subsidy_credits.subsidy_credit_id,
+      credit_amount: updatedAvailableCredit,
+    };
+
+    const subsidyTransaction: Partial<SubsidyTransaction> = {
+      user_id: user.user_id,
+      price,
+      discount_price: discount,
+      credit_used: usedCredit,
+      total_price: totalPrice,
+      transaction_status: $Enums.TransactionStatus.COMPLETED,
+      created_by_user_id: user_details.user_id,
+    };
+
+
+    console.log("USer===>", user_details);
+    const checkCashier = await GetUserSingle({
+      where: {
+        user_id: user_details.user_id,
+        department: {
+          department_code: "cashier",
+        },
+      },
+    });
+
+    if(!checkCashier){
+      status = 400;
+      throw Error("Transaction only can be done from Cashier");
+    }
+
+    const transactionSubsidy = await SubsidyCreditTransactionCascade({
+      subsidyCredit: updateSubsidyCredit as SubsidyCredit,
+      subsidyTransaction: subsidyTransaction as SubsidyTransaction,
+    });
+
+    // const updateSubsidyCreditProcess = await UpdateSubsidyCredit({
+    //   data: updateSubsidyCredit,
+    // });
+
+    if (!transactionSubsidy) {
+      status = 400;
+      throw Error("Failed To Update Subsidy Credit Transaction.");
+    }
+
+    return NextResponse.json({
+      updateSubsidy: true,
     });
   } catch (error: any) {
     return NextResponse.json(
