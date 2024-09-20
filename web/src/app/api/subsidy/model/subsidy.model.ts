@@ -390,13 +390,14 @@ export async function GetFilteredTransactions(data: {
     // Start building the base query
     let query = `
     SELECT
-        ud.name AS "name",
+        UPPER(ud.name)AS "name",
         u.employee_id AS "employee_id",
         d.department_name AS "department_name",
         cc.cost_center_code AS "cost_center_code",
         ec.employee_category_name AS "employee_category_name",
         st.credit_used AS "credit_used",
-        TO_CHAR(st.transaction_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kuala_Lumpur', 'YYYY-MM-DD HH24:MI:SS') AS "transaction_at"
+        TO_CHAR(st.transaction_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kuala_Lumpur', 'YYYY-MM-DD HH24:MI:SS') AS "transaction_at",
+        UPPER(cud.name) AS "created_by_name"
     FROM
         "SubsidyTransaction" st
     JOIN
@@ -409,6 +410,10 @@ export async function GetFilteredTransactions(data: {
         "CostCenter" cc ON u.cost_center_id = cc.cost_center_id
     LEFT JOIN
         "EmployeeCategory" ec ON u.employee_category_id = ec.employee_category_id
+    LEFT JOIN
+        "User" cu ON st.created_by_user_id = cu.user_id -- Join to get created_by user
+    LEFT JOIN
+        "UserDetails" cud ON cu.user_id = cud.user_id -- Join to get name of the created_by user
     WHERE
         st.transaction_at BETWEEN $1::timestamp AND $2::timestamp
     AND

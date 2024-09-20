@@ -722,6 +722,7 @@ export async function DownloadReportSubsidyTransaction(
         "Employee Category Name",
         "Credit Used (RM)",
         "Transaction At",
+        "Cashier In Charged"
       ],
     ];
     const writeExcel = ConvertExcel(HEADER_ORDER_LIST, subsidyTransaction);
