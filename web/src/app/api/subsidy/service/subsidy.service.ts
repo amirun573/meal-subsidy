@@ -1184,7 +1184,7 @@ export async function CreateSubsidyTransactionServiceAuth(
 
     const updateSubsidyCredit: Partial<SubsidyCredit> = {
       subsidy_credit_id: subsidy_credits.subsidy_credit_id,
-      credit_amount: updatedAvailableCredit,
+      credit_amount: usedCredit,
     };
 
     const subsidyTransaction: Partial<SubsidyTransaction> = {
