@@ -267,7 +267,7 @@ export async function POST(req: any, res: any) {
         message: error.message,
       },
       {
-        status: error.statusCode,
+        status: status || error.statusCode,
       }
     );
   }
