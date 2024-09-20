@@ -47,3 +47,5 @@ export interface CreateUserUserDetails {
   subsidy?: Subsidy;
   accessCard?: AccessCard;
 }
+
+

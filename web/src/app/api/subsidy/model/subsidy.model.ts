@@ -390,13 +390,14 @@ export async function GetFilteredTransactions(data: {
     // Start building the base query
     let query = `
     SELECT
-        ud.name AS "name",
+        UPPER(ud.name)AS "name",
         u.employee_id AS "employee_id",
         d.department_name AS "department_name",
         cc.cost_center_code AS "cost_center_code",
         ec.employee_category_name AS "employee_category_name",
         st.credit_used AS "credit_used",
-        TO_CHAR(st.transaction_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kuala_Lumpur', 'YYYY-MM-DD HH24:MI:SS') AS "transaction_at"
+        TO_CHAR(st.transaction_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kuala_Lumpur', 'YYYY-MM-DD HH24:MI:SS') AS "transaction_at",
+        UPPER(cud.name) AS "created_by_name"
     FROM
         "SubsidyTransaction" st
     JOIN
@@ -409,6 +410,10 @@ export async function GetFilteredTransactions(data: {
         "CostCenter" cc ON u.cost_center_id = cc.cost_center_id
     LEFT JOIN
         "EmployeeCategory" ec ON u.employee_category_id = ec.employee_category_id
+    LEFT JOIN
+        "User" cu ON st.created_by_user_id = cu.user_id -- Join to get created_by user
+    LEFT JOIN
+        "UserDetails" cud ON cu.user_id = cud.user_id -- Join to get name of the created_by user
     WHERE
         st.transaction_at BETWEEN $1::timestamp AND $2::timestamp
     AND
@@ -497,11 +502,58 @@ export async function CreateSubsidyCreditMany(object: {
     return [];
   }
 }
+async function UpdateSubsidiesInBulk(
+  subsidies: Subsidy[],
+  prismaTransaction?: any
+) {
+  try {
+    let amountCase = "CASE ";
+    let subsidyIds: any = [];
+
+    // Generate CASE statements for `active` and `amount`
+    subsidies.forEach((subsidy) => {
+      amountCase += `WHEN "subsidy_id" = ${subsidy.subsidy_id} THEN ${subsidy.amount} `;
+      subsidyIds.push(subsidy.subsidy_id);
+    });
+
+    // Close the CASE statements
+    amountCase += "END";
+
+    // Convert the subsidy IDs array to a string for the WHERE clause
+    const subsidyIdsString = subsidyIds.join(", ");
+
+    // Construct the final query
+    const query = `
+    UPDATE "Subsidy"
+    SET 
+      "amount" = ${amountCase},
+      "updated_at" = NOW()
+    WHERE "subsidy_id" IN (${subsidyIdsString});
+  `;
+
+    // Execute the query
+
+    let result: any;
+    if (!prismaTransaction) {
+      result = await prisma.$executeRawUnsafe(query); // Using `executeRawUnsafe` for dynamic raw SQL
+    } else {
+      result = await prismaTransaction.$executeRawUnsafe(query); // Using `executeRawUnsafe` for dynamic raw SQL
+    }
+
+    return result;
+
+    console.log(`Update result:`, result);
+  } catch (e: any) {
+    console.error(e);
+  }
+}
+
 export async function TriggerSubsidyCreditCascade(data: {
+  subsidies: Subsidy[];
   subsidiesCredit: SubsidyCredit[];
 }) {
   try {
-    const { subsidiesCredit } = data;
+    const { subsidies, subsidiesCredit } = data;
     const result = await prisma.$transaction(
       async (prisma) => {
         const deactiveSubsidyCredit = await DisableAllSubsidyCredit({
@@ -510,6 +562,12 @@ export async function TriggerSubsidyCreditCascade(data: {
 
         if (!deactiveSubsidyCredit) {
           throw Error("Failed to Flush Subsidy Credit");
+        }
+
+        const updateSubsidy = await UpdateSubsidiesInBulk(subsidies);
+
+        if (!updateSubsidy) {
+          throw Error("Failed To Update Subsidy");
         }
 
         const subsidyCreditTransaction: SubsidyCredit[] =
@@ -603,6 +661,62 @@ export async function UpdateSubsidyTypeSingle(object: PrismaUpdate) {
     }
   } catch (error) {
     // logger.error("Failed at UpdateSubsidy function ===>", { error });
+
+    console.error(error);
+    return null;
+  }
+}
+
+export async function SubsidyCreditCascade(data: {
+  subsidyCredit: SubsidyCredit;
+  subsidy: Subsidy;
+}) {
+  try {
+    const { subsidyCredit, subsidy } = data;
+    const result = await prisma.$transaction(
+      async (prisma) => {
+        let subsidyCreditTransaction: any;
+        let subsidyTransaction: any;
+        if (!subsidy?.subsidy_id) {
+          subsidyTransaction = await CreateSubsidy_4User({
+            data: subsidy,
+            prismaTransaction: prisma,
+          });
+        } else {
+          subsidyTransaction = await UpdateSubsidy({
+            data: subsidy,
+            prismaTransaction: prisma,
+          });
+        }
+
+        if (!subsidyTransaction) {
+          throw Error("Failed at Subsidy Transaction");
+        }
+
+        if (!subsidyCredit?.subsidy_credit_id) {
+          subsidyCreditTransaction = await CreateSubsidyCredit({
+            data: subsidyCredit as any,
+            prismaTransaction: prisma,
+          });
+        } else {
+          subsidyCreditTransaction = await UpdateSubsidyCredit({
+            data: subsidyCredit as any,
+            prismaTransaction: prisma,
+          });
+        }
+
+        if (!subsidyCreditTransaction) {
+          throw Error("Failed in Subsidy Credit Transaction.");
+        }
+
+        return [subsidyCreditTransaction, subsidyCreditTransaction];
+      },
+      { timeout }
+    );
+
+    return result;
+  } catch (error) {
+    // logger.error("Failed at SubsidyCreditTransactionCascade function ===>", { error });
 
     console.error(error);
     return null;

@@ -101,7 +101,10 @@ VALUES
   ('rc', 'REGIONAL COMMUNICATION'),
   ('sa', 'SALES'),
   ('sc', 'SUPPLY CHAIN'),
-  ('qc', 'QUALITY CONTROL');
+  ('qc', 'QUALITY CONTROL')
+  ('cashier', 'CASHIER')
+
+  ;
 
   INSERT INTO COSTCENTER (cost_center_code)
 VALUES

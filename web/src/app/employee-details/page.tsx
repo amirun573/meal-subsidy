@@ -6,8 +6,8 @@ import { DisplayAlert } from "@/_Common/function/Error";
 import { GetLocalStorageDetails, HandleUnAuthorized } from "@/_Common/function/LocalStorage";
 import { UserDetailsLocalStorage } from "@/_Common/interface/auth.interface";
 import { SubsidyEmployeeUpdate } from "@/_Common/interface/subsidy.interface";
-import { EmployeeUpdateSubsidyValidation } from "@/_Common/validation/subsidy.validation";
-import { CreateUpdateEmployeeValidation, UserPaginationValidation } from "@/_Common/validation/user.validation";
+import { EmployeeUpdateSubsidyValidation, UpdateSubsidyCreditRealTimeValidation } from "@/_Common/validation/subsidy.validation";
+import { CreateUpdateEmployeeValidation, UpdateEmployeeStatusValidation, UserPaginationValidation } from "@/_Common/validation/user.validation";
 import { CostCenter, Department, EmployeeCategory, Subsidy, User } from "@prisma/client";
 import axios from "axios";
 import { Modal } from "flowbite-react";
@@ -21,7 +21,9 @@ import { MainContent } from "@/Components/Main";
 import { FileMimeType } from "@/_Common/enum/file-type.enum";
 import { ConvertToUTCEndOfDay, ConvertToUTCStartOfDay } from '../../_Common/function/Date';
 import { encrypt } from "@/_Common/function/Hashing";
-
+import ToggleSwitch from '../../Components/Toggle/index';
+import { UpdateStatusRequest } from "@/_Common/interface/general.interface";
+import { UpdateSubsidyCreditRequest } from '../../_Common/interface/subsidy.interface';
 
 interface EmployeeDetails {
     name: string,
@@ -38,6 +40,9 @@ interface EmployeeDetails {
     employee_category_name: string;
     start_date?: string;
     end_date?: string;
+    user_active: boolean;
+    current_subsidy_value: number;
+    subsidy_uuid: string;
 
 }
 
@@ -86,7 +91,9 @@ const EmployeeDetailsPage = () => {
 
     const [openModalUploadFile, setOpenModalUploadFile] = useState<boolean>(false);
     const [isOpenModalUploadFile, setIsOpenodalUploadFile] = useState(false);
+    const [isOpenModalEditSubsidyCredit, setIsOpenodalEditSubsidyCredit] = useState(false);
 
+    const [currentEditEmployeeDetails, setCurrentEditEmployeeDetails] = useState<EmployeeDetails>();
 
 
     const GetEmployee = async () => {
@@ -136,6 +143,9 @@ const EmployeeDetailsPage = () => {
                         employee_category_code: (user as any)?.employee_category?.employee_category_code || '',
                         cost_center_code: (user as any)?.cost_center?.cost_center_code || '',
                         access_card_no: (user as any)?.access_cards[0]?.card_value || '',
+                        user_active: user?.active || false,
+                        current_subsidy_value: (subsidies as any)?.amount || 0,
+                        subsidy_uuid: subsidies?.uuid || '',
                     }
 
                     employeeDetailsResponse.push(employee);
@@ -536,7 +546,7 @@ const EmployeeDetailsPage = () => {
                                         </div>
 
                                         <div className="mt-4">
-                                            <label htmlFor="cost_center_code" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cost Center</label>
+                                            <label htmlFor="cost_center_code" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Value Stream</label>
                                             <select
                                                 id="cost_center_code"
                                                 name="cost_center_code"
@@ -544,7 +554,7 @@ const EmployeeDetailsPage = () => {
                                                 onChange={handleInputChange}
                                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
                                             >
-                                                <option value="" disabled>Select a Cost Center</option>
+                                                <option value="" disabled>Select a Value Stream</option>
                                                 {costCenters.map((item, index) => (
                                                     <option key={index} value={item.cost_center_code}>
                                                         {item.cost_center_code}
@@ -776,7 +786,7 @@ const EmployeeDetailsPage = () => {
                                     </div>
 
                                     <div className="mt-4">
-                                        <label htmlFor="cost_center_code" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cost Center</label>
+                                        <label htmlFor="cost_center_code" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Value Stream</label>
 
                                         <input
                                             type="text"
@@ -1120,6 +1130,170 @@ const EmployeeDetailsPage = () => {
         );
     }
 
+    const HandleCloseModalEditSubsidyCredit = () => {
+        setIsOpenodalEditSubsidyCredit(false);
+    };
+
+
+    const HandleEditSubsidyCredit = (uuid: any) => {
+        try {
+
+            const employee: EmployeeDetails | undefined = employeesDetails.find(item => item.uuid === uuid);
+
+
+            if (!employee) {
+                throw Error("No Employee Found From ID");
+            }
+
+
+            setCurrentEditEmployeeDetails(employee);
+            setIsOpenodalEditSubsidyCredit(true);
+        } catch (error) {
+            console.error(error);
+            DisplayAlert(error);
+        }
+
+    }
+
+    const ModalEditSubsidyCredit = () => {
+
+
+
+        const [employeeDetails, setEmployeeDetails] = useState<EmployeeDetails | undefined>(currentEditEmployeeDetails);
+
+        const HandleAmountCredit = (event: React.ChangeEvent<HTMLInputElement>) => {
+            try {
+                const value = parseFloat(event.target.value);
+                const validValue = isNaN(value) ? 0 : value;
+
+                if (employeeDetails) {
+                    const updatedEmployeeDetails = { ...employeeDetails, current_subsidy_value: validValue };
+                    setEmployeeDetails(updatedEmployeeDetails);
+                }
+            } catch (error) {
+                console.error(error);
+                DisplayAlert(error);
+            }
+        };
+
+
+        const HandleSubmit = async () => {
+            setLoading(true);
+            try {
+
+                if (employeeDetails) {
+
+                    const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+
+                    if (!userDetailsLocalStorage) {
+                        await HandleUnAuthorized(null);
+                    }
+
+
+                    const data: UpdateSubsidyCreditRequest = {
+                        amount: employeeDetails?.current_subsidy_value || 0,
+                        code: StatusAPICode.UPDATE_SUBSIDY_CREDIT_REAL_TIME,
+                        user_uuid: employeeDetails.uuid,
+                        subsidy_uuid: employeeDetails.subsidy_uuid,
+                    }
+
+                    console.log("data==>", data);
+
+                    await UpdateSubsidyCreditRealTimeValidation(data);
+
+                    const requestUpdateSubsidyCredit = await axios.put(`/api/subsidy`, data, {
+                        headers: {
+                            Authorization: `Bearer ${userDetailsLocalStorage.accessToken}`
+                        }
+                    });
+
+                    if (!requestUpdateSubsidyCredit.data?.message) {
+                        throw Error("Cannot Retreive Message For Update");
+                    }
+
+                    alert(requestUpdateSubsidyCredit.data?.message);
+
+
+
+                }
+
+
+
+            } catch (error) {
+                console.error(error);
+                DisplayAlert(error);
+            } finally {
+                setLoading(false);
+
+            }
+        }
+
+        return (
+            <>
+                {isOpenModalEditSubsidyCredit && (
+                    <div className="flex items-center justify-center h-screen">
+                        <button
+                            className="bg-blue-500 text-white px-4 py-2 rounded"
+                            onClick={() => setIsOpenodalEditSubsidyCredit(true)}
+                        >
+                            Subsidy Credit
+                        </button>
+
+
+                        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                            <div className="bg-white rounded-lg w-96 p-6">
+                                <div className="flex justify-between items-center border-b pb-3 mb-4">
+                                    <h2 className="text-xl font-semibold text-gray-700">Edit Subsidy Credit</h2>
+                                    <button
+                                        className="text-gray-400 hover:text-gray-600"
+                                        onClick={HandleCloseModalEditSubsidyCredit}
+                                    >
+                                        &times;
+                                    </button>
+                                </div>
+
+                                <div className="flex flex-col items-center space-y-4">
+                                    <label
+                                        htmlFor="amount"
+                                        className="text-gray-600 font-medium"
+                                    >
+                                        (RM)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="amount"
+                                        className="border border-gray-300 rounded-md px-4 py-2 w-full text-black"
+                                        onChange={e => HandleAmountCredit(e)}
+                                        value={employeeDetails?.current_subsidy_value || 0}
+                                    />
+
+
+                                </div>
+
+                                <div className="flex justify-end mt-6">
+                                    <button
+                                        className="bg-gray-500 text-white px-4 py-2 rounded mr-2"
+                                        onClick={HandleCloseModalUploadFile}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        className="bg-blue-500 text-white px-4 py-2 rounded"
+                                        onClick={HandleSubmit}
+                                    >
+                                        Submit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                )}
+            </>
+
+        );
+    }
+
 
 
     useEffect(() => {
@@ -1311,6 +1485,70 @@ const EmployeeDetailsPage = () => {
         }
     }
 
+    const HandleToggleEmployeeStatus = async (status: boolean, index: number, uuid?: string) => {
+        setLoading(true);
+        try {
+
+            if (uuid) {
+
+                // Update the specific item in the array using the index
+                const updatedEmployees = [...employeesDetails];
+                updatedEmployees[index] = {
+                    ...updatedEmployees[index],
+                    user_active: status,
+                };
+
+                const employee: EmployeeDetails = (updatedEmployees[index]);
+
+                if (!employee) {
+                    throw Error("No Employee Can Be Found");
+                }
+
+                const updateUser: UpdateStatusRequest = {
+                    code: StatusAPICode.UPDATE_USER_ACTIVE_STATUS,
+                    uuid: employee.uuid,
+                    active_status: employee.user_active
+                };
+
+                console.log("Update User==>", updateUser);
+
+                await UpdateEmployeeStatusValidation(updateUser);
+
+                const requestUpdateUserStatus = await axios.put(`/api/user`, updateUser, {
+                    headers: {
+                        Authorization: `Bearer ${userDetailLocal?.accessToken}`,
+                    }
+                });
+
+                if (!requestUpdateUserStatus.data?.message) {
+                    throw Error("Failed TO Update Employee Status");
+                }
+
+                alert(requestUpdateUserStatus.data?.message);
+
+
+                setEmployeeDetails(updatedEmployees);
+
+
+
+
+            }
+
+            else {
+                throw Error("Employee ID not found");
+            }
+
+
+        } catch (error) {
+            console.error(error);
+            DisplayAlert(error);
+            await HandleUnAuthorized(error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+
 
 
     return (<>
@@ -1383,7 +1621,7 @@ const EmployeeDetailsPage = () => {
                                             Department
                                         </th>
                                         <th scope="col" className="px-6 py-3">
-                                            Cost Center
+                                            Value Stream
                                         </th>
                                         <th scope="col" className="px-6 py-3">
                                             Employee Category
@@ -1391,6 +1629,8 @@ const EmployeeDetailsPage = () => {
                                         <th scope="col" className="px-6 py-3">
                                             Meal Subsidiry Applicable
                                         </th>
+                                        <th scope="col" className="px-6 py-3">Current Subsidy Credit (RM)</th>
+                                        <th scope="col" className="px-6 py-3">Active</th>
                                         <th scope="col" className="px-6 py-3">Edit</th>
 
                                     </tr>
@@ -1423,8 +1663,18 @@ const EmployeeDetailsPage = () => {
                                                         onChange={(e) => HandleCheckboxChange(e, index)}
                                                     />
                                                 </td>
-
-
+                                                <td className="px-6 py-4">
+                                                    {item.current_subsidy_value}
+                                                    <button
+                                                        onClick={() => HandleEditSubsidyCredit(item.uuid || '')}
+                                                        className="ml-2 bg-blue-500 text-white px-2 py-1 text-sm rounded"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <ToggleSwitch status={item.user_active} index={index} HandleToggleStatus={HandleToggleEmployeeStatus} uuid={item.uuid} />
+                                                </td>
                                                 <td className="px-6 py-4">
                                                     <button
                                                         className="bg-blue-500 text-white px-4 py-2 rounded"
@@ -1478,6 +1728,9 @@ const EmployeeDetailsPage = () => {
                 </div>
                 <div>
                     <ModalUploadUser />
+                </div>
+                <div>
+                    <ModalEditSubsidyCredit />
                 </div>
             </div>
         </div>

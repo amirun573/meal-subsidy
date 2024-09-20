@@ -56,6 +56,12 @@ model User {
   access_cards              AccessCard[]      // One-to-many relationship with MifareCard
   employee_category         EmployeeCategory? @relation(fields: [employee_category_id], references: [employee_category_id], onDelete: Cascade)
   employee_category_id      Int?              // Many-to-one relation, no unique constraint here
+
+
+    created_transactions      SubsidyTransaction[] @relation("CreatedBy")
+  updated_transactions      SubsidyTransaction[] @relation("UpdatedBy")
+  deleted_transactions      SubsidyTransaction[] @relation("DeletedBy")
+
 }
 
 
@@ -143,7 +149,7 @@ model Subsidy {
   created_at        DateTime     @default(now())
   updated_at        DateTime     @updatedAt
   deleted_at        DateTime?
-
+  amount            Float        @default(0)
   user              User         @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
   user_id           Int
 
@@ -199,6 +205,15 @@ model SubsidyTransaction {
   created_at         DateTime        @default(now())
   updated_at         DateTime        @updatedAt
   deleted_at         DateTime?
+
+   created_by                 User?          @relation("CreatedBy", fields: [created_by_user_id], references: [user_id], onDelete: SetNull)
+  created_by_user_id         Int?
+
+  updated_by                 User?          @relation("UpdatedBy", fields: [updated_by_user_id], references: [user_id], onDelete: SetNull)
+  updated_by_user_id         Int?
+
+  deleted_by                 User?          @relation("DeletedBy", fields: [deleted_by_user_id], references: [user_id], onDelete: SetNull)
+  deleted_by_user_id         Int?
 }
 
 

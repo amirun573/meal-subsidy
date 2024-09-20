@@ -34,10 +34,25 @@ export async function JWTDecode(
           if (decodedToken && decodedToken?.exp) {
             // Token is valid
 
-            const user = await GetUserSingle({
-              where: {
+            let where: any = {};
+            if (decodedToken.email) {
+              where = {
                 email: decodedToken.email,
-              },
+              };
+            }
+
+            else if(decodedToken.employee_id){
+              where = {
+                employee_id: decodedToken.employee_id
+              }
+            }
+
+            else {
+              throw Error("No Value To Authenticate")
+            }
+
+            const user = await GetUserSingle({
+              where,
               select: {
                 user_id: true,
                 email: true,

@@ -15,18 +15,21 @@ import {
   CreateEmployeeBulkUpload,
   ScanCheckEmployeeIDService,
   UpdateEmployee,
+  UpdateStatusEmployeeService,
   UserPaginationService,
 } from "./service/user.service";
 import {
   CreateUpdateUser,
   CreateUserUploadExcel,
 } from "@/_Common/interface/user.interface";
+import { UpdateStatusRequest } from "@/_Common/interface/general.interface";
 // import logger from "../../../../libs/winston";
 
 const APIAuth: StatusAPICode[] = [
   StatusAPICode.GET_EMPLOYEE_DETAILS,
   StatusAPICode.CREATE_EMPLOYEE,
   StatusAPICode.UPLOAD_EXCEL_EMPLOYEE_CREATE,
+  StatusAPICode.UPDATE_USER_ACTIVE_STATUS,
 ];
 
 export async function GET(req: any, res: any) {
@@ -102,7 +105,6 @@ export async function GET(req: any, res: any) {
       }
     }
   } catch (error: any) {
-
     // logger.error("Failed at Route GET User ===>", { error });
 
     console.error(error);
@@ -180,7 +182,6 @@ export async function POST(req: any, res: any) {
       }
     }
   } catch (error: any) {
-
     // logger.error("Failed at Route POST User ===>", { error });
 
     console.error(error);
@@ -231,13 +232,22 @@ export async function PUT(req: any, res: any) {
           return UpdateEmployee(data);
         }
 
+        case StatusAPICode.UPDATE_USER_ACTIVE_STATUS: {
+          const data: UpdateStatusRequest = body as UpdateStatusRequest;
+
+          if (!data) {
+            throw Error("No Data Detected");
+          }
+
+          return UpdateStatusEmployeeService(data);
+        }
+
         default: {
           throw Error("No Code Found");
         }
       }
     }
   } catch (error: any) {
-
     // logger.error("Failed at Route PUT User ===>", { error });
 
     console.error(error);

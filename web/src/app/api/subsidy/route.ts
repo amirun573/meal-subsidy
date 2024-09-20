@@ -13,26 +13,30 @@ import { SignInService } from "../auth/service/auth.service";
 import {
   SubsidyEmployeeUpdate,
   SubsidySubmitPrice,
+  UpdateSubsidyCreditRequest,
 } from "@/_Common/interface/subsidy.interface";
 import {
   CreateSubsidyTransactionService,
+  CreateSubsidyTransactionServiceAuth,
   DownloadReportSubsidyTransaction,
   GetSubsidyTransactionPaginationService,
   GetSubsidyTransactionReportChart,
   GetSubsidyTypePaginationService,
   TriggerCreditService,
+  UpdateSubsidyCreditRealTimeService,
   UpdateSubsidyTypeService,
   UpdateUserApplicableSubsidy,
 } from "./service/subsidy.service";
 import { decrypt } from "@/_Common/function/Hashing";
 const APIAuth: StatusAPICode[] = [
-  StatusAPICode.GET_EMPLOYEE_DETAILS,
   StatusAPICode.SUBSIDY_TRANSACTION_PAGINATION,
   StatusAPICode.SUBSIDY_CHART_REPORT,
   StatusAPICode.SUBSIDY_REPORT_DOWNLOAD,
   StatusAPICode.CREATE_TRIGGER_SUBSIDY_CREDIT,
   StatusAPICode.SUBSIDY_TYPE_PAGINATION,
   StatusAPICode.UPDATE_SUBSIDY_TYPE,
+  StatusAPICode.UPDATE_SUBSIDY_CREDIT_REAL_TIME,
+  StatusAPICode.CREATE_SUBMIT_SUBSIDY_TRANSACTION_AUTH,
 ];
 
 export async function GET(req: any, res: NextApiResponse) {
@@ -228,6 +232,28 @@ export async function POST(req: any, res: any) {
           // return CreateSubsidyTransactionService(decryptData);
         }
 
+        case StatusAPICode.CREATE_SUBMIT_SUBSIDY_TRANSACTION_AUTH: {
+          const data: any = body as any;
+
+          if (!data) {
+            throw Error("No Data Detected");
+          }
+
+          const decryptData: SubsidySubmitPrice = JSON.parse(
+            decrypt(data?.encryptedData as string) || "{}"
+          );
+
+          if (!decryptData) {
+            throw Error("Not Authorized To Proceed");
+          }
+
+          if (!user) {
+            throw Error("No User Found");
+          }
+
+          return CreateSubsidyTransactionServiceAuth(decryptData, user);
+        }
+
         default: {
           throw Error("No Code Found");
         }
@@ -290,6 +316,17 @@ export async function PUT(req: any, res: any) {
           }
 
           return UpdateSubsidyTypeService(data);
+        }
+
+        case StatusAPICode.UPDATE_SUBSIDY_CREDIT_REAL_TIME: {
+          const data: UpdateSubsidyCreditRequest =
+            body as UpdateSubsidyCreditRequest;
+
+          if (!data) {
+            throw Error("No Data Detected");
+          }
+
+          return UpdateSubsidyCreditRealTimeService(data);
         }
         default: {
           throw Error("No Code Found");

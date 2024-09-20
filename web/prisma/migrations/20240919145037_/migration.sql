@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Subsidy" ADD COLUMN     "Amount" DOUBLE PRECISION NOT NULL DEFAULT 0;
