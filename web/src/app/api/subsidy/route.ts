@@ -161,6 +161,7 @@ export async function GET(req: any, res: NextApiResponse) {
 }
 
 export async function POST(req: any, res: any) {
+  let status: number = 500;
   try {
     let body: any = await GetBodyData(req);
 
@@ -179,6 +180,7 @@ export async function POST(req: any, res: any) {
 
     if (APIAuth.find((item) => item === parseInt(code))) {
       if (!token) {
+        status = 401;
         throw Error("No Token Found");
       }
       user = (token as JWTDecodeInterface).user;
