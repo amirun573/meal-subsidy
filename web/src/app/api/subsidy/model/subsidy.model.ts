@@ -239,13 +239,26 @@ export async function UpdateSubsidyTransaction(object: PrismaUpdate) {
 export async function SubsidyCreditTransactionCascade(data: {
   subsidyCredit: SubsidyCredit;
   subsidyTransaction: SubsidyTransaction;
+  subsidy: Subsidy;
 }) {
   try {
-    const { subsidyCredit, subsidyTransaction } = data;
+    const { subsidyCredit, subsidyTransaction, subsidy } = data;
     const result = await prisma.$transaction(
       async (prisma) => {
+        let subsidyTransaction: any;
         let subsidyCreditTransaction: any;
 
+        if (!subsidy.subsidy_id) {
+          subsidyTransaction = await CreateSubsidy_4User({
+            data: subsidy,
+            prismaTransaction: prisma,
+          });
+        } else {
+          subsidyTransaction = await UpdateSubsidy({
+            data: subsidy,
+            prismaTransaction: prisma,
+          });
+        }
         if (!subsidyCredit?.subsidy_credit_id) {
           subsidyCreditTransaction = await CreateSubsidyCredit({
             data: subsidyCredit as any,

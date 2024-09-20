@@ -182,6 +182,8 @@ export async function CreateSubsidyTransactionService(
       throw Error("Wrong Setup For Subsidy");
     }
 
+    const subsidy: Subsidy = subsidiesCheck[0];
+
     const SubsidyCredits: SubsidyCredit[] = [];
 
     subsidiesCheck.forEach((subsidy) => {
@@ -247,9 +249,15 @@ export async function CreateSubsidyTransactionService(
       transaction_status: $Enums.TransactionStatus.COMPLETED,
     };
 
+    const updateSubsidy: Partial<Subsidy> = {
+      subsidy_id: subsidy.subsidy_id,
+      amount: updatedAvailableCredit,
+    };
+
     const transactionSubsidy = await SubsidyCreditTransactionCascade({
       subsidyCredit: updateSubsidyCredit as SubsidyCredit,
       subsidyTransaction: subsidyTransaction as SubsidyTransaction,
+      subsidy: updateSubsidy as Subsidy,
     });
 
     // const updateSubsidyCreditProcess = await UpdateSubsidyCredit({
@@ -722,7 +730,7 @@ export async function DownloadReportSubsidyTransaction(
         "Employee Category Name",
         "Credit Used (RM)",
         "Transaction At",
-        "Cashier In Charged"
+        "Cashier In Charged",
       ],
     ];
     const writeExcel = ConvertExcel(HEADER_ORDER_LIST, subsidyTransaction);
@@ -1134,6 +1142,8 @@ export async function CreateSubsidyTransactionServiceAuth(
       throw Error("Wrong Setup For Subsidy");
     }
 
+    const subsidy: Subsidy = subsidiesCheck[0];
+
     const SubsidyCredits: SubsidyCredit[] = [];
 
     subsidiesCheck.forEach((subsidy) => {
@@ -1184,7 +1194,7 @@ export async function CreateSubsidyTransactionServiceAuth(
 
     const updateSubsidyCredit: Partial<SubsidyCredit> = {
       subsidy_credit_id: subsidy_credits.subsidy_credit_id,
-      credit_amount: usedCredit,
+      credit_amount: updatedAvailableCredit,
     };
 
     const subsidyTransaction: Partial<SubsidyTransaction> = {
@@ -1197,6 +1207,10 @@ export async function CreateSubsidyTransactionServiceAuth(
       created_by_user_id: user_details.user_id,
     };
 
+    const updateSubsidy: Partial<Subsidy> = {
+      subsidy_id: subsidy.subsidy_id,
+      amount: updatedAvailableCredit,
+    };
 
     console.log("USer===>", user_details);
     const checkCashier = await GetUserSingle({
@@ -1208,7 +1222,7 @@ export async function CreateSubsidyTransactionServiceAuth(
       },
     });
 
-    if(!checkCashier){
+    if (!checkCashier) {
       status = 400;
       throw Error("Transaction only can be done from Cashier");
     }
@@ -1216,6 +1230,7 @@ export async function CreateSubsidyTransactionServiceAuth(
     const transactionSubsidy = await SubsidyCreditTransactionCascade({
       subsidyCredit: updateSubsidyCredit as SubsidyCredit,
       subsidyTransaction: subsidyTransaction as SubsidyTransaction,
+      subsidy: updateSubsidy as Subsidy,
     });
 
     // const updateSubsidyCreditProcess = await UpdateSubsidyCredit({
