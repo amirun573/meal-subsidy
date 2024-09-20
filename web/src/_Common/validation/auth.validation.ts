@@ -4,7 +4,6 @@ import { SignInRequest } from "../interface/auth.interface";
 const SignInValidation = yup.object().shape({
   email: yup
     .string()
-    .email("Invalid email format")
     .required("Email is required"),
   password: yup
     .string()

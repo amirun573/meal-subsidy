@@ -5,6 +5,7 @@ import {
   SubsidyTransactionPaginationRequest,
   DownloadReportSubsidyTransactionResult,
   SubsidyTypePaginationRequest,
+  UpdateSubsidyCreditRequest,
 } from "@/_Common/interface/subsidy.interface";
 import {
   EmployeeSubmitPriceValidation,
@@ -12,6 +13,7 @@ import {
   SubsidyTransactionPagination,
   SubsidyTransactionReportDownload,
   SubsidyTypePagination,
+  UpdateSubsidyCreditRealTimeValidation,
   UpdateSubsidyTypeValidation,
 } from "@/_Common/validation/subsidy.validation";
 import {
@@ -21,6 +23,7 @@ import {
   SubsidyCredit,
   SubsidyTransaction,
   SubsidyType,
+  User,
 } from "@prisma/client";
 import { NextResponse } from "next/server";
 import {
@@ -37,6 +40,8 @@ import {
   GetCountTotalSubsidyType,
   GetSubsidyTypeSingle,
   UpdateSubsidyTypeSingle,
+  GetSubsidyCreditSingle,
+  SubsidyCreditCascade,
 } from "../model/subsidy.model";
 import { GetUserSingle } from "../../user/model/user.model";
 import { SubsidyTypeCode } from "@/_Common/enum/subsidy-type.enum";
@@ -117,33 +122,39 @@ export async function CreateSubsidyTransactionService(
         employee_id,
         subsidies: {
           some: {
-            // applicable: true,
             subsidy_type: {
               subsidy_type_code: SubsidyTypeCode.meal,
             },
             subsidy_credits: {
               some: {
-                // credit_amount: {
-                //   gt: 0, // Check if credit_amount is greater than 0
-                // },
+                active: true,
                 uuid: {
-                  in: [subsidyCreditUUID], // Filter by specific UUID or an array of UUIDs
+                  in: [subsidyCreditUUID],
                 },
               },
             },
+            OR: [
+              { end_date: null }, // Include subsidies where end_date is not set
+              { end_date: { gt: new Date() } }, // Include subsidies where end_date is greater than the current time
+            ],
           },
         },
       },
+
       select: {
         user_id: true,
         subsidies: {
           select: {
             subsidy_id: true,
             subsidy_credits: {
+              where: {
+                active: true,
+              },
               select: {
                 subsidy_credit_id: true,
                 credit_amount: true,
                 uuid: true,
+                active: true,
               },
             },
           },
@@ -153,7 +164,7 @@ export async function CreateSubsidyTransactionService(
 
     if (!user) {
       status = 400;
-      throw Error("Credit Has Been Finished");
+      throw Error("Credit Has Been Finished/ Expired");
     }
 
     const { subsidies, ...UserWihoutSubsidy } = user as any;
@@ -171,6 +182,8 @@ export async function CreateSubsidyTransactionService(
       // Type assertion to access subsidy_credits
       const checkSubsidyCredits: SubsidyCredit[] = (subsidy as any)
         ?.subsidy_credits;
+
+      console.log("checkSubsidyCredits===>", checkSubsidyCredits);
 
       // Check if there is exactly one credit
       if (checkSubsidyCredits.length !== 1) {
@@ -711,8 +724,7 @@ export async function DownloadReportSubsidyTransaction(
       status: 200,
       headers: {
         "Content-Disposition": 'attachment; filename="report.xlsx"',
-        "Content-Type":
-        FileMimeType.XLSX,
+        "Content-Type": FileMimeType.XLSX,
       },
     });
 
@@ -755,6 +767,7 @@ export async function TriggerCreditService() {
         user_id: true,
         subsidy_id: true,
         applicable: true,
+        amount: true,
         subsidy_type: {
           select: {
             subsidy_type_id: true,
@@ -766,17 +779,24 @@ export async function TriggerCreditService() {
 
     if (subsidies.length < 1) {
       status = 400;
-      throw Error("No One in Subsidy");
+      throw Error("No One is in Subsidy");
     }
 
-    const subsidiesCredit: Partial<SubsidyCredit>[] = subsidies.map(
+    const updateSubsidies: Partial<Subsidy>[] = subsidies.map((subsidy) => {
+      return {
+        subsidy_id: subsidy.subsidy_id,
+        subsidy_type_id: subsidy.subsidy_type_id,
+        user_id: subsidy.user_id,
+        amount: subsidy.applicable ? (subsidy as any)?.subsidy_type?.price : 0,
+      };
+    });
+
+    const subsidiesCredit: Partial<SubsidyCredit>[] = updateSubsidies.map(
       (subsidy) => {
         return {
           user_id: subsidy.user_id,
           subsidy_id: subsidy.subsidy_id,
-          credit_amount: subsidy.applicable
-            ? (subsidy as any)?.subsidy_type?.price
-            : 0,
+          credit_amount: subsidy.amount || 0,
         };
       }
     );
@@ -787,6 +807,7 @@ export async function TriggerCreditService() {
     }
 
     const createSubsidiesCredit = await TriggerSubsidyCreditCascade({
+      subsidies: updateSubsidies as Subsidy[],
       subsidiesCredit: subsidiesCredit as SubsidyCredit[],
     });
 
@@ -943,6 +964,80 @@ export async function UpdateSubsidyTypeService(data: Partial<SubsidyType>) {
     });
   } catch (error: any) {
     console.error(error);
+    return NextResponse.json(
+      {
+        message: error.message || message,
+      },
+      {
+        status: error.statusCode || status,
+      }
+    );
+  }
+}
+
+export async function UpdateSubsidyCreditRealTimeService(
+  data: UpdateSubsidyCreditRequest
+) {
+  let message: string = "";
+  let status: number = 500;
+  try {
+    await UpdateSubsidyCreditRealTimeValidation(data);
+
+    const { amount, user_uuid, subsidy_uuid } = data;
+
+    const subsidyCredit: Partial<SubsidyCredit | null> =
+      await GetSubsidyCreditSingle({
+        where: {
+          active: true,
+          subsidy: {
+            uuid: subsidy_uuid,
+            user: {
+              uuid: user_uuid,
+            },
+          },
+        },
+        select: {
+          subsidy_credit_id: true,
+          credit_amount: true,
+          subsidy_id: true,
+          subsidy: {
+            select: {
+              amount: true,
+            },
+          },
+        },
+      });
+
+    if (!subsidyCredit) {
+      status = 400;
+      throw Error("Subsidy Credit not Found");
+    }
+
+    const updateSubsidy: Partial<Subsidy> = {
+      subsidy_id: subsidyCredit.subsidy_id,
+      amount,
+    };
+
+    const updateSubsidyCredit: Partial<SubsidyCredit> = {
+      subsidy_credit_id: subsidyCredit.subsidy_credit_id,
+      credit_amount: amount,
+    };
+
+    const updateSubsidyCascade = await SubsidyCreditCascade({
+      subsidy: updateSubsidy as Subsidy,
+      subsidyCredit: updateSubsidyCredit as SubsidyCredit,
+    });
+
+    if (!updateSubsidyCascade) {
+      status = 400;
+      throw Error("Subsidy Cannot Be Create");
+    }
+
+    console.log("Subsidy Credit==>", subsidyCredit);
+    return NextResponse.json({
+      message: "Successfully Update",
+    });
+  } catch (error: any) {
     return NextResponse.json(
       {
         message: error.message || message,

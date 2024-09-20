@@ -59,7 +59,10 @@ export async function SignInService(data: SignInRequest) {
 
     const user = await GetUserSingle({
       where: {
-        email,
+        OR: [
+          { email: email },               // Email condition
+          { employee_id: email }    // Employee ID condition
+        ],
       },
       select: {
         user_id: true,
@@ -88,25 +91,28 @@ export async function SignInService(data: SignInRequest) {
     }
 
     if (
-      !user?.email ||
       !user?.role_id ||
       !user?.uuid ||
       !user?.is_acc_verify ||
-      !user?.employee_id ||
-      !user?.password_hash
+      !user?.employee_id
     ) {
       status = 400;
       throw Error("User is missing");
     }
 
-    const checkPassword = await comparePassword(password, user.password_hash);
+
+    if(user.password_hash){
+      const checkPassword = await comparePassword(password, user.password_hash);
+      if (!checkPassword) {
+        status = 400;
+        throw Error("Wrong Password");
+      }
+    }
+
 
     //console.log("checkPassword===>", checkPassword);
 
-    if (!checkPassword) {
-      status = 400;
-      throw Error("Wrong Password");
-    }
+    
 
     const UserFeatures: Partial<UserFeatures>[] = await GetUserFeatures({
       where: {
@@ -150,7 +156,7 @@ export async function SignInService(data: SignInRequest) {
     const refreshToken = jwt.sign(user, process.env.JWT_SECRET_KEY || "");
 
     const userDetails: UserDetailsLocalStorage = {
-      email: user.email,
+      email: user.email || '',
       employee_id: user.employee_id, // Assuming this is a typo and it should be `username`
       accessToken,
       refreshToken,

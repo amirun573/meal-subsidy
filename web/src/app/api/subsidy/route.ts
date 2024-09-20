@@ -13,6 +13,7 @@ import { SignInService } from "../auth/service/auth.service";
 import {
   SubsidyEmployeeUpdate,
   SubsidySubmitPrice,
+  UpdateSubsidyCreditRequest,
 } from "@/_Common/interface/subsidy.interface";
 import {
   CreateSubsidyTransactionService,
@@ -21,6 +22,7 @@ import {
   GetSubsidyTransactionReportChart,
   GetSubsidyTypePaginationService,
   TriggerCreditService,
+  UpdateSubsidyCreditRealTimeService,
   UpdateSubsidyTypeService,
   UpdateUserApplicableSubsidy,
 } from "./service/subsidy.service";
@@ -32,6 +34,7 @@ const APIAuth: StatusAPICode[] = [
   StatusAPICode.CREATE_TRIGGER_SUBSIDY_CREDIT,
   StatusAPICode.SUBSIDY_TYPE_PAGINATION,
   StatusAPICode.UPDATE_SUBSIDY_TYPE,
+  StatusAPICode.UPDATE_SUBSIDY_CREDIT_REAL_TIME,
 ];
 
 export async function GET(req: any, res: NextApiResponse) {
@@ -289,6 +292,16 @@ export async function PUT(req: any, res: any) {
           }
 
           return UpdateSubsidyTypeService(data);
+        }
+
+        case StatusAPICode.UPDATE_SUBSIDY_CREDIT_REAL_TIME: {
+          const data: UpdateSubsidyCreditRequest= body as UpdateSubsidyCreditRequest;
+
+          if (!data) {
+            throw Error("No Data Detected");
+          }
+
+          return UpdateSubsidyCreditRealTimeService(data);
         }
         default: {
           throw Error("No Code Found");

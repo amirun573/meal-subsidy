@@ -182,6 +182,7 @@ export async function UserPaginationService(data: UserPaginationRequest) {
             uuid: true,
             start_date: true,
             end_date: true,
+            amount: true,
             subsidy_type: {
               select: {
                 subsidy_type_code: true,

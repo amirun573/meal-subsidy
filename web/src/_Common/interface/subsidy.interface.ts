@@ -44,3 +44,10 @@ export interface SubsidyTypePaginationRequest {
   page: number;
   filter: string | null;
 }
+
+export interface UpdateSubsidyCreditRequest {
+  code: StatusAPICode,
+  user_uuid: string;
+  subsidy_uuid: string;
+  amount: number;
+}

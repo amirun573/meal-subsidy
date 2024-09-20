@@ -5,6 +5,7 @@ import {
   SubsidyTransactionPaginationRequest,
   SubsidyTransactionDownloadReportRequest,
   SubsidyTypePaginationRequest,
+  UpdateSubsidyCreditRequest,
 } from "../interface/subsidy.interface";
 import { SubsidyType } from "@prisma/client";
 
@@ -49,6 +50,13 @@ const UpdateSubsidyTypeSchema = yup.object().shape({
   subsidy_type_name: yup.string().optional(),
 });
 
+
+const UpdateSubsidyCreditRealTimeSchema = yup.object().shape({
+  user_uuid: yup.string().required("User UUID Required"),
+  amount: yup.number().min(0).required("Amount Required"),
+  subsidy_uuid: yup.string().required("Subsidy UUID Required"),
+});
+
 export function EmployeeUpdateSubsidyValidation(data: SubsidyEmployeeUpdate) {
   return UserUpdateSubsidyValidation.validate(data);
 }
@@ -75,4 +83,8 @@ export function SubsidyTypePagination(data: SubsidyTypePaginationRequest) {
 
 export function UpdateSubsidyTypeValidation(data: Partial<SubsidyType>) {
   return UpdateSubsidyTypeSchema.validate(data);
+}
+
+export function UpdateSubsidyCreditRealTimeValidation(data: UpdateSubsidyCreditRequest) {
+  return UpdateSubsidyCreditRealTimeSchema.validate(data);
 }
