@@ -1073,6 +1073,20 @@ export async function CreateSubsidyTransactionServiceAuth(
   try {
     await EmployeeSubmitPriceValidation(data);
 
+    console.log("USer===>", user_details);
+    const checkCashier = await GetUserSingle({
+      where: {
+        user_id: user_details.user_id,
+        department: {
+          department_code: "cashier",
+        },
+      },
+    });
+
+    if (!checkCashier) {
+      status = 400;
+      throw Error("Transaction only can be done from Cashier");
+    }
     const {
       totalPrice,
       price,
@@ -1211,21 +1225,6 @@ export async function CreateSubsidyTransactionServiceAuth(
       subsidy_id: subsidy.subsidy_id,
       amount: updatedAvailableCredit,
     };
-
-    console.log("USer===>", user_details);
-    const checkCashier = await GetUserSingle({
-      where: {
-        user_id: user_details.user_id,
-        department: {
-          department_code: "cashier",
-        },
-      },
-    });
-
-    if (!checkCashier) {
-      status = 400;
-      throw Error("Transaction only can be done from Cashier");
-    }
 
     const transactionSubsidy = await SubsidyCreditTransactionCascade({
       subsidyCredit: updateSubsidyCredit as SubsidyCredit,

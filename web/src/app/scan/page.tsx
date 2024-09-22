@@ -13,6 +13,7 @@ import { SubsidySubmitPrice } from '@/_Common/interface/subsidy.interface';
 import { EmployeeSubmitPriceValidation } from '@/_Common/validation/subsidy.validation';
 import { GetLocalStorageDetails, HandleUnAuthorized } from '@/_Common/function/LocalStorage';
 import { UserDetailsLocalStorage } from '@/_Common/interface/auth.interface';
+import Image from 'next/image';
 const ScanPage = () => {
     const [employeeId, setEmployeeId] = useState<string>('');
     const [showScannerModal, setShowScannerModal] = useState<boolean>(false);
@@ -60,8 +61,18 @@ const ScanPage = () => {
 
 
                 await ScanEmployeeIDValidation({ employeeID });
+
+                const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+
+                if (!userDetailsLocalStorage) {
+                    await HandleUnAuthorized(null);
+                }
                 // Make sure to await the API call
-                const employeeIDCheckRequest = await axios.get(`/api/user?${StatusAPICode.code}=${StatusAPICode.GET_CHECK_EMPLOYEE_ID}&employeeID=${encrypt(employeeID)}`);
+                const employeeIDCheckRequest = await axios.get(`/api/user?${StatusAPICode.code}=${StatusAPICode.GET_CHECK_EMPLOYEE_ID_AUTH}&employeeID=${encrypt(employeeID)}`, {
+                    headers: {
+                        Authorization: `Bearer ${userDetailsLocalStorage.accessToken}`
+                    }
+                });
 
                 if (!employeeIDCheckRequest.data?.employee_id || !employeeIDCheckRequest.data?.employee_name || (typeof employeeIDCheckRequest.data?.available_credit !== 'number') || !employeeIDCheckRequest.data?.subsidyCreditUUID) {
                     throw Error("Failed To Retrieve Subsidy Details");
@@ -165,6 +176,15 @@ const ScanPage = () => {
             <MainContent />
             <div>
                 {loading && <Spinner />}
+
+                <div style={{ margin: '20px 10px', display: 'flex', justifyContent: 'center' }}>
+                    <Image
+                        src={"/img/Watlow_Logo_color rev.png"}
+                        width={300} // Adjusted width
+                        height={300} // Adjusted height
+                        alt="Watlow Logo"
+                    />
+                </div>
 
                 <div style={{ margin: '20px 0', textAlign: 'center' }}>
                     <label
