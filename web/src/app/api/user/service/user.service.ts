@@ -89,11 +89,11 @@ export async function UserPaginationService(data: UserPaginationRequest) {
           },
         },
       },
-      access_cards: {
-        some: {
-          active: true,
-        },
-      },
+      // access_cards: {
+      //   some: {
+      //     active: true,
+      //   },
+      // },
     };
 
     if (filter) {
@@ -136,6 +136,9 @@ export async function UserPaginationService(data: UserPaginationRequest) {
       // If conditionFilter is empty, just use filterSubsidyTypeCodeMeal
       conditionFilter = filterSubsidyTypeCodeMeal;
     }
+
+    console.log("conditionFilter===>", conditionFilter);
+
 
     const totalUser: number = await GetTotalUser({
       where: conditionFilter,
