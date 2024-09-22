@@ -790,11 +790,11 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
     const getUser: Partial<User> | null = await GetUserSingle({
       where: {
         employee_id,
-        access_cards: {
-          some: {
-            active: true,
-          },
-        },
+        // access_cards: {
+        //   some: {
+        //     active: true,
+        //   },
+        // },
       },
       select: {
         user_id: true,
@@ -967,7 +967,7 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
     }
 
     return NextResponse.json({
-      message: "Successfully Create New Employee",
+      message: "Successfully Update Employee",
     });
   } catch (error: any) {
     // logger.error("Failed at UpdateEmployee function ===>", { error });
