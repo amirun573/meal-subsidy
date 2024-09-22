@@ -1476,6 +1476,8 @@ const EmployeeDetailsPage = () => {
             });
 
             alert("Successfully Generate Subsidy Credit");
+            window.location.reload();
+
         } catch (error) {
             console.error(error);
             DisplayAlert(error);
@@ -1529,6 +1531,7 @@ const EmployeeDetailsPage = () => {
 
                 setEmployeeDetails(updatedEmployees);
 
+                window.location.reload();
 
 
 
