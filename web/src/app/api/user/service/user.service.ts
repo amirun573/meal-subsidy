@@ -817,6 +817,7 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
         access_cards: {
           select: {
             card_value: true,
+            active: true,
           },
         },
         role: {
@@ -994,15 +995,35 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
     }
 
     if (access_card_no) {
-      const access_cards: Partial<AccessCard>[] = (getUser as any)
+      const get_access_cards: Partial<AccessCard>[] = (getUser as any)
         ?.access_cards as Partial<AccessCard>[];
 
-      if (access_cards.length < 0 && access_cards.length > 1) {
+      const access_cards: Partial<AccessCard>[] = get_access_cards.filter(
+        (item) => item.active === true
+      ) as Partial<AccessCard>[];
+
+      if (access_cards.length > 1) {
         status = 400;
-        throw Error("Access Only Can Have 1 Active Usage");
+        throw Error("Access Card Cannot Have More Than 1 that Active");
       }
 
-      if (access_cards[0].card_value !== access_card_no) {
+      if (access_cards[0]?.card_value) {
+        if (access_cards[0].card_value !== access_card_no) {
+          const access_card: Partial<AccessCard> = {
+            card_value: access_card_no,
+            user_id,
+          };
+
+          const createAccessCard = await CreateAccessCardCascade({
+            accessCard: access_card as AccessCard,
+          });
+
+          if (!createAccessCard) {
+            status = 400;
+            throw Error("Failed To Register Employee Access Card");
+          }
+        }
+      } else {
         const access_card: Partial<AccessCard> = {
           card_value: access_card_no,
           user_id,
