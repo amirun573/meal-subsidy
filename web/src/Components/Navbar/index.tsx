@@ -6,6 +6,7 @@ import { UserDetailsLocalStorage } from "@/_Common/interface/auth.interface";
 import { GetRoleFromId } from "@/_Common/function/Role";
 import { DisplayAlert } from '../../_Common/function/Error';
 import { HandleUnAuthorized, GetLocalStorageDetails } from "@/_Common/function/LocalStorage";
+import Image from "next/image";
 // Define an interface for your props
 interface NavbarProps {
   role: RoleList; // Use the appropriate type for the role
@@ -138,11 +139,19 @@ const Navbar = () => {
     <div>
       <nav className="bg-white border-gray-200 dark:bg-gray-900 fixed top-0 left-0 right-0 z-50 shadow text-black">
         <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
-          <a href="/" className="flex items-center space-x-3 rtl:space-x-reverse">
+          <a href="/" className="flex items-center gap-x-0 rtl:space-x-reverse justify-start">
+            <Image
+              src={"/img/Watlow_Logo_color rev.png"}
+              width={150} // Adjusted width
+              height={150} // Adjusted height
+              alt="Watlow Logo"
+            />
             <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-black">
               Meal Subsidy
             </span>
           </a>
+
+
           <button
             onClick={toggleNavbar}
             type="button"

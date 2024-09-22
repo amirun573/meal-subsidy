@@ -13,6 +13,7 @@ import { SubsidySubmitPrice } from '@/_Common/interface/subsidy.interface';
 import { EmployeeSubmitPriceValidation } from '@/_Common/validation/subsidy.validation';
 import { GetLocalStorageDetails, HandleUnAuthorized } from '@/_Common/function/LocalStorage';
 import { UserDetailsLocalStorage } from '@/_Common/interface/auth.interface';
+import Image from 'next/image';
 const ScanPage = () => {
     const [employeeId, setEmployeeId] = useState<string>('');
     const [showScannerModal, setShowScannerModal] = useState<boolean>(false);
@@ -165,6 +166,15 @@ const ScanPage = () => {
             <MainContent />
             <div>
                 {loading && <Spinner />}
+
+                <div style={{ margin: '20px 10px', display: 'flex', justifyContent: 'center' }}>
+                    <Image
+                        src={"/img/Watlow_Logo_color rev.png"}
+                        width={300} // Adjusted width
+                        height={300} // Adjusted height
+                        alt="Watlow Logo"
+                    />
+                </div>
 
                 <div style={{ margin: '20px 0', textAlign: 'center' }}>
                     <label
