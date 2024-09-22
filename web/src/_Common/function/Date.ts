@@ -112,3 +112,8 @@ export const ConvertToUTCEndOfDay = (date: string) => {
   return utcDate.toISOString();
 };
 
+//Use to Handle when Input Type is datetime-local
+export const HandleDateTimeFormatClientToAPI = (date: string): string => {
+  // Convert the local date and time to a UTC moment and format it to an ISO string
+  return moment(date).utc().format("YYYY-MM-DDTHH:mm:ss[Z]");
+};
