@@ -61,8 +61,18 @@ const ScanPage = () => {
 
 
                 await ScanEmployeeIDValidation({ employeeID });
+
+                const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+
+                if (!userDetailsLocalStorage) {
+                    await HandleUnAuthorized(null);
+                }
                 // Make sure to await the API call
-                const employeeIDCheckRequest = await axios.get(`/api/user?${StatusAPICode.code}=${StatusAPICode.GET_CHECK_EMPLOYEE_ID}&employeeID=${encrypt(employeeID)}`);
+                const employeeIDCheckRequest = await axios.get(`/api/user?${StatusAPICode.code}=${StatusAPICode.GET_CHECK_EMPLOYEE_ID_AUTH}&employeeID=${encrypt(employeeID)}`, {
+                    headers: {
+                        Authorization: `Bearer ${userDetailsLocalStorage.accessToken}`
+                    }
+                });
 
                 if (!employeeIDCheckRequest.data?.employee_id || !employeeIDCheckRequest.data?.employee_name || (typeof employeeIDCheckRequest.data?.available_credit !== 'number') || !employeeIDCheckRequest.data?.subsidyCreditUUID) {
                     throw Error("Failed To Retrieve Subsidy Details");

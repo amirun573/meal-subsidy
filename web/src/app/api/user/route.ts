@@ -13,6 +13,7 @@ import { SignInService } from "../auth/service/auth.service";
 import {
   CreateEmployee,
   CreateEmployeeBulkUpload,
+  ScanCheckEmployeeIDAuthService,
   ScanCheckEmployeeIDService,
   UpdateEmployee,
   UpdateStatusEmployeeService,
@@ -30,6 +31,7 @@ const APIAuth: StatusAPICode[] = [
   StatusAPICode.CREATE_EMPLOYEE,
   StatusAPICode.UPLOAD_EXCEL_EMPLOYEE_CREATE,
   StatusAPICode.UPDATE_USER_ACTIVE_STATUS,
+  StatusAPICode.GET_CHECK_EMPLOYEE_ID_AUTH,
 ];
 
 export async function GET(req: any, res: any) {
@@ -97,6 +99,22 @@ export async function GET(req: any, res: any) {
         }
 
         return ScanCheckEmployeeIDService({ employeeID });
+      }
+
+      case StatusAPICode.GET_CHECK_EMPLOYEE_ID_AUTH: {
+        const employeeID: string | null = url.searchParams.get("employeeID");
+
+        if (!employeeID) {
+          statusCode = 400;
+          throw Error("No Employee ID Sent.");
+        }
+
+        if(!user){
+          statusCode = 400;
+          throw Error("No User Found.");
+        }
+
+        return ScanCheckEmployeeIDAuthService({ employeeID }, user);
       }
 
       default: {

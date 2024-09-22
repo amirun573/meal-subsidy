@@ -139,7 +139,6 @@ export async function UserPaginationService(data: UserPaginationRequest) {
 
     console.log("conditionFilter===>", conditionFilter);
 
-
     const totalUser: number = await GetTotalUser({
       where: conditionFilter,
     });
@@ -239,7 +238,7 @@ export async function UserPaginationService(data: UserPaginationRequest) {
     );
   }
 }
-
+//TODO: Will Be Depriacted due to Authentication needed
 export async function ScanCheckEmployeeIDService(data: ScanCheckEmployeeID) {
   let message: string = "";
   let status: number = 500;
@@ -1021,6 +1020,128 @@ export async function UpdateStatusEmployeeService(data: UpdateStatusRequest) {
       message: "Successfully Update Employee Status",
     });
   } catch (error: any) {
+    console.error(error);
+    return NextResponse.json(
+      {
+        message: error.message || message,
+      },
+      {
+        status: error.statusCode || status,
+      }
+    );
+  }
+}
+
+export async function ScanCheckEmployeeIDAuthService(
+  data: ScanCheckEmployeeID,
+  user_details: User
+) {
+  let message: string = "";
+  let status: number = 500;
+  try {
+    const { employeeID } = data;
+
+    const employee_id = decrypt(employeeID || "");
+
+    await ScanEmployeeIDValidation({ employeeID: employee_id });
+
+    console.log("user_details===>", user_details);
+    const checkCashier = await GetUserSingle({
+      where: {
+        user_id: user_details.user_id,
+        department: {
+          department_code: "cashier",
+        },
+      },
+    });
+
+    if (!checkCashier) {
+      status = 400;
+      throw Error("Transaction only can be done from Cashier In Checking Employee.");
+    }
+
+    const user = await GetUserSingle({
+      where: {
+        OR: [
+          { employee_id: employee_id },
+          {
+            access_cards: {
+              some: {
+                active: true,
+                card_value: employee_id,
+              },
+            },
+          },
+        ],
+        AND: [
+          {
+            // subsidies: {
+            //   some: {
+            //     applicable: true,
+            //   },
+            // },
+          },
+          {
+            subsidies: {
+              some: {
+                active: true,
+                subsidy_type: {
+                  subsidy_type_code: SubsidyTypeCode.meal,
+                },
+              },
+            },
+          },
+        ],
+      },
+      select: {
+        user_id: true,
+        employee_id: true,
+        UserDetails: {
+          select: {
+            name: true,
+          },
+        },
+        subsidies: {
+          select: {
+            subsidy_id: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      status = 400;
+      throw Error("Not Eligable For Subsidy Meal");
+    }
+
+    console.log("employee_id==>", employee_id);
+
+    console.log("User==>", user);
+
+    const subsidyCredit: Partial<SubsidyCredit> = (await GetSubsidyCreditSingle(
+      {
+        where: {
+          user_id: user?.user_id,
+          subsidy_id: (user as any)?.subsidies?.subsidy_id,
+          active: true,
+        },
+      }
+    )) as Partial<SubsidyCredit>;
+
+    if (!subsidyCredit) {
+      status = 400;
+      throw Error("No Subsidy Credit Found");
+    }
+
+    return NextResponse.json({
+      employee_id: user.employee_id,
+      employee_name: (user as any)?.UserDetails?.name,
+      available_credit: subsidyCredit.credit_amount,
+      subsidyCreditUUID: subsidyCredit.uuid,
+    });
+  } catch (error: any) {
+    // logger.error("Failed at ScanCheckEmployeeIDService function ===>", { error });
+
     console.error(error);
     return NextResponse.json(
       {
