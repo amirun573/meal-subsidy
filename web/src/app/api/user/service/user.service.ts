@@ -52,6 +52,7 @@ import {
   GetSubsidyCreditSingle,
   GetSubsidySingle,
   GetSubsidyTypeSingle,
+  UpdateSubsidy,
 } from "../../subsidy/model/subsidy.model";
 import { hashPassword } from "../../auth/model/auth.model";
 import { utils, WorkBook } from "xlsx";
@@ -83,17 +84,15 @@ export async function UserPaginationService(data: UserPaginationRequest) {
 
     const filterSubsidyTypeCodeMeal = {
       subsidies: {
+        every: {
+          active: true, // Ensure every subsidy is active
+        },
         some: {
           subsidy_type: {
-            subsidy_type_code: SubsidyTypeCode.meal,
+            subsidy_type_code: SubsidyTypeCode.meal, // Check for meal subsidy type
           },
         },
       },
-      // access_cards: {
-      //   some: {
-      //     active: true,
-      //   },
-      // },
     };
 
     if (filter) {
@@ -185,6 +184,7 @@ export async function UserPaginationService(data: UserPaginationRequest) {
             start_date: true,
             end_date: true,
             amount: true,
+            active: true,
             subsidy_type: {
               select: {
                 subsidy_type_code: true,
@@ -790,6 +790,11 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
     const getUser: Partial<User> | null = await GetUserSingle({
       where: {
         employee_id,
+        subsidies: {
+          some: {
+            active: true,
+          },
+        },
         // access_cards: {
         //   some: {
         //     active: true,
@@ -803,9 +808,36 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
             UserDetails_id: true,
           },
         },
+        subsidies: {
+          select: {
+            subsidy_id: true,
+            active: true,
+          },
+        },
         access_cards: {
           select: {
             card_value: true,
+            active: true,
+          },
+        },
+        role: {
+          select: {
+            role_id: true,
+          },
+        },
+        department: {
+          select: {
+            department_id: true,
+          },
+        },
+        cost_center: {
+          select: {
+            cost_center_id: true,
+          },
+        },
+        employee_category: {
+          select: {
+            employee_category_id: true,
           },
         },
       },
@@ -837,6 +869,7 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
     const role: Partial<Role> = (await GetRoleSingle({
       where: {
         role_code: RoleCode.employee,
+        active: true,
       },
     })) as Partial<Role>;
 
@@ -848,6 +881,7 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
     const department: Partial<Department> = (await GetDepartmentSingle({
       where: {
         department_code,
+        active: true,
       },
     })) as Partial<Department>;
 
@@ -872,6 +906,7 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
       (await GetEmployeeCategorySingle({
         where: {
           employee_category_code,
+          active: true,
         },
       })) as Partial<EmployeeCategory>;
 
@@ -911,6 +946,24 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
       UserDetails_id: (getUser as any)?.UserDetails?.UserDetails_id,
     };
 
+    const getSubsidies: Subsidy[] = (getUser as any)?.subsidies as Subsidy[];
+
+    const subsidies: Subsidy[] = getSubsidies.filter(
+      (item) => item.active === true
+    );
+
+    console.log("subsidies==>", subsidies);
+
+    if (subsidies.length === 0) {
+      status = 400;
+      throw new Error("No subsidies found. Please add a subsidy.");
+    } else if (subsidies.length > 1) {
+      status = 400;
+      throw new Error(
+        "Wrong Setup For Subsidy. Please Disable Unused Subsidy."
+      );
+    }
+
     const createUser = await CreateUserNUserDetailsCascade({
       user: user as User,
       userDetails: userDetails as UserDetails,
@@ -924,6 +977,7 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
     const user_id: number = createUser[0]?.user_id;
 
     const SubsidyUser: Partial<Subsidy> = {
+      subsidy_id: subsidies[0].subsidy_id,
       subsidy_type_id: subsidyType.subsidy_type_id,
       user_id,
       applicable: subsidy_meal_applicable === "yes" ? true : false,
@@ -931,16 +985,45 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
       end_date: end_date ? new Date(end_date) : null,
     };
 
+    const updateSubsidyUser = await UpdateSubsidy({
+      data: SubsidyUser as Subsidy,
+    });
+
+    if (!updateSubsidyUser) {
+      status = 400;
+      throw Error("Failed to Update Subsidy");
+    }
+
     if (access_card_no) {
-      const access_cards: Partial<AccessCard>[] = (getUser as any)
+      const get_access_cards: Partial<AccessCard>[] = (getUser as any)
         ?.access_cards as Partial<AccessCard>[];
 
-      if (access_cards.length < 0 && access_cards.length > 1) {
+      const access_cards: Partial<AccessCard>[] = get_access_cards.filter(
+        (item) => item.active === true
+      ) as Partial<AccessCard>[];
+
+      if (access_cards.length > 1) {
         status = 400;
-        throw Error("Access Only Can Have 1 Active Usage");
+        throw Error("Access Card Cannot Have More Than 1 that Active");
       }
 
-      if (access_cards[0].card_value !== access_card_no) {
+      if (access_cards[0]?.card_value) {
+        if (access_cards[0].card_value !== access_card_no) {
+          const access_card: Partial<AccessCard> = {
+            card_value: access_card_no,
+            user_id,
+          };
+
+          const createAccessCard = await CreateAccessCardCascade({
+            accessCard: access_card as AccessCard,
+          });
+
+          if (!createAccessCard) {
+            status = 400;
+            throw Error("Failed To Register Employee Access Card");
+          }
+        }
+      } else {
         const access_card: Partial<AccessCard> = {
           card_value: access_card_no,
           user_id,
@@ -957,14 +1040,16 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
       }
     }
 
-    const createSubsidyUser: any = await CreateSubsidy_4User({
-      data: SubsidyUser as Subsidy,
-    });
+    // console.log("SubsidyUser==>", SubsidyUser);
 
-    if (!createSubsidyUser) {
-      status = 400;
-      throw Error("Failed To Assign Subsidy Meal");
-    }
+    // const createSubsidyUser: any = await CreateSubsidy_4User({
+    //   data: SubsidyUser as Subsidy,
+    // });
+
+    // if (!createSubsidyUser) {
+    //   status = 400;
+    //   throw Error("Failed To Assign Subsidy Meal");
+    // }
 
     return NextResponse.json({
       message: "Successfully Update Employee",
@@ -1057,7 +1142,9 @@ export async function ScanCheckEmployeeIDAuthService(
 
     if (!checkCashier) {
       status = 400;
-      throw Error("Transaction only can be done from Cashier In Checking Employee.");
+      throw Error(
+        "Transaction only can be done from Cashier In Checking Employee."
+      );
     }
 
     const user = await GetUserSingle({

@@ -735,3 +735,38 @@ export async function SubsidyCreditCascade(data: {
     return null;
   }
 }
+
+export async function UpdateSubsidyCascade(data: { subsidy: Subsidy }) {
+  try {
+    const { subsidy } = data;
+    const result = await prisma.$transaction(
+      async (prisma) => {
+        let subsidyTransaction: any;
+        if (!subsidy?.subsidy_id) {
+          subsidyTransaction = await CreateSubsidy_4User({
+            data: subsidy,
+            prismaTransaction: prisma,
+          });
+        } else {
+          subsidyTransaction = await UpdateSubsidy({
+            data: subsidy,
+            prismaTransaction: prisma,
+          });
+        }
+
+        if (!subsidyTransaction) {
+          throw Error("Failed at Subsidy Transaction");
+        }
+
+
+        return subsidyTransaction;
+      },
+      { timeout }
+    );
+
+    return result;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}

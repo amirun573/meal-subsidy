@@ -19,7 +19,7 @@ import { FormatDepartmentCode } from "@/_Common/function/String";
 import { FolderArrowDownIcon } from '@heroicons/react/24/solid'
 import { MainContent } from "@/Components/Main";
 import { FileMimeType } from "@/_Common/enum/file-type.enum";
-import { ConvertToUTCEndOfDay, ConvertToUTCStartOfDay } from '../../_Common/function/Date';
+import { ConvertToUTCEndOfDay, ConvertToUTCStartOfDay, HandleDateFormatToAPI, HandleDateTimeFormatClientToAPI, handleAPIDateFormatToClient } from '../../_Common/function/Date';
 import { encrypt } from "@/_Common/function/Hashing";
 import ToggleSwitch from '../../Components/Toggle/index';
 import { UpdateStatusRequest } from "@/_Common/interface/general.interface";
@@ -128,6 +128,7 @@ const EmployeeDetailsPage = () => {
 
                     const subsidies = ((user as any)?.subsidies as Subsidy[]).find(subsidy => (subsidy as any).subsidy_type?.subsidy_type_code === SubsidyTypeCode.meal);
 
+
                     const employee: EmployeeDetails = {
                         name: String((user as any)?.UserDetails?.name).toUpperCase(),
                         employee_id: user.employee_id,
@@ -135,8 +136,8 @@ const EmployeeDetailsPage = () => {
                         department_name: (user as any)?.department?.department_name,
                         is_meal_subsidiry_active: subsidies?.applicable as boolean || false,
                         meal_subsidiry_uuid: (subsidies as any)?.subsidy_type?.uuid || '',
-                        start_date: (subsidies as any)?.start_date ? new Date((subsidies as any)?.start_date).toISOString().split('T')[0] : '',
-                        end_date: (subsidies as any)?.end_date ? new Date((subsidies as any)?.end_date).toISOString().split('T')[0] : '',
+                        start_date: (subsidies as any)?.start_date ? new Date(new Date((subsidies as any)?.start_date).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '',
+                        end_date: (subsidies as any)?.end_date ? new Date(new Date((subsidies as any)?.end_date).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '',
                         uuid: user?.uuid || '',
                         email: user?.email || '',
                         employee_category_name: (user as any)?.employee_category?.employee_category_name || '',
@@ -433,11 +434,15 @@ const EmployeeDetailsPage = () => {
                 submitDetails.department_code = findDepartment.department_code;
 
                 if (submitDetails.start_date) {
-                    submitDetails.start_date = ConvertToUTCStartOfDay(submitDetails.start_date);
+
+                    console.log("Start Date==>", HandleDateTimeFormatClientToAPI(submitDetails.start_date));
+                    submitDetails.start_date = HandleDateTimeFormatClientToAPI(submitDetails.start_date);
                 }
 
                 if (submitDetails.end_date) {
-                    submitDetails.end_date = ConvertToUTCEndOfDay(submitDetails.end_date);
+                    console.log("End Date==>", HandleDateTimeFormatClientToAPI(submitDetails.end_date));
+
+                    submitDetails.end_date = HandleDateTimeFormatClientToAPI(submitDetails.end_date);
                 }
 
                 await CreateUpdateEmployeeValidation(submitDetails);
@@ -700,13 +705,13 @@ const EmployeeDetailsPage = () => {
                                         <div className="mt-4">
                                             <label htmlFor="start_date" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Start Date</label>
                                             <input
-                                                type="date"
+                                                type="datetime-local"
                                                 name="start_date"
                                                 id="start_date"
                                                 value={submitDetails.start_date} // Display the selected date
                                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
                                                 onChange={handleInputChange}
-                                                min={new Date().toISOString().split('T')[0]} // Disable previous dates
+                                                min={new Date().toISOString().slice(0, 16)} // Disable previous dates and times
                                                 required
                                             />
 
@@ -715,13 +720,13 @@ const EmployeeDetailsPage = () => {
                                         <div className="mt-4">
                                             <label htmlFor="end_date" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">End Date</label>
                                             <input
-                                                type="date"
+                                                type="datetime-local"
                                                 name="end_date"
                                                 id="start_date"
                                                 value={submitDetails.end_date} // Display the selected date
                                                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
                                                 onChange={handleInputChange}
-                                                min={new Date().toISOString().split('T')[0]} // Disable previous dates
+                                                min={new Date().toISOString().slice(0, 16)} // Disable previous dates and times
                                                 required
                                             />
                                         </div>
@@ -1352,9 +1357,16 @@ const EmployeeDetailsPage = () => {
     }, [filter]); // Runs when `filter` changes
 
     const HandleAddUser = () => {
-        initializeSubmitDetails.code = StatusAPICode.CREATE_EMPLOYEE;
-        initializeSubmitDetails.submit_method = 'post';
-        setInitializeSubmitDetails(initializeSubmitDetails);
+        const updatedDetails = {
+            ...initial, // Spread the existing properties
+            code: StatusAPICode.CREATE_EMPLOYEE, // Update the code
+            submit_method: 'post', // Update the submit method
+        };
+
+        // Set the updated state with the new object
+        setInitializeSubmitDetails(updatedDetails as CreateUpdateUser);
+
+        // Open the modal as expected
         setOpenModalAddBooking(true);
     }
 
