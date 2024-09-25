@@ -1339,17 +1339,16 @@ const EmployeeDetailsPage = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            if (filter) {
-                setLoading(true);
-                try {
-                    await GetEmployee(); // Fetch employee data
-                } catch (error) {
-                    console.error(error);
-                    DisplayAlert(error);
-                } finally {
-                    setLoading(false); // Ensure loading is turned off
-                }
+            setLoading(true);
+            try {
+                await GetEmployee(); // Fetch employee data
+            } catch (error) {
+                console.error(error);
+                DisplayAlert(error);
+            } finally {
+                setLoading(false); // Ensure loading is turned off
             }
+
         };
 
         fetchData();
