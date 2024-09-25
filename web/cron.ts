@@ -30,4 +30,4 @@ cron.schedule("*/15 * * * * *", triggerCredit, {
   timezone: "Asia/Kuala_Lumpur",
 });
 
-console.log("Cron job scheduled");
+console.log("Cron job been scheduled");

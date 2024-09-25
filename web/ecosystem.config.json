@@ -1,0 +1,15 @@
+{
+    "apps": [
+      {
+        "name": "web",
+        "script": "dist/server.js",
+        "env": {
+          "NODE_ENV": "dev"
+        },
+        "env_production": {
+          "NODE_ENV": "production"
+        }
+      }
+    ]
+  }
+  
