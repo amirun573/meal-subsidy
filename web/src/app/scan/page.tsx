@@ -41,16 +41,37 @@ const ScanPage = () => {
 
     const handleTotalPriceChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         try {
-            const newValue = parseFloat(event.target.value) || 0; // Ensure numeric value
+            const rawValue = event.target.value;
 
-            if (newValue < 0) {
-                throw Error("Total Price Cannot Be Less Than 0");
+            // // Allow empty input
+            // if (rawValue === '') {
+            //     setTotalPrice(0); // Or whatever default value you prefer
+            //     return;
+            // }
+
+            // Check if the input is a valid number
+            if (!/^(\d*\.?\d*)$/.test(rawValue)) {
+                throw new Error("Invalid number");
             }
+
+            // Parse the value
+            const newValue = parseFloat(rawValue);
+
+
+            // Check if the number is valid
+            if (newValue < 0) {
+                throw new Error("Total Price Cannot Be Less Than 0");
+            }
+
+            // Update the state with the new value
             setTotalPrice(newValue);
-        } catch (error) {
-            alert(error);
+        } catch (error: any) {
+            alert(error.message); // Use error.message to show the specific error message
         }
     };
+
+
+
 
     const handleEmployeeID = async (event: React.ChangeEvent<HTMLInputElement>) => {
         setLoading(true);
@@ -199,7 +220,7 @@ const ScanPage = () => {
                         Total Price (RM):
                     </label>
                     <input
-                        type='text'
+                        type='number'
                         name='totalPrice'
                         id='totalPrice'
                         value={totalPrice}
@@ -214,6 +235,8 @@ const ScanPage = () => {
                             margin: '0 auto', // Center the input
                         }}
                         onChange={handleTotalPriceChange} // Attach the change handler
+                        step="0.01" // Allows for decimal input
+
                     />
                 </div>
 
