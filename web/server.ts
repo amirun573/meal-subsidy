@@ -10,11 +10,11 @@ const handle = app.getRequestHandler();
 app.prepare().then(() => {
   const server = express();
 
-  server.all('/api/*', (req, res) => {
+  server.all('/api/*', (req: any, res: any) => {
     return handle(req, res); // Forward API requests to Next.js
   });
 
-  server.all('*', (req, res) => {
+  server.all('*', (req: any, res: any) => {
     return handle(req, res); // Handle other requests
   });
 

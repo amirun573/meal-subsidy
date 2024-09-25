@@ -5,8 +5,7 @@
   "scripts": {
     "dev": "ts-node -r tsconfig-paths/register server.ts",
     "build": "prisma generate && next build && tsc",
-    "start": "prisma generate && next start",
-    "start-prod": "node dist/server.js",
+    "start": "prisma generate && echo NODE_ENV is $NODE_ENV && if [ \"$NODE_ENV\" = \"production\" ]; then node dist/server.js; else next start; fi",
     "lint": "next lint"
   },
   "dependencies": {
