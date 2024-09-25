@@ -309,35 +309,44 @@ const ChartComponent = () => {
     }
 
     useEffect(() => {
-        const handleResize = () => {
-            setIsMobile(window.innerWidth < 768);
-        };
+        setLoading(true);
+        try {
+            const handleResize = () => {
+                setIsMobile(window.innerWidth < 768);
+            };
 
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                window.addEventListener('resize', handleResize);
+            const fetchData = async () => {
+                setLoading(true);
+                try {
+                    window.addEventListener('resize', handleResize);
 
-                // Call handler right away so state gets updated with initial window size
-                handleResize();
+                    // Call handler right away so state gets updated with initial window size
+                    handleResize();
 
-                // Fetch employee and department data sequentially
-                await GetSubsidyTransaction();       // If this throws an error, the following will not execute
+                    // Fetch employee and department data sequentially
+                    await GetSubsidyTransaction();       // If this throws an error, the following will not execute
 
-            } catch (error) {
-                console.error(error);
-                DisplayAlert(error);       // Display the error alert
-            } finally {
-                setLoading(false);         // Ensure loading is turned off after the operations
-            }
-        };
+                } catch (error) {
+                    console.error(error);
+                    DisplayAlert(error);       // Display the error alert
+                } finally {
+                    setLoading(false);         // Ensure loading is turned off after the operations
+                }
+            };
 
 
-        fetchData();
+            fetchData();
 
-        return () => {
-            window.removeEventListener('resize', handleResize);
-        };
+            return () => {
+                window.removeEventListener('resize', handleResize);
+            };
+        } catch (error) {
+            console.error(error);
+            DisplayAlert(error);
+        } finally {
+            setLoading(false);
+        }
+
     }, []);  // Empty dependency array ensures this runs only once
 
     useEffect(() => {
