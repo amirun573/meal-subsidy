@@ -37,4 +37,5 @@ next-env.d.ts
 
 #Log Winston
 /logs
+/dist
 

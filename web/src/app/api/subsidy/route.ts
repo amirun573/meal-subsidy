@@ -233,6 +233,22 @@ export async function POST(req: any, res: any) {
           return TriggerCreditService();
           // return CreateSubsidyTransactionService(decryptData);
         }
+        case StatusAPICode.CREATE_TRIGGER_SUBSIDY_CREDIT_CRON: {
+          const data: any = body as any;
+
+          if (!data) {
+            throw Error("No Data Detected");
+          }
+
+          const decryptData: string = decrypt(data?.key) || "";
+
+          if (!decryptData) {
+            throw Error("Not Authorized To Proceed");
+          }
+
+          return TriggerCreditService();
+          // return CreateSubsidyTransactionService(decryptData);
+        }
 
         case StatusAPICode.CREATE_SUBMIT_SUBSIDY_TRANSACTION_AUTH: {
           const data: any = body as any;
