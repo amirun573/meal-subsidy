@@ -7,11 +7,11 @@ import { JWTDecodeInterface, SignInRequest } from "@/_Common/interface/auth.inte
 import { JWTDecode, hashPassword } from "../model/auth.model";
 import { HashingPasswordService, SignInService } from "../service/auth.service";
 import { GetBodyData } from "@/_Common/function/Authentication";
+import { FeaturesCodeLists } from "@/_Common/enum/features.enum";
 // import logger from "../../../../../libs/winston";
 
 
 const APIAuth: StatusAPICode[] = [];
-
 export async function GET(req: any, res: any) {
   let statusCode: number = 500;
 
