@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../libs/prisma";
 import { StatusAPICode } from "../../../_Common/enum/status-api-code.enum";
-import { User } from "@prisma/client";
+import { User, UserFeatures } from "@prisma/client";
 import {
   JWTDecodeInterface,
   SignInRequest,
@@ -24,6 +24,11 @@ import {
   CreateUserUploadExcel,
 } from "@/_Common/interface/user.interface";
 import { UpdateStatusRequest } from "@/_Common/interface/general.interface";
+import { CheckFeatureAllowed } from "@/_Common/function/Feature";
+import {
+  ActionEnableFeature,
+  FeaturesCodeLists,
+} from "@/_Common/enum/features.enum";
 // import logger from "../../../../libs/winston";
 
 const APIAuth: StatusAPICode[] = [
@@ -32,7 +37,12 @@ const APIAuth: StatusAPICode[] = [
   StatusAPICode.UPLOAD_EXCEL_EMPLOYEE_CREATE,
   StatusAPICode.UPDATE_USER_ACTIVE_STATUS,
   StatusAPICode.GET_CHECK_EMPLOYEE_ID_AUTH,
+  StatusAPICode.UPDATE_EMPLOYEE,
+  StatusAPICode.UPDATE_USER_ACTIVE_STATUS,
 ];
+
+const feature_code_employee_details: FeaturesCodeLists =
+  FeaturesCodeLists.employee_details;
 
 export async function GET(req: any, res: any) {
   let statusCode: number = 500;
@@ -82,6 +92,25 @@ export async function GET(req: any, res: any) {
           throw Error("No Page Sent.");
         }
 
+        if (!user) {
+          statusCode = 401;
+          throw Error(`Unaunthorized Detected.`);
+        }
+
+        const user_features: UserFeatures[] = (user as any)
+          ?.user_features as UserFeatures[];
+
+        const checkFeature: boolean = await CheckFeatureAllowed({
+          user_features,
+          action: ActionEnableFeature.READ,
+          feature_code: feature_code_employee_details,
+        });
+
+        if (!checkFeature) {
+          statusCode = 400;
+          throw Error(`Unaunthorized Action For ${user.employee_id}`);
+        }
+
         return UserPaginationService({
           page: parseInt(page),
           filter,
@@ -89,7 +118,7 @@ export async function GET(req: any, res: any) {
 
         // return HashingPasswordService({ password: hashingPasswordRequest });
       }
-
+      //TODO: For Scanning at Page Scan. Will Deprecite Later
       case StatusAPICode.GET_CHECK_EMPLOYEE_ID: {
         const employeeID: string | null = url.searchParams.get("employeeID");
 
@@ -100,6 +129,7 @@ export async function GET(req: any, res: any) {
 
         return ScanCheckEmployeeIDService({ employeeID });
       }
+      //For Scanning at Page Scan.
 
       case StatusAPICode.GET_CHECK_EMPLOYEE_ID_AUTH: {
         const employeeID: string | null = url.searchParams.get("employeeID");
@@ -109,7 +139,7 @@ export async function GET(req: any, res: any) {
           throw Error("No Employee ID Sent.");
         }
 
-        if(!user){
+        if (!user) {
           statusCode = 400;
           throw Error("No User Found.");
         }
@@ -138,6 +168,7 @@ export async function GET(req: any, res: any) {
 }
 
 export async function POST(req: any, res: any) {
+  let statusCode: number = 500;
   try {
     let body: any = await GetBodyData(req);
 
@@ -181,6 +212,25 @@ export async function POST(req: any, res: any) {
             throw Error("No Data Detected");
           }
 
+          if (!user) {
+            statusCode = 401;
+            throw Error(`Unaunthorized Detected.`);
+          }
+
+          const user_features: UserFeatures[] = (user as any)
+            ?.user_features as UserFeatures[];
+
+          const checkFeature: boolean = await CheckFeatureAllowed({
+            user_features,
+            action: ActionEnableFeature.WRITE,
+            feature_code: feature_code_employee_details,
+          });
+
+          if (!checkFeature) {
+            statusCode = 400;
+            throw Error(`Unaunthorized Action For ${user.employee_id}`);
+          }
+
           return CreateEmployee(data);
         }
 
@@ -188,7 +238,22 @@ export async function POST(req: any, res: any) {
           const data: CreateUserUploadExcel = body as CreateUserUploadExcel;
 
           if (!user) {
-            throw Error("No User Found");
+            statusCode = 401;
+            throw Error(`Unaunthorized Detected.`);
+          }
+
+          const user_features: UserFeatures[] = (user as any)
+            ?.user_features as UserFeatures[];
+
+          const checkFeature: boolean = await CheckFeatureAllowed({
+            user_features,
+            action: ActionEnableFeature.WRITE,
+            feature_code: feature_code_employee_details,
+          });
+
+          if (!checkFeature) {
+            statusCode = 400;
+            throw Error(`Unaunthorized Action For ${user.employee_id}`);
           }
 
           return CreateEmployeeBulkUpload(data, user);
@@ -205,16 +270,17 @@ export async function POST(req: any, res: any) {
     console.error(error);
     return NextResponse.json(
       {
-        message: error.message,
+        message: error?.message,
       },
       {
-        status: error.statusCode,
+        status: error?.statusCode || statusCode,
       }
     );
   }
 }
 
 export async function PUT(req: any, res: any) {
+  let statusCode: number = 500;
   try {
     let body: any = await GetBodyData(req);
 
@@ -247,6 +313,25 @@ export async function PUT(req: any, res: any) {
             throw Error("No Data Detected");
           }
 
+          if (!user) {
+            statusCode = 401;
+            throw Error(`Unaunthorized Detected.`);
+          }
+
+          const user_features: UserFeatures[] = (user as any)
+            ?.user_features as UserFeatures[];
+
+          const checkFeature: boolean = await CheckFeatureAllowed({
+            user_features,
+            action: ActionEnableFeature.WRITE,
+            feature_code: feature_code_employee_details,
+          });
+
+          if (!checkFeature) {
+            statusCode = 400;
+            throw Error(`Unaunthorized Action For ${user.employee_id}`);
+          }
+
           return UpdateEmployee(data);
         }
 
@@ -255,6 +340,25 @@ export async function PUT(req: any, res: any) {
 
           if (!data) {
             throw Error("No Data Detected");
+          }
+
+          if (!user) {
+            statusCode = 401;
+            throw Error(`Unaunthorized Detected.`);
+          }
+
+          const user_features: UserFeatures[] = (user as any)
+            ?.user_features as UserFeatures[];
+
+          const checkFeature: boolean = await CheckFeatureAllowed({
+            user_features,
+            action: ActionEnableFeature.WRITE,
+            feature_code: feature_code_employee_details,
+          });
+
+          if (!checkFeature) {
+            statusCode = 400;
+            throw Error(`Unaunthorized Action For ${user.employee_id}`);
           }
 
           return UpdateStatusEmployeeService(data);

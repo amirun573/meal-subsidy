@@ -241,7 +241,7 @@ const ScanPage = () => {
                 availableCredit,
                 discount,
                 employee_id: employeeId,
-                [StatusAPICode.code]: StatusAPICode.CREATE_SUBSIDY_TRANSACTION,
+                [StatusAPICode.code]: StatusAPICode.CREATE_SUBMIT_SUBSIDY_TRANSACTION_AUTH,
                 subsidyCreditUUID,
             };
 
