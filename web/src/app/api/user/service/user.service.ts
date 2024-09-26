@@ -410,7 +410,7 @@ export async function CreateEmployee(data: CreateUpdateUser) {
 
     if (!costCenter) {
       status = 400;
-      throw Error("Cost Center not Found");
+      throw Error("Value Stream not Found");
     }
 
     const employeeCategory: Partial<EmployeeCategory> =
@@ -534,12 +534,12 @@ export async function CreateEmployeeBulkUpload(
 
     const columns = {
       department_desc: "Department Desc",
-      cost_center: "Cost Centre",
+      cost_center: "Value Stream",
       employee_id: "Employee Id",
       employee_name: "Employee Name",
       employee_category: "Employee  Category",
       eligble_subsidy: "Eligble Subsidy (Yes/No)",
-      mifare_card_no: "MIFARE Card Number",
+      mifare_card_no: "Access Card Number",
     };
 
     const headers = [
@@ -576,7 +576,7 @@ export async function CreateEmployeeBulkUpload(
 
     if (!costCenters || costCenters.length < 1) {
       status = 400;
-      throw Error("No Cost Center Found");
+      throw Error("No Value Stream Found");
     }
 
     const subsidyType: Partial<SubsidyType> = (await GetSubsidyTypeSingle({
@@ -682,7 +682,7 @@ export async function CreateEmployeeBulkUpload(
         if (!costcenter) {
           status = 400;
           throw new Error(
-            `No name Cost Center ${employee.cost_center} in database. Please Check at row for Employee ID ${employee.employee_id}`
+            `No name Value Stream  ${employee.cost_center} in database. Please Check at row for Employee ID ${employee.employee_id}`
           );
         }
 
@@ -899,7 +899,7 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
 
     if (!costCenter) {
       status = 400;
-      throw Error("Cost Center not Found");
+      throw Error("Value Stream not Found");
     }
 
     const employeeCategory: Partial<EmployeeCategory> =
