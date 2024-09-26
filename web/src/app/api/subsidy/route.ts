@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../libs/prisma";
 import { StatusAPICode } from "../../../_Common/enum/status-api-code.enum";
-import { SubsidyType, User } from "@prisma/client";
+import { SubsidyType, User, UserFeatures } from "@prisma/client";
 import {
   JWTDecodeInterface,
   SignInRequest,
@@ -28,6 +28,11 @@ import {
   UpdateUserApplicableSubsidy,
 } from "./service/subsidy.service";
 import { decrypt } from "@/_Common/function/Hashing";
+import {
+  ActionEnableFeature,
+  FeaturesCodeLists,
+} from "@/_Common/enum/features.enum";
+import { CheckFeatureAllowed } from "@/_Common/function/Feature";
 const APIAuth: StatusAPICode[] = [
   StatusAPICode.SUBSIDY_TRANSACTION_PAGINATION,
   StatusAPICode.SUBSIDY_CHART_REPORT,
@@ -37,7 +42,15 @@ const APIAuth: StatusAPICode[] = [
   StatusAPICode.UPDATE_SUBSIDY_TYPE,
   StatusAPICode.UPDATE_SUBSIDY_CREDIT_REAL_TIME,
   StatusAPICode.CREATE_SUBMIT_SUBSIDY_TRANSACTION_AUTH,
+  StatusAPICode.UPDATE_APPLICABLE_SUBSIDY,
 ];
+
+const feature_code_employee_details: FeaturesCodeLists =
+  FeaturesCodeLists.employee_details;
+
+const feature_code_report: FeaturesCodeLists = FeaturesCodeLists.report;
+
+const feature_code_subsidy: FeaturesCodeLists = FeaturesCodeLists.subsidy;
 
 export async function GET(req: any, res: NextApiResponse) {
   let statusCode: number = 500;
@@ -56,6 +69,7 @@ export async function GET(req: any, res: NextApiResponse) {
     if (APIAuth.find((item) => item === parseInt(code))) {
       const token: JWTDecodeInterface | boolean = await JWTDecode(req);
 
+      console.log("TOKEN===>", token);
       if (!token) {
         statusCode = 401;
         throw Error("Unauthorized. Please Login");
@@ -91,6 +105,25 @@ export async function GET(req: any, res: NextApiResponse) {
           throw Error("Page Not FOund");
         }
 
+        if (!user) {
+          statusCode = 401;
+          throw Error(`Unaunthorized Detected.`);
+        }
+
+        const user_features: UserFeatures[] = (user as any)
+          ?.user_features as UserFeatures[];
+
+        const checkFeature: boolean = await CheckFeatureAllowed({
+          user_features,
+          action: ActionEnableFeature.READ,
+          feature_code: feature_code_report,
+        });
+
+        if (!checkFeature) {
+          statusCode = 401;
+          throw Error(`Unaunthorized Action For ${user.employee_id}`);
+        }
+
         return GetSubsidyTransactionPaginationService({
           page: parseInt(page),
           filter,
@@ -107,6 +140,25 @@ export async function GET(req: any, res: NextApiResponse) {
           throw Error("Filter Not FOund");
         }
 
+        if (!user) {
+          statusCode = 401;
+          throw Error(`Unaunthorized Detected.`);
+        }
+
+        const user_features: UserFeatures[] = (user as any)
+          ?.user_features as UserFeatures[];
+
+        const checkFeature: boolean = await CheckFeatureAllowed({
+          user_features,
+          action: ActionEnableFeature.READ,
+          feature_code: feature_code_report,
+        });
+
+        if (!checkFeature) {
+          statusCode = 401;
+          throw Error(`Unaunthorized Action For ${user.employee_id}`);
+        }
+
         return GetSubsidyTransactionReportChart({ range });
       }
 
@@ -119,6 +171,25 @@ export async function GET(req: any, res: NextApiResponse) {
         if (!startDate || !endDate || !employees_id) {
           statusCode = 400;
           throw Error("Start Date or End Date Not Found");
+        }
+
+        if (!user) {
+          statusCode = 401;
+          throw Error(`Unaunthorized Detected.`);
+        }
+
+        const user_features: UserFeatures[] = (user as any)
+          ?.user_features as UserFeatures[];
+
+        const checkFeature: boolean = await CheckFeatureAllowed({
+          user_features,
+          action: ActionEnableFeature.READ,
+          feature_code: feature_code_report,
+        });
+
+        if (!checkFeature) {
+          statusCode = 401;
+          throw Error(`Unaunthorized Action For ${user.employee_id}`);
         }
 
         return DownloadReportSubsidyTransaction({
@@ -136,6 +207,25 @@ export async function GET(req: any, res: NextApiResponse) {
         if (!page) {
           statusCode = 400;
           throw Error("Page Not Found");
+        }
+
+        if (!user) {
+          statusCode = 401;
+          throw Error(`Unaunthorized Detected.`);
+        }
+
+        const user_features: UserFeatures[] = (user as any)
+          ?.user_features as UserFeatures[];
+
+        const checkFeature: boolean = await CheckFeatureAllowed({
+          user_features,
+          action: ActionEnableFeature.READ,
+          feature_code: feature_code_report,
+        });
+
+        if (!checkFeature) {
+          statusCode = 401;
+          throw Error(`Unaunthorized Action For ${user.employee_id}`);
         }
 
         return GetSubsidyTypePaginationService({
@@ -161,7 +251,7 @@ export async function GET(req: any, res: NextApiResponse) {
 }
 
 export async function POST(req: any, res: any) {
-  let status: number = 500;
+  let statusCode: number = 500;
   try {
     let body: any = await GetBodyData(req);
 
@@ -180,7 +270,7 @@ export async function POST(req: any, res: any) {
 
     if (APIAuth.find((item) => item === parseInt(code))) {
       if (!token) {
-        status = 401;
+        statusCode = 401;
         throw Error("No Token Found");
       }
       user = (token as JWTDecodeInterface).user;
@@ -188,35 +278,6 @@ export async function POST(req: any, res: any) {
 
     if (code && typeof parseInt(code) === "number") {
       switch (parseInt(code) as StatusAPICode) {
-        case StatusAPICode.sign_in_request: {
-          const data: SignInRequest = body as SignInRequest;
-
-          if (!data) {
-            throw Error("No Data Detected");
-          }
-
-          return SignInService(data);
-          //return WriteAddToCart(data, user);
-        }
-
-        case StatusAPICode.CREATE_SUBSIDY_TRANSACTION: {
-          const data: any = body as any;
-
-          if (!data) {
-            throw Error("No Data Detected");
-          }
-
-          const decryptData: SubsidySubmitPrice = JSON.parse(
-            decrypt(data?.encryptedData as string) || "{}"
-          );
-
-          if (!decryptData) {
-            throw Error("Not Authorized To Proceed");
-          }
-
-          return CreateSubsidyTransactionService(decryptData);
-        }
-
         case StatusAPICode.CREATE_TRIGGER_SUBSIDY_CREDIT: {
           const data: any = body as any;
 
@@ -228,6 +289,25 @@ export async function POST(req: any, res: any) {
 
           if (!decryptData) {
             throw Error("Not Authorized To Proceed");
+          }
+
+          if (!user) {
+            statusCode = 401;
+            throw Error(`Unaunthorized Detected.`);
+          }
+
+          const user_features: UserFeatures[] = (user as any)
+            ?.user_features as UserFeatures[];
+
+          const checkFeature: boolean = await CheckFeatureAllowed({
+            user_features,
+            action: ActionEnableFeature.WRITE,
+            feature_code: feature_code_subsidy,
+          });
+
+          if (!checkFeature) {
+            statusCode = 400;
+            throw Error(`Unaunthorized Action For ${user.employee_id}`);
           }
 
           return TriggerCreditService();
@@ -250,6 +330,7 @@ export async function POST(req: any, res: any) {
           // return CreateSubsidyTransactionService(decryptData);
         }
 
+        //For Submiting Transaction from Scan Page
         case StatusAPICode.CREATE_SUBMIT_SUBSIDY_TRANSACTION_AUTH: {
           const data: any = body as any;
 
@@ -266,7 +347,8 @@ export async function POST(req: any, res: any) {
           }
 
           if (!user) {
-            throw Error("No User Found");
+            statusCode = 401;
+            throw Error(`Unaunthorized Detected.`);
           }
 
           return CreateSubsidyTransactionServiceAuth(decryptData, user);
@@ -283,13 +365,14 @@ export async function POST(req: any, res: any) {
         message: error.message,
       },
       {
-        status: status || error.statusCode,
+        status: statusCode || error.statusCode,
       }
     );
   }
 }
 
 export async function PUT(req: any, res: any) {
+  let statusCode: number = 500;
   try {
     let body: any = await GetBodyData(req);
 
@@ -322,6 +405,25 @@ export async function PUT(req: any, res: any) {
             throw Error("No Data Detected");
           }
 
+          if (!user) {
+            statusCode = 401;
+            throw Error(`Unaunthorized Detected.`);
+          }
+
+          const user_features: UserFeatures[] = (user as any)
+            ?.user_features as UserFeatures[];
+
+          const checkFeature: boolean = await CheckFeatureAllowed({
+            user_features,
+            action: ActionEnableFeature.WRITE,
+            feature_code: feature_code_employee_details,
+          });
+
+          if (!checkFeature) {
+            statusCode = 400;
+            throw Error(`Unaunthorized Action For ${user.employee_id}`);
+          }
+
           return UpdateUserApplicableSubsidy(data);
           //return WriteAddToCart(data, user);
         }
@@ -333,6 +435,25 @@ export async function PUT(req: any, res: any) {
             throw Error("No Data Detected");
           }
 
+          if (!user) {
+            statusCode = 401;
+            throw Error(`Unaunthorized Detected.`);
+          }
+
+          const user_features: UserFeatures[] = (user as any)
+            ?.user_features as UserFeatures[];
+
+          const checkFeature: boolean = await CheckFeatureAllowed({
+            user_features,
+            action: ActionEnableFeature.WRITE,
+            feature_code: feature_code_subsidy,
+          });
+
+          if (!checkFeature) {
+            statusCode = 400;
+            throw Error(`Unaunthorized Action For ${user.employee_id}`);
+          }
+
           return UpdateSubsidyTypeService(data);
         }
 
@@ -342,6 +463,25 @@ export async function PUT(req: any, res: any) {
 
           if (!data) {
             throw Error("No Data Detected");
+          }
+
+          if (!user) {
+            statusCode = 401;
+            throw Error(`Unaunthorized Detected.`);
+          }
+
+          const user_features: UserFeatures[] = (user as any)
+            ?.user_features as UserFeatures[];
+
+          const checkFeature: boolean = await CheckFeatureAllowed({
+            user_features,
+            action: ActionEnableFeature.WRITE,
+            feature_code: feature_code_subsidy,
+          });
+
+          if (!checkFeature) {
+            statusCode = 400;
+            throw Error(`Unaunthorized Action For ${user.employee_id}`);
           }
 
           return UpdateSubsidyCreditRealTimeService(data);
@@ -357,7 +497,7 @@ export async function PUT(req: any, res: any) {
         message: error.message,
       },
       {
-        status: error.statusCode,
+        status: statusCode || error.statusCode,
       }
     );
   }

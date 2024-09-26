@@ -726,7 +726,7 @@ export async function DownloadReportSubsidyTransaction(
         "Name",
         "Employee ID",
         "Department Name",
-        "Cost Center Code",
+        "Value Stream",
         "Employee Category Name",
         "Credit Used (RM)",
         "Transaction At",

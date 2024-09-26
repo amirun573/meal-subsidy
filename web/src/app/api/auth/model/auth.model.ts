@@ -39,21 +39,18 @@ export async function JWTDecode(
               where = {
                 email: decodedToken.email,
               };
-            }
-
-            else if(decodedToken.employee_id){
+            } else if (decodedToken.employee_id) {
               where = {
-                employee_id: decodedToken.employee_id
-              }
-            }
-
-            else {
-              throw Error("No Value To Authenticate")
+                employee_id: decodedToken.employee_id,
+              };
+            } else {
+              throw Error("No Value To Authenticate");
             }
 
             const user = await GetUserSingle({
               where,
               select: {
+                employee_id: true,
                 user_id: true,
                 email: true,
                 active: true,
@@ -76,6 +73,18 @@ export async function JWTDecode(
                     role_id: true,
                     role_code: true,
                     active: true,
+                  },
+                },
+                user_features: {
+                  select: {
+                    is_read: true,
+                    is_write: true,
+                    feature: {
+                      select: {
+                        feature_code: true,
+                        active: true,
+                      },
+                    },
                   },
                 },
               },
@@ -105,39 +114,6 @@ export async function JWTDecode(
 
       return false;
     }
-
-    const session: any = await getSession({ req });
-
-    console.log("Session==>", session);
-    // if (session && session.accessToken) {
-    //   try {
-    //     const decodedToken = jwt.verify(
-    //       session.accessToken,
-    //       process.env.JWT_SECRET
-    //     );
-
-    //     // Perform additional validation if needed
-    //     if (decodedToken && decodedToken.exp) {
-    //       // Token is valid
-    //       return decodedToken;
-    //     } else {
-    //       // Token is invalid
-    //       console.log("Error==> Invalid");
-
-    //       return false;
-    //     }
-    //   } catch (error) {
-    //     // Token verification failed
-    //     console.log("Error==>", error);
-
-    //     return false;
-    //   }
-    // } else {
-    //   // No session or token found
-    //   console.log("Error==>  No session or token found");
-
-    //   return false;
-    // }
   } catch (error) {
     // logger.error("Failed at JWTDecode function ===>", { error });
 

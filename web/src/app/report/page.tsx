@@ -669,7 +669,7 @@ const ChartComponent = () => {
                                             Department
                                         </th>
                                         <th scope="col" className="px-6 py-3">
-                                            Cost Center
+                                            Value Stream
                                         </th>
                                         <th scope="col" className="px-6 py-3">
                                             Employee Category
