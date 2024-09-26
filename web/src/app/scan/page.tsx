@@ -29,6 +29,12 @@ const ScanPage = () => {
     const [calculatedFinalPrice, setCalculatedFinalPrice] = useState<number>(0);
     const [subsidyCreditUUID, setSubsidyCreditUUID] = useState<string>('');
 
+
+    const isPasting = useRef(false); // Ref to track if pasting is occurring
+    const lastKeyPressTime = useRef<number | null>(null); // Track the timestamp of the last key press
+
+    // Threshold for distinguishing between card reader input and manual typing (in milliseconds)
+    const cardReaderThreshold = 50;
     // Callback function to get scan result
     const handleScanResult = (result: any) => {
         handleEmployeeID(result);
@@ -77,9 +83,6 @@ const ScanPage = () => {
             alert(error.message); // Use error.message to show the specific error message
         }
     };
-
-
-
 
     const handleEmployeeID = async (event: React.ChangeEvent<HTMLInputElement>) => {
         setLoading(true);
@@ -133,11 +136,39 @@ const ScanPage = () => {
         }
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            handleEmployeeID(e as unknown as React.ChangeEvent<HTMLInputElement>);
+    const HandleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        const currentTime = Date.now();
+
+        if (lastKeyPressTime.current) {
+            const timeDifference = currentTime - lastKeyPressTime.current;
+
+            if (timeDifference < cardReaderThreshold) {
+
+                const value_card: string = String((e as unknown as React.ChangeEvent<HTMLInputElement>).target.value.trim());
+
+
+                if (value_card.length >= 5) {
+
+                    //For security purpose to ensure the value is not easily visible.
+                    setEmployeeId(encrypt(value_card));
+
+                }
+
+
+
+                // Handle the card reader action
+            } else {
+                // Handle manual input (i.e., when Enter is pressed)
+                if (e.key === 'Enter') {
+                    handleEmployeeID(e as unknown as React.ChangeEvent<HTMLInputElement>);
+                }
+            }
         }
+
+        // Update the last key press time
+        lastKeyPressTime.current = currentTime;
     };
+
 
     const HandleSubmitTotalPrice = async () => {
         setLoading(true);
@@ -291,6 +322,41 @@ const ScanPage = () => {
         }
     }
 
+    const HandleEmployeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        // Check if pasting is happening and prevent onChange update during pasting
+        if (!isPasting.current) {
+            setEmployeeId(e.target.value); // Handle typing input normally
+        }
+    };
+
+
+
+    const HandlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+        try {
+            e.preventDefault(); // Prevent the default paste behavior
+            isPasting.current = true; // Set pasting flag to true
+
+
+            const pastedText = (e.clipboardData || window.Clipboard).getData('text'); // Get the pasted text
+            const modifiedText = pastedText.trim(); // Modify if necessary
+
+
+            console.log("modifiedText==>", modifiedText);
+
+            setEmployeeId(modifiedText); // Set the modified value to employeeId
+
+            // Reset the pasting flag AFTER the next event loop to ensure onChange doesn't fire immediately
+            setTimeout(() => {
+                isPasting.current = false;
+            }, 0); // Ensure the flag is reset after the paste action is fully complete
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+
+
+
 
     useEffect(() => {
         const finalPrice: number = Math.max(0, totalPrice - availableCredit);
@@ -347,7 +413,6 @@ const ScanPage = () => {
                         step="0.01" // Allows for decimal input
                         ref={totalPriceInputRef} // Attach the ref to this input
                         onKeyDown={HandleKeyDownTotalPriceInput} // Trigger action when Enter is pressed
-
                     />
                 </div>
 
@@ -379,9 +444,12 @@ const ScanPage = () => {
                             display: 'block',
                             margin: '0 auto', // Center the input
                         }}
-                        onChange={(e) => setEmployeeId(e.target.value)}
-                        onKeyDown={handleKeyDown} // Trigger action when Enter is pressed
+                        onChange={HandleEmployeeChange}
+                        onPaste={HandlePaste}
+                        onKeyDown={HandleKeyDown} // Trigger action when Enter is pressed
+
                     />
+
                 </div>
 
                 <div style={{ marginTop: '20px', textAlign: 'center' }}>
@@ -394,7 +462,10 @@ const ScanPage = () => {
                             color: 'white',
                             boxShadow: '0 0 10px rgba(0, 0, 0, 0.3)',
                         }}>
-                            <p>Employee Name: <h2 style={{ fontSize: '2em' }}>{employeeName.toUpperCase()}</h2></p>
+                            <div>
+                                <p>Employee Name:</p>
+                                <h2 style={{ fontSize: '2em' }}>{employeeName.toUpperCase()}</h2>
+                            </div>
                         </div>
                     )}
                 </div>
