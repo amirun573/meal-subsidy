@@ -136,6 +136,58 @@ const ScanPage = () => {
         }
     };
 
+    const HandleEmployeeIDString = async (employe_id: string) => {
+        setLoading(true);
+        try {
+            const employeeID = employe_id; // Ensure value is string
+
+            if (employeeID) {
+
+
+                await ScanEmployeeIDValidation({ employeeID });
+
+                const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+
+                if (!userDetailsLocalStorage) {
+                    await HandleUnAuthorized(null);
+                }
+                // Make sure to await the API call
+                const employeeIDCheckRequest = await axios.get(`/api/user?${StatusAPICode.code}=${StatusAPICode.GET_CHECK_EMPLOYEE_ID_AUTH}&employeeID=${encrypt(employeeID)}`, {
+                    headers: {
+                        Authorization: `Bearer ${userDetailsLocalStorage.accessToken}`
+                    }
+                });
+
+                if (!employeeIDCheckRequest.data?.employee_id || !employeeIDCheckRequest.data?.employee_name || (typeof employeeIDCheckRequest.data?.available_credit !== 'number') || !employeeIDCheckRequest.data?.subsidyCreditUUID) {
+                    throw Error("Failed To Retrieve Subsidy Details");
+                }
+
+                setEmployeeId(employeeIDCheckRequest.data?.employee_id as string);
+
+
+                setSubsidyCreditUUID(employeeIDCheckRequest.data?.subsidyCreditUUID as string);
+                const newAvailableCredit: number = employeeIDCheckRequest.data?.available_credit as number > 0 ? employeeIDCheckRequest.data?.available_credit as number : 0;
+
+                setEmployeeName(employeeIDCheckRequest.data?.employee_name);
+                setAvailableCredit(newAvailableCredit)
+
+                const newDiscount: number = newAvailableCredit > 0 ? newAvailableCredit - totalPrice : 0;
+
+                setDiscount(newDiscount);
+                // Process employeeIDCheckRequest response as necessary
+            } else {
+                setEmployeeId('');
+            }
+
+        } catch (error) {
+            console.error("Error occurred:", error);
+            DisplayAlert(error); // Make sure this doesn't block code execution
+        } finally {
+            // This should always execute regardless of error
+            setLoading(false);
+        }
+    };
+
     const HandleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         const currentTime = Date.now();
 
@@ -147,10 +199,13 @@ const ScanPage = () => {
                 const value_card: string = String((e as unknown as React.ChangeEvent<HTMLInputElement>).target.value.trim());
 
 
+
                 if (value_card.length >= 5) {
 
+                    const employee_card_value = encrypt(value_card);
+                    setEmployeeId(employee_card_value);
                     //For security purpose to ensure the value is not easily visible.
-                    setEmployeeId(encrypt(value_card));
+                    HandleEmployeeIDString(employee_card_value);
 
                 }
 
