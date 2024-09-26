@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../libs/prisma";
 import { StatusAPICode } from "../../../_Common/enum/status-api-code.enum";
-import { User } from "@prisma/client";
+import { User, UserFeatures } from "@prisma/client";
 import {
   JWTDecodeInterface,
   SignInRequest,
@@ -16,11 +16,19 @@ import {
   DepartmentLists,
   EmployeeCategoryListsService,
 } from "./service/department.service";
+import {
+  ActionEnableFeature,
+  FeaturesCodeLists,
+} from "@/_Common/enum/features.enum";
+import { CheckFeatureAllowed } from "@/_Common/function/Feature";
 const APIAuth: StatusAPICode[] = [
   StatusAPICode.GET_DEPARTMENT_LISTS,
   StatusAPICode.GET_EMPLOYEE_CATEGORY_LISTS,
   StatusAPICode.GET_COST_CENTER_LISTS,
 ];
+
+const feature_code_employee_details: FeaturesCodeLists =
+  FeaturesCodeLists.employee_details;
 // import logger from "../../../../libs/winston";
 export async function GET(req: any, res: any) {
   let statusCode: number = 500;
@@ -61,13 +69,67 @@ export async function GET(req: any, res: any) {
 
     switch (parseInt(code) as StatusAPICode) {
       case StatusAPICode.GET_DEPARTMENT_LISTS: {
+        if (!user) {
+          statusCode = 401;
+          throw Error(`Unaunthorized Detected.`);
+        }
+
+        const user_features: UserFeatures[] = (user as any)
+          ?.user_features as UserFeatures[];
+
+        const checkFeature: boolean = await CheckFeatureAllowed({
+          user_features,
+          action: ActionEnableFeature.READ,
+          feature_code: feature_code_employee_details,
+        });
+
+        if (!checkFeature) {
+          statusCode = 401;
+          throw Error(`Unaunthorized Action For ${user.employee_id}`);
+        }
         return DepartmentLists();
       }
 
       case StatusAPICode.GET_EMPLOYEE_CATEGORY_LISTS: {
+        if (!user) {
+          statusCode = 401;
+          throw Error(`Unaunthorized Detected.`);
+        }
+
+        const user_features: UserFeatures[] = (user as any)
+          ?.user_features as UserFeatures[];
+
+        const checkFeature: boolean = await CheckFeatureAllowed({
+          user_features,
+          action: ActionEnableFeature.READ,
+          feature_code: feature_code_employee_details,
+        });
+
+        if (!checkFeature) {
+          statusCode = 401;
+          throw Error(`Unaunthorized Action For ${user.employee_id}`);
+        }
         return EmployeeCategoryListsService();
       }
       case StatusAPICode.GET_COST_CENTER_LISTS: {
+        if (!user) {
+          statusCode = 401;
+          throw Error(`Unaunthorized Detected.`);
+        }
+
+        const user_features: UserFeatures[] = (user as any)
+          ?.user_features as UserFeatures[];
+
+        const checkFeature: boolean = await CheckFeatureAllowed({
+          user_features,
+          action: ActionEnableFeature.READ,
+          feature_code: feature_code_employee_details,
+        });
+
+        if (!checkFeature) {
+          statusCode = 401;
+          throw Error(`Unaunthorized Action For ${user.employee_id}`);
+        }
         return CostCenterLists();
       }
       default: {

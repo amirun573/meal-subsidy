@@ -107,7 +107,7 @@ export async function GET(req: any, res: any) {
         });
 
         if (!checkFeature) {
-          statusCode = 400;
+          statusCode = 401;
           throw Error(`Unaunthorized Action For ${user.employee_id}`);
         }
 

@@ -120,7 +120,7 @@ export async function GET(req: any, res: NextApiResponse) {
         });
 
         if (!checkFeature) {
-          statusCode = 400;
+          statusCode = 401;
           throw Error(`Unaunthorized Action For ${user.employee_id}`);
         }
 
@@ -155,7 +155,7 @@ export async function GET(req: any, res: NextApiResponse) {
         });
 
         if (!checkFeature) {
-          statusCode = 400;
+          statusCode = 401;
           throw Error(`Unaunthorized Action For ${user.employee_id}`);
         }
 
@@ -188,7 +188,7 @@ export async function GET(req: any, res: NextApiResponse) {
         });
 
         if (!checkFeature) {
-          statusCode = 400;
+          statusCode = 401;
           throw Error(`Unaunthorized Action For ${user.employee_id}`);
         }
 
@@ -224,7 +224,7 @@ export async function GET(req: any, res: NextApiResponse) {
         });
 
         if (!checkFeature) {
-          statusCode = 400;
+          statusCode = 401;
           throw Error(`Unaunthorized Action For ${user.employee_id}`);
         }
 
