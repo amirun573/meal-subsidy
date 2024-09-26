@@ -1,7 +1,7 @@
 "use client";
 import Navbar from '@/Components/Navbar';
 import QrCodeScanner from '@/Components/Scan-QR';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useRef } from 'react';
 import { MainContent } from '@/Components/Main';
 import Spinner from '../../Components/Spinner/';
 import axios from 'axios';
@@ -16,7 +16,11 @@ import { UserDetailsLocalStorage } from '@/_Common/interface/auth.interface';
 import Image from 'next/image';
 const ScanPage = () => {
     const [employeeId, setEmployeeId] = useState<string>('');
-    const [showScannerModal, setShowScannerModal] = useState<boolean>(false);
+    const [showScannerModal, setShowScannerModal] = useState<boolean>(true);
+
+
+    const totalPriceInputRef = useRef<any>(null); // Create a ref for the input
+
     const [totalPrice, setTotalPrice] = useState<number>(0);
     const [availableCredit, setAvailableCredit] = useState<number>(0); // Example available credit
     const [discount, setDiscount] = useState<number>(0); // Example discount
@@ -29,6 +33,10 @@ const ScanPage = () => {
     const handleScanResult = (result: any) => {
         handleEmployeeID(result);
         setShowScannerModal(false); // Close modal once scan is successful
+
+        if (totalPriceInputRef.current) {
+            totalPriceInputRef.current.focus(); // Move the cursor to the input
+        }
     };
 
     const handleToggleScannerModal = () => {
@@ -182,6 +190,107 @@ const ScanPage = () => {
         }
     }
 
+    const ModalScannerQRCode = () => {
+        try {
+
+
+
+            return (
+                <>
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        zIndex: 9999,
+                    }}>
+                        <div style={{
+                            backgroundColor: 'white',
+                            padding: '2rem',
+                            borderRadius: '10px',
+                            position: 'relative',
+                            width: '90%',
+                            maxWidth: '500px',
+                            textAlign: 'center',
+                            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                            margin: '1rem',
+                            boxSizing: 'border-box',
+                        }}>
+                            {/* Header with "X" close button */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h1 style={{ marginBottom: '5px', color: 'black', fontSize: '1.5rem' }}>Scan QR Code</h1>
+                                <button
+                                    onClick={handleCloseModal}
+                                    style={{
+                                        backgroundColor: 'transparent',
+                                        border: 'none',
+                                        color: 'black',
+                                        fontSize: '1.5rem',
+                                        fontWeight: 'bold',
+                                        cursor: 'pointer',
+                                        position: 'absolute',
+                                        top: '10px',
+                                        right: '10px', // Moved back to the right
+                                    }}>
+                                    &times;
+                                </button>
+                            </div>
+
+                            {/* QR Code Scanner */}
+                            <div style={{ marginTop: '2px' }}> {/* Reduced margin-top */}
+                                <QrCodeScanner onScanResult={handleScanResult} />
+                            </div>
+
+
+                            {/* Footer with close button */}
+                            <div style={{ marginTop: '20px' }}>
+                                <button
+                                    onClick={handleCloseModal}
+                                    style={{
+                                        backgroundColor: '#ff4d4d',
+                                        border: 'none',
+                                        color: 'white',
+                                        padding: '0.5rem 1rem',
+                                        borderRadius: '5px',
+                                        cursor: 'pointer',
+                                        fontSize: '1rem',
+                                    }}>
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+                </>
+            )
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    const HandleKeyDownTotalPriceInput = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+        setLoading(true);
+        try {
+
+            if (e.key === 'Enter') {
+                await HandleSubmitTotalPrice();
+            }
+        } catch (error) {
+            console.error(error);
+            DisplayAlert(error);
+            await HandleUnAuthorized(error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
 
     useEffect(() => {
         const finalPrice: number = Math.max(0, totalPrice - availableCredit);
@@ -236,6 +345,8 @@ const ScanPage = () => {
                         }}
                         onChange={handleTotalPriceChange} // Attach the change handler
                         step="0.01" // Allows for decimal input
+                        ref={totalPriceInputRef} // Attach the ref to this input
+                        onKeyDown={HandleKeyDownTotalPriceInput} // Trigger action when Enter is pressed
 
                     />
                 </div>
@@ -356,46 +467,7 @@ const ScanPage = () => {
 
                 {/* Modal */}
                 {showScannerModal && (
-                    <div style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                    }}>
-                        <div style={{
-                            backgroundColor: 'white',
-                            padding: '20px',
-                            borderRadius: '10px',
-                            position: 'relative',
-                            width: '80%',
-                            maxWidth: '500px',
-                            textAlign: 'center',
-                        }}>
-                            <h2 style={{ marginBottom: '20px' }}>Scan QR Code</h2>
-                            <QrCodeScanner onScanResult={handleScanResult} />
-
-                            <button
-                                onClick={handleCloseModal}
-                                style={{
-                                    position: 'absolute',
-                                    top: '10px',
-                                    right: '10px',
-                                    backgroundColor: '#ff4d4d',
-                                    border: 'none',
-                                    color: 'white',
-                                    padding: '5px 10px',
-                                    borderRadius: '5px',
-                                    cursor: 'pointer',
-                                }}>
-                                Close
-                            </button>
-                        </div>
-                    </div>
+                    <ModalScannerQRCode />
                 )}
             </div>
 
