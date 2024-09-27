@@ -55,34 +55,43 @@ const ScanPage = () => {
 
     const handleTotalPriceChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         try {
-            const rawValue = event.target.value;
+            let rawValue = event.target.value;
 
-            // // Allow empty input
-            // if (rawValue === '') {
-            //     setTotalPrice(0); // Or whatever default value you prefer
-            //     return;
-            // }
+            // If the current value is "0" and the user enters a new number, replace it
+            if (rawValue === '0') {
+                return;
+            }
 
             // Check if the input is a valid number
             if (!/^(\d*\.?\d*)$/.test(rawValue)) {
                 throw new Error("Invalid number");
             }
 
-            // Parse the value
+            // Allow empty input (if the user clears the field)
+            if (rawValue === '') {
+                setTotalPrice(0);
+                return;
+            }
+
+            // Parse the value to a float (removes leading zeros)
             const newValue = parseFloat(rawValue);
 
-
-            // Check if the number is valid
-            if (newValue < 0) {
-                throw new Error("Total Price Cannot Be Less Than 0");
+            // Replace 0 with the new value when a number is entered
+            if (newValue !== 0) {
+                rawValue = newValue.toString();
             }
 
             // Update the state with the new value
             setTotalPrice(newValue);
+
+            // Directly update the input field to reflect the new value
+            event.target.value = rawValue;
         } catch (error: any) {
-            alert(error.message); // Use error.message to show the specific error message
+            alert(error.message); // Show specific error message
         }
     };
+
+
 
     const handleEmployeeID = async (event: React.ChangeEvent<HTMLInputElement>) => {
         setLoading(true);
@@ -453,7 +462,7 @@ const ScanPage = () => {
                         type='number'
                         name='totalPrice'
                         id='totalPrice'
-                        value={totalPrice}
+                        value={totalPrice > 0 ?totalPrice: '' }
                         style={{
                             padding: '10px',
                             width: '250px',
