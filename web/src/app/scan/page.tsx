@@ -462,7 +462,7 @@ const ScanPage = () => {
                         type='number'
                         name='totalPrice'
                         id='totalPrice'
-                        value={totalPrice}
+                        value={totalPrice > 0 ?totalPrice: '' }
                         style={{
                             padding: '10px',
                             width: '250px',
