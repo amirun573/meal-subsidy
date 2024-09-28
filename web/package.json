@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "ts-node -r tsconfig-paths/register server.ts",
     "build": "prisma generate && next build && tsc",
-    "start": "prisma generate && NODE_ENV=production node dist/server.js",
-    "start-prod": "node dist/server.js",
+    "start": "prisma generate && cross-env NODE_ENV=production node dist/server.js",
+    "start-prod": "cross-env NODE_ENV=production node dist/server.js",
     "lint": "next lint"
   },
   "dependencies": {
@@ -54,6 +54,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "concurrently": "^9.0.1",
+    "cross-env": "^7.0.3",
     "eslint": "^8",
     "eslint-config-next": "14.2.7",
     "html-loader": "^5.1.0",
