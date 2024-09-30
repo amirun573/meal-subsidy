@@ -147,7 +147,10 @@ VALUES
   ('037-38',now(),now(),uuid_generate_v4()),
   ('037-6071',now(),now(),uuid_generate_v4()),
   ('037-33',now(),now(),uuid_generate_v4()),
-  ('037-32',now(),now(),uuid_generate_v4())
+  ('037-32',now(),now(),uuid_generate_v4()),
+  ('037-3801',now(),now(),uuid_generate_v4()),
+  ('037-3301',now(),now(),uuid_generate_v4()),
+
 ;
 
 INSERT INTO "User" (employee_id, email,password_hash,active, role_id, is_email_verified,is_acc_verify,department_id, cost_center_id,employee_category_id,created_at, 
