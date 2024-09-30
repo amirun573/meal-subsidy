@@ -27,16 +27,17 @@ const CreateUpdateEmployeeValidationSchema = yup.object().shape({
   password: yup
     .string()
     .optional()
-    .test(
-      "password-strength",
-      "Password must be at least 8 characters long, include one uppercase letter, one lowercase letter, one number, and one special character.",
-      (value) => {
-        if (!value) return true; // If the value is empty, skip validation
-        return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(
-          value
-        );
-      }
-    ),
+    // .test(
+    //   "password-strength",
+    //   "Password must be at least 8 characters long, include one uppercase letter, one lowercase letter, one number, and one special character.",
+    //   (value) => {
+    //     if (!value) return true; // If the value is empty, skip validation
+    //     return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(
+    //       value
+    //     );
+    //   }
+    // ),
+    ,
   confirmPassword: yup
     .string()
     .optional()
