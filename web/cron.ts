@@ -25,15 +25,15 @@ const triggerCredit = async () => {
   }
 };
 
-// cron.schedule('48 17 * * *', triggerCredit, {
-//   scheduled: true,
-//   timezone: 'Asia/Kuala_Lumpur',
-// });
+cron.schedule('50 07 * * *', triggerCredit, {
+  scheduled: true,
+  timezone: 'Asia/Kuala_Lumpur',
+});
 
 // Schedule the cron job to run every 15 seconds (adjust for production use)
-cron.schedule("*/15 * * * * *", triggerCredit, {
-  scheduled: true,
-  timezone: "Asia/Kuala_Lumpur",
-});
+// cron.schedule("*/15 * * * * *", triggerCredit, {
+//   scheduled: true,
+//   timezone: "Asia/Kuala_Lumpur",
+// });
 
 console.log('Cron job scheduled');
