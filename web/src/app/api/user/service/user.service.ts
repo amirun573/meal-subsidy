@@ -1191,6 +1191,15 @@ export async function ScanCheckEmployeeIDAuthService(
         subsidies: {
           select: {
             subsidy_id: true,
+            start_date: true,
+            end_date: true,
+            applicable: true,
+            active: true,
+            subsidy_type: {
+              select: {
+                subsidy_type_code: true,
+              },
+            },
           },
         },
       },
@@ -1199,6 +1208,43 @@ export async function ScanCheckEmployeeIDAuthService(
     if (!user) {
       status = 400;
       throw Error("Not Eligable For Subsidy Meal");
+    }
+
+    const { subsidies, ...withoutSubsidies } = user as any;
+
+    if ((subsidies as Subsidy[]).length !== 1) {
+      status = 400;
+      throw Error("User not applicable to any Subsidy ");
+    }
+
+    const subsidy: Subsidy | undefined = (subsidies as Subsidy[]).find(
+      (item) =>
+        (item as any)?.subsidy_type?.subsidy_type_code === SubsidyTypeCode.meal
+    );
+
+    if (!subsidy) {
+      status = 400;
+      throw Error("User not applicable to Meal Subsidy ");
+    }
+
+    const currentDate = new Date();
+
+    if (subsidy?.start_date) {
+      if (currentDate < subsidy?.start_date) {
+        status = 400;
+        throw Error(
+          "User not applicable to Meal Subsidy Due to Date not Start Yet "
+        );
+      }
+
+      if (subsidy?.end_date) {
+        if (currentDate > subsidy?.start_date) {
+          status = 400;
+          throw Error(
+            "User not applicable to Meal Subsidy Due to Date been set to End"
+          );
+        }
+      }
     }
 
     console.log("employee_id==>", employee_id);
