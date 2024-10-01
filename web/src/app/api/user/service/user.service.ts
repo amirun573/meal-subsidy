@@ -371,7 +371,7 @@ export async function CreateEmployee(data: CreateUpdateUser) {
         throw Error("Confirm Password Need To Create Employee");
       }
 
-      const hashpassword: string | null = await hashPassword(password);
+       hashpassword = await hashPassword(password) || "";
 
       if (!hashpassword) {
         status = 400;
