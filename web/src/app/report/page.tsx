@@ -399,9 +399,20 @@ const ChartComponent = () => {
         const HandleSubmit = async () => {
             setLoading(true);
             try {
-                const startDate: string = ConvertToUTCStartOfDay(submitDetails.startDate);
-                const endDate: string = ConvertToUTCEndOfDay(submitDetails.endDate);
 
+                const pickedDate = '2024-10-01';
+
+                // Start of the day (MYT)
+                const startDateMYT = `${submitDetails.startDate}T00:00:00`;
+                // End of the day (MYT)
+                const endDateMYT = `${submitDetails.endDate}T23:59:59`;
+                // Convert Malaysia Time (UTC+8) to UTC by subtracting 8 hours
+                const startDateUTC = new Date(new Date(startDateMYT).getTime() - (8 * 60 * 60 * 1000)); // Subtract 8 hours
+                const endDateUTC = new Date(new Date(endDateMYT).getTime() - (8 * 60 * 60 * 1000)); // Subtract 8 hours
+
+
+                const startDateUTCString = startDateUTC.toISOString();
+                const endDateUTCString = endDateUTC.toISOString();
                 // Ensure the user's authorization details are valid
                 const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
 
@@ -423,12 +434,12 @@ const ChartComponent = () => {
 
                 }
                 await SubsidyTransactionReportDownload({
-                    startDate,
-                    endDate,
+                    startDate: startDateUTCString,
+                    endDate: endDateUTCString,
                     employees_id,
                 });
                 // Request the report from the server
-                const response = await axios.get(`/api/subsidy?${StatusAPICode.code}=${StatusAPICode.SUBSIDY_REPORT_DOWNLOAD}&startDate=${startDate}&endDate=${endDate}&employees_id=${JSON.stringify(employees_id)}`, {
+                const response = await axios.get(`/api/subsidy?${StatusAPICode.code}=${StatusAPICode.SUBSIDY_REPORT_DOWNLOAD}&startDate=${startDateUTCString}&endDate=${endDateUTCString}&employees_id=${JSON.stringify(employees_id)}`, {
                     headers: {
                         Authorization: `Bearer ${userDetailsLocalStorage?.accessToken}`,
                     },

@@ -371,7 +371,7 @@ export async function CreateEmployee(data: CreateUpdateUser) {
         throw Error("Confirm Password Need To Create Employee");
       }
 
-       hashpassword = await hashPassword(password) || "";
+      hashpassword = (await hashPassword(password)) || "";
 
       if (!hashpassword) {
         status = 400;
@@ -998,6 +998,11 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
       const get_access_cards: Partial<AccessCard>[] = (getUser as any)
         ?.access_cards as Partial<AccessCard>[];
 
+      // if(!access_card){
+      //   status = 400;
+      // throw Error("Access Card Cannot Have More Than 1 that Active");
+      // }
+
       const access_cards: Partial<AccessCard>[] = get_access_cards.filter(
         (item) => item.active === true
       ) as Partial<AccessCard>[];
@@ -1008,6 +1013,13 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
       }
 
       if (access_cards[0]?.card_value) {
+        const access_card: Partial<AccessCard> | undefined =
+          get_access_cards.find(
+            (item) =>  item.card_value === access_card_no
+          );
+
+          console.log("access_card==>", access_card);
+
         if (access_cards[0].card_value !== access_card_no) {
           const access_card: Partial<AccessCard> = {
             card_value: access_card_no,
@@ -1022,6 +1034,8 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
             status = 400;
             throw Error("Failed To Register Employee Access Card");
           }
+        } else {
+          console.log("No Need To Take Action");
         }
       } else {
         const access_card: Partial<AccessCard> = {
