@@ -25,7 +25,7 @@ const triggerCredit = async () => {
   }
 };
 
-cron.schedule('50 07 * * *', triggerCredit, {
+cron.schedule('50 05 * * *', triggerCredit, {
   scheduled: true,
   timezone: 'Asia/Kuala_Lumpur',
 });
