@@ -109,6 +109,11 @@ export async function SignInService(data: SignInRequest) {
       }
     }
 
+    else{
+      status = 400;
+      throw Error("You are not Eligble to Login");
+    }
+
 
     //console.log("checkPassword===>", checkPassword);
 
