@@ -420,6 +420,16 @@ const ScanPage = () => {
 
 
 
+    useEffect(() => {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(function (registration) {
+                console.log('Service Worker is active:', registration);
+            }).catch(function (error) {
+                console.error('Service Worker failed:', error);
+            });
+        }
+
+    })
 
 
     useEffect(() => {
@@ -462,7 +472,7 @@ const ScanPage = () => {
                         type='number'
                         name='totalPrice'
                         id='totalPrice'
-                        value={totalPrice > 0 ?totalPrice: '' }
+                        value={totalPrice > 0 ? totalPrice : ''}
                         style={{
                             padding: '10px',
                             width: '250px',
