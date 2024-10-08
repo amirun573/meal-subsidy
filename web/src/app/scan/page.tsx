@@ -14,6 +14,7 @@ import { EmployeeSubmitPriceValidation } from '@/_Common/validation/subsidy.vali
 import { GetLocalStorageDetails, HandleUnAuthorized } from '@/_Common/function/LocalStorage';
 import { UserDetailsLocalStorage } from '@/_Common/interface/auth.interface';
 import Image from 'next/image';
+import ConnectivityDetector from '../../Components/Connectivity/index';
 const ScanPage = () => {
     const [employeeId, setEmployeeId] = useState<string>('');
     const [showScannerModal, setShowScannerModal] = useState<boolean>(true);
@@ -28,6 +29,7 @@ const ScanPage = () => {
     const [employeeName, setEmployeeName] = useState<string>('');
     const [calculatedFinalPrice, setCalculatedFinalPrice] = useState<number>(0);
     const [subsidyCreditUUID, setSubsidyCreditUUID] = useState<string>('');
+    const [isOnline, setIsOnline] = useState<boolean>(true); // Initialize the online status
 
 
     const isPasting = useRef(false); // Ref to track if pasting is occurring
@@ -35,6 +37,7 @@ const ScanPage = () => {
 
     // Threshold for distinguishing between card reader input and manual typing (in milliseconds)
     const cardReaderThreshold = 50;
+
     // Callback function to get scan result
     const handleScanResult = (result: any) => {
         handleEmployeeID(result);
@@ -418,18 +421,48 @@ const ScanPage = () => {
         }
     };
 
+    const handleStatusChange = (status: boolean) => {
+        setIsOnline(status); // Update the online status
+        // You can also perform other actions here based on the status change
+        console.log("Online status changed to:", status);
+    };
+
 
 
     useEffect(() => {
+        console.log("Checking Service Worker...");
+
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.ready.then(function (registration) {
-                console.log('Service Worker is active:', registration);
-            }).catch(function (error) {
-                console.error('Service Worker failed:', error);
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(function (registration) {
+                    console.log('Service Worker registered with scope:', registration.scope);
+                    return navigator.serviceWorker.ready;
+                })
+                .then(function (registration) {
+                    console.log('Service Worker is active:', registration);
+                })
+                .catch(function (error) {
+                    console.error('Service Worker registration or activation failed:', error);
+                });
+        }
+    }, []); // Empty array ensures this runs only on component mount
+
+
+    // Example in _app.tsx
+    useEffect(() => {
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then((registration) => {
+                        console.log('Service Worker registered with scope:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.log('Service Worker registration failed:', error);
+                    });
             });
         }
+    }, []);
 
-    })
 
 
     useEffect(() => {
@@ -444,6 +477,7 @@ const ScanPage = () => {
         <>
             <Navbar />
             <MainContent />
+            <ConnectivityDetector onStatusChange={handleStatusChange} />
             <div>
                 {loading && <Spinner />}
 
