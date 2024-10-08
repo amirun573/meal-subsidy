@@ -7,13 +7,25 @@ interface ConnectivityDetectorProps {
 
 const ConnectivityDetector: React.FC<ConnectivityDetectorProps> = ({ onStatusChange }) => {
     const [isOnline, setIsOnline] = useState<boolean>(false);
+    const [serverReachable, setServerReachable] = useState<boolean>(true);
+    const SERVER_URL = 'http://localhost:3000'; // Replace with your actual server URL
+
+    const checkServerConnection = async () => {
+        try {
+            const response = await fetch(SERVER_URL);
+            setServerReachable(response.ok); // Check if the response is successful
+        } catch (error) {
+            setServerReachable(false); // Set to false if there's an error
+        }
+    };
 
     useEffect(() => {
-        // Check online status only on the client side
+        // Function to check online status
         const handleOnline = () => {
             console.log("You are online");
             setIsOnline(true);
             onStatusChange(true); // Pass online status to parent
+            checkServerConnection(); // Check server connection when online
         };
 
         const handleOffline = () => {
@@ -27,14 +39,23 @@ const ConnectivityDetector: React.FC<ConnectivityDetectorProps> = ({ onStatusCha
             setIsOnline(navigator.onLine);
             onStatusChange(navigator.onLine); // Pass initial status to parent
             console.log("Initial online status:", navigator.onLine);
+            if (navigator.onLine) {
+                checkServerConnection(); // Check server connection if online
+            }
         }
+
+        // Check server connectivity at regular intervals
+        const intervalId = setInterval(() => {
+            checkServerConnection(); // Always check the server connection
+        }, 10000); // Check every 10 seconds (adjust as needed)
 
         // Add event listeners for online and offline events
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
 
-        // Cleanup event listeners on component unmount
+        // Cleanup event listeners and interval on component unmount
         return () => {
+            clearInterval(intervalId); // Clear the interval
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
         };
@@ -46,6 +67,11 @@ const ConnectivityDetector: React.FC<ConnectivityDetectorProps> = ({ onStatusCha
             <p style={{ color: isOnline ? 'green' : 'red' }}>
                 You are currently {isOnline ? 'online' : 'offline'}.
             </p>
+            {!serverReachable && (
+                <p style={{ color: 'orange' }}>
+                    Cannot reach the server. Some features may be unavailable.
+                </p>
+            )}
             {!isOnline && ( // Show the message only when offline
                 <p style={{ color: 'red' }}>
                     Some features may be unavailable without an internet connection.
