@@ -55,4 +55,28 @@ const ConnectivityDetector: React.FC<ConnectivityDetectorProps> = ({ onStatusCha
     );
 };
 
+export const GetLocalIPs = async (): Promise<string> => {
+    return new Promise((resolve) => {
+        const ips = new Set<string>();
+        const pc = new RTCPeerConnection();
+
+        pc.createDataChannel(''); // Create a data channel
+        pc.createOffer().then(offer => pc.setLocalDescription(offer));
+
+        pc.onicecandidate = (event) => {
+            if (!event || !event.candidate) {
+                // No more candidates, resolve with the collected IPs
+                resolve(ips.size > 0 ? Array.from(ips).join(', ') : '');
+                return;
+            }
+
+            const ipMatch = event.candidate.candidate.match(/\d+\.\d+\.\d+\.\d+/);
+            if (ipMatch) {
+                ips.add(ipMatch[0] + ':3001');
+            }
+        };
+    });
+};
+
+
 export default ConnectivityDetector;

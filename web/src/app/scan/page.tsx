@@ -14,7 +14,7 @@ import { EmployeeSubmitPriceValidation } from '@/_Common/validation/subsidy.vali
 import { GetLocalStorageDetails, HandleUnAuthorized } from '@/_Common/function/LocalStorage';
 import { UserDetailsLocalStorage } from '@/_Common/interface/auth.interface';
 import Image from 'next/image';
-import ConnectivityDetector from '../../Components/Connectivity/index';
+import ConnectivityDetector, { GetLocalIPs } from '../../Components/Connectivity/index';
 const ScanPage = () => {
     const [employeeId, setEmployeeId] = useState<string>('');
     const [showScannerModal, setShowScannerModal] = useState<boolean>(true);
@@ -31,6 +31,7 @@ const ScanPage = () => {
     const [subsidyCreditUUID, setSubsidyCreditUUID] = useState<string>('');
     const [isOnline, setIsOnline] = useState<boolean>(true); // Initialize the online status
 
+    const [localIP, setLocalIP] = useState<string>('');
 
     const isPasting = useRef(false); // Ref to track if pasting is occurring
     const lastKeyPressTime = useRef<number | null>(null); // Track the timestamp of the last key press
@@ -427,6 +428,14 @@ const ScanPage = () => {
         console.log("Online status changed to:", status);
     };
 
+    const fetchLocalIP = async () => {
+        const localIPs = await GetLocalIPs();
+        if (localIPs) {
+            console.log('Local IPs:', localIPs);
+        } else {
+            console.log('No local IPs found');
+        }
+    };
 
 
     useEffect(() => {
@@ -448,6 +457,7 @@ const ScanPage = () => {
     }, []); // Empty array ensures this runs only on component mount
 
 
+
     // Example in _app.tsx
     useEffect(() => {
         if ('serviceWorker' in navigator) {
@@ -461,7 +471,18 @@ const ScanPage = () => {
                     });
             });
         }
+
+
+
+
     }, []);
+
+    useEffect(() => {
+        if (!isOnline) {
+            console.log("ISONLINE  ===>", isOnline);
+            fetchLocalIP();
+        }
+    }, [isOnline])
 
 
 
