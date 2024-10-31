@@ -30,7 +30,7 @@
     "**/*.tsx", 
     ".next/types/**/*.ts", 
     "server.ts"
-  ],
+, "src/app/api/signaling.ts"  ],
   "exclude": [
     "node_modules"
   ]

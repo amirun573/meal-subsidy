@@ -8,7 +8,7 @@ interface ConnectivityDetectorProps {
 const ConnectivityDetector: React.FC<ConnectivityDetectorProps> = ({ onStatusChange }) => {
     const [isOnline, setIsOnline] = useState<boolean>(false);
     const [serverReachable, setServerReachable] = useState<boolean>(true);
-    const SERVER_URL = 'http://localhost:3000'; // Replace with your actual server URL
+    const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000"; // Replace with your actual server URL
 
     const checkServerConnection = async () => {
         try {
@@ -98,7 +98,7 @@ export const GetLocalIPs = async (): Promise<string> => {
 
             const ipMatch = event.candidate.candidate.match(/\d+\.\d+\.\d+\.\d+/);
             if (ipMatch) {
-                ips.add(ipMatch[0] + ':3001');
+                ips.add(ipMatch[0] + ':3000');
             }
         };
     });

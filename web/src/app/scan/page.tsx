@@ -486,6 +486,8 @@ const ScanPage = () => {
 
 
 
+
+
     useEffect(() => {
         const finalPrice: number = Math.max(0, totalPrice - availableCredit);
 
@@ -494,11 +496,32 @@ const ScanPage = () => {
     }, [totalPrice, availableCredit, discount]);
 
 
+    const [socket, setSocket] = useState<WebSocket>();
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') { // Check if in the browser
+            if (typeof RTCPeerConnection !== 'undefined') {
+                const peerConnection = new RTCPeerConnection();
+
+                const ws = new WebSocket(`ws://${process.env.NEXT_PUBLIC_IP}/api/signaling`);
+
+                console.log("WS===>", ws);
+                setSocket(ws);
+
+                // Your WebRTC logic hevscode-file://vscode-app/private/var/folders/ph/86351q_122zcsvj54n_c8c9w0000gn/T/AppTranslocation/339F2D63-F831-4ADF-9F82-B7495B2EB259/d/Visual%20Studio%20Code%202.app/Contents/Resources/app/out/vs/code/electron-sandbox/workbench/workbench.htmlre
+            } else {
+                console.error("RTCPeerConnection is not available in this browser.");
+            }
+        }
+    }, []);
+
+
     return (
         <>
             <Navbar />
             <MainContent />
             <ConnectivityDetector onStatusChange={handleStatusChange} />
+
             <div>
                 {loading && <Spinner />}
 

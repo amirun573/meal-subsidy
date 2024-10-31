@@ -2,6 +2,7 @@ const CACHE_NAME = 'v1';
 const ASSETS_TO_CACHE = [
     '/',                // Cache the main page
     '/scan',
+    '/auth/sign-in',
     '/_next/static/chunks/main-app.js', // Main bundle, adjust according to your output
     '/_next/static/chunks/webpack.js', // Main bundle, adjust according to your output
     // Add other assets as needed
@@ -79,3 +80,5 @@ self.addEventListener('fetch', (event) => {
             })
     );
 });
+
+

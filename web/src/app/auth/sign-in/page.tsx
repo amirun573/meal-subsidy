@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import Navbar from "@/Components/Navbar";
 import { DisplayAlert } from "@/_Common/function/Error";
@@ -9,6 +9,7 @@ import { StatusAPICode } from "@/_Common/enum/status-api-code.enum";
 import { decrypt } from "@/_Common/function/Hashing";
 import { UserDetailsLocalStorage } from "@/_Common/interface/auth.interface";
 import { SetUserDetailsLocalStoage } from "@/_Common/function/LocalStorage";
+import { GetLocalIPs } from "@/Components/Connectivity";
 function Login() {
 
 
@@ -93,6 +94,44 @@ function Login() {
         }
     }
 
+
+    useEffect(() => {
+        console.log("Checking Service Worker...");
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(function (registration) {
+                    console.log('Service Worker registered with scope:', registration.scope);
+                    return navigator.serviceWorker.ready;
+                })
+                .then(function (registration) {
+                    console.log('Service Worker is active:', registration);
+                })
+                .catch(function (error) {
+                    console.error('Service Worker registration or activation failed:', error);
+                });
+        }
+    }, []); // Empty array ensures this runs only on component mount
+
+
+    // Example in _app.tsx
+    useEffect(() => {
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then((registration) => {
+                        console.log('Service Worker registered with scope:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.log('Service Worker registration failed:', error);
+                    });
+            });
+        }
+
+
+
+
+    }, []);
     return (
         <>
             <div className="flex min-h-screen flex-1 flex-col justify-center px-4 py-12 bg-white lg:px-8">
