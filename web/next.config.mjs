@@ -39,10 +39,35 @@ const additionalConfig = {
   // Add any future options here...
 };
 
+const cors = {
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Access-Control-Allow-Credentials", value:"true"
+          },
+          {
+            key: "Access-Control-Allow-Origin", value:"*"
+          },
+          {
+            key: "Access-Control-Allow-Methods", value:"GET,OPTIONS,PATCH,DELETE,POST,PUT"
+          },
+          {
+            key: "Access-Control-Allow-Headers", value:"X-CSRF-Token, X-Requested-With, Accept, Content-Type, Authorization"
+          },
+        ]
+      }
+    ]
+  }
+}
+
 // Merge PWA config with other Next.js configurations
 const nextConfig = {
   ...pwaConfig,
   ...additionalConfig,
+  ...cors,
   // You can add more config in the future if needed
 };
 

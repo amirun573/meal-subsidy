@@ -4,13 +4,21 @@ import next from "next";
 import "./cron";
 import { Server } from "socket.io";
 import { createServer } from "http";
-
+import cors from "cors";
 const dev = process?.env?.NODE_ENV !== "production";
 const app = next({ dev });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
   const server = express();
+  server.use(
+    cors({
+      origin: "*",
+      methods: ["GET", "POST", "PUT", "DELETE"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+      credentials: true,
+    })
+  );
 
   // Middleware to parse JSON bodies for POST requests
   server.use(express.json());
@@ -19,18 +27,30 @@ app.prepare().then(() => {
   const httpServer = createServer(server);
   const io = new Server(httpServer, {
     cors: {
-      origin: "*",
-      methods: ["GET", "POST"],
+      origin: [process.env.NEXT_PUBLIC_SERVER_URL || "*"],
+      methods: ["GET", "POST", "PUT", "DELETE"],
     },
-    pingInterval: 10000,   // Set ping interval (default 25000 ms)
-    pingTimeout: 5000      // Set ping timeout (default 5000 ms)
+    pingInterval: 10000, // Set ping interval (default 25000 ms)
+    pingTimeout: 5000, // Set ping timeout (default 5000 ms)
   });
   io.on("connection", (socket) => {
     console.log("Socket connected:", socket.id);
 
-    socket.on("message", (message) => {
-      console.log("message===>", message);
-      io.emit("message", message);
+    socket.on("message", (message, callback) => {
+      console.log("Message received:", message);
+
+      // Process the message, then send a response back to the client
+      const response = { status: "success", data: "Message received!" };
+      callback(response); // Send the acknowledgment
+    });
+
+    // Listen for the client's message
+    socket.on("clientMessage", (message, callback) => {
+      console.log(`Received message from client ${socket.id}: ${message}`);
+
+      // Emit response back to the same client
+      const responseMessage = `Hello ${socket.id}, your message was received!`;
+      callback(responseMessage); // Use callback for acknowledgment or response
     });
 
     socket.on("disconnect", () => {

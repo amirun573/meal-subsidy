@@ -9,7 +9,9 @@ import { StatusAPICode } from "@/_Common/enum/status-api-code.enum";
 import { decrypt } from "@/_Common/function/Hashing";
 import { UserDetailsLocalStorage } from "@/_Common/interface/auth.interface";
 import { SetUserDetailsLocalStoage } from "@/_Common/function/LocalStorage";
-import { GetLocalIPs } from "@/Components/Connectivity";
+import ConnectivityDetector, { GetLocalIPs } from "@/Components/Connectivity";
+import { useSocket } from "@/_Common/function/Socket";
+import { useServiceWorker } from "@/_Common/function/ServiceWorker";
 function Login() {
 
 
@@ -17,6 +19,14 @@ function Login() {
     const [password, setPassword] = useState<string>('');
     const [userDetails, setUserDetails] = useState<UserDetailsLocalStorage>();
     const [loading, setLoading] = useState<boolean>(false);
+
+
+    const { messages, sendMessage, SocketConnected } = useSocket();
+
+    const { registerServiceWorker } = useServiceWorker();
+
+    const [isOnline, setIsOnline] = useState<boolean>(true); // Initialize the online status
+
 
     const HandleEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         try {
@@ -59,31 +69,38 @@ function Login() {
     const HandleSignInSubmit = async () => {
         setLoading(true);
         try {
-
             await SignInFunctionValidation({ email, password });
 
-            const SignInRequest = await axios.post(`/api/auth/sign-in`, {
-                email,
-                password,
-                code: StatusAPICode.sign_in_request
-            });
+            if (!isOnline) {
 
-            if (!SignInRequest.data?.userDetails) {
-                throw Error("Data Not Received");
+                const SignInRequest = await axios.post(`/api/auth/sign-in`, {
+                    email,
+                    password,
+                    code: StatusAPICode.sign_in_request
+                });
+
+                if (!SignInRequest.data?.userDetails) {
+                    throw Error("Data Not Received");
+                }
+
+                setUserDetails(SignInRequest.data?.userDetails as UserDetailsLocalStorage);
+
+                const saveUserDetails = await SetUserDetailsLocalStoage(SignInRequest.data?.userDetails as UserDetailsLocalStorage);
+
+
+                if (!saveUserDetails) {
+                    throw Error("Failed To Saved In Client Side");
+                }
+
+                //window.location.href = '/';
+
+                return;
+
             }
 
-            setUserDetails(SignInRequest.data?.userDetails as UserDetailsLocalStorage);
-
-            const saveUserDetails = await SetUserDetailsLocalStoage(SignInRequest.data?.userDetails as UserDetailsLocalStorage);
-
-
-            if (!saveUserDetails) {
-                throw Error("Failed To Saved In Client Side");
+            else if(SocketConnected){
+                sendMessage('sdsdsdsdsdsdsds');
             }
-
-            window.location.href = '/';
-
-            return;
 
 
         } catch (error) {
@@ -94,24 +111,28 @@ function Login() {
         }
     }
 
+    const handleStatusChange = (status: boolean) => {
+        setIsOnline(status); // Update the online status
+        // You can also perform other actions here based on the status change
+        console.log("Online status changed to:", status);
+    };
+
+    const fetchLocalIP = async () => {
+        const localIPs = await GetLocalIPs();
+        if (localIPs) {
+            console.log('Local IPs:', localIPs);
+        } else {
+            console.log('No local IPs found');
+        }
+    };
 
     useEffect(() => {
-        console.log("Checking Service Worker...");
-
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/service-worker.js')
-                .then(function (registration) {
-                    console.log('Service Worker registered with scope:', registration.scope);
-                    return navigator.serviceWorker.ready;
-                })
-                .then(function (registration) {
-                    console.log('Service Worker is active:', registration);
-                })
-                .catch(function (error) {
-                    console.error('Service Worker registration or activation failed:', error);
-                });
+        if (!isOnline) {
+            console.log("ISONLINE  ===>", isOnline);
+            fetchLocalIP();
         }
-    }, []); // Empty array ensures this runs only on component mount
+    }, [isOnline])
+
 
 
     // Example in _app.tsx
@@ -134,7 +155,10 @@ function Login() {
     }, []);
     return (
         <>
+
             <div className="flex min-h-screen flex-1 flex-col justify-center px-4 py-12 bg-white lg:px-8">
+                <ConnectivityDetector onStatusChange={handleStatusChange} />
+
                 <div className="mx-auto w-full max-w-md">
                     <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
                         Sign in to your account

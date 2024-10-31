@@ -15,6 +15,7 @@ import { GetLocalStorageDetails, HandleUnAuthorized } from '@/_Common/function/L
 import { UserDetailsLocalStorage } from '@/_Common/interface/auth.interface';
 import Image from 'next/image';
 import ConnectivityDetector, { GetLocalIPs } from '../../Components/Connectivity/index';
+import { useServiceWorker } from '@/_Common/function/ServiceWorker';
 const ScanPage = () => {
     const [employeeId, setEmployeeId] = useState<string>('');
     const [showScannerModal, setShowScannerModal] = useState<boolean>(true);
@@ -458,24 +459,8 @@ const ScanPage = () => {
 
 
 
-    // Example in _app.tsx
-    useEffect(() => {
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js')
-                    .then((registration) => {
-                        console.log('Service Worker registered with scope:', registration.scope);
-                    })
-                    .catch((error) => {
-                        console.log('Service Worker registration failed:', error);
-                    });
-            });
-        }
+    const { registerServiceWorker } = useServiceWorker();
 
-
-
-
-    }, []);
 
     useEffect(() => {
         if (!isOnline) {
@@ -494,26 +479,6 @@ const ScanPage = () => {
         setCalculatedFinalPrice(finalPrice);
 
     }, [totalPrice, availableCredit, discount]);
-
-
-    const [socket, setSocket] = useState<WebSocket>();
-
-    useEffect(() => {
-        if (typeof window !== 'undefined') { // Check if in the browser
-            if (typeof RTCPeerConnection !== 'undefined') {
-                const peerConnection = new RTCPeerConnection();
-
-                const ws = new WebSocket(`ws://${process.env.NEXT_PUBLIC_IP}/api/signaling`);
-
-                console.log("WS===>", ws);
-                setSocket(ws);
-
-                // Your WebRTC logic hevscode-file://vscode-app/private/var/folders/ph/86351q_122zcsvj54n_c8c9w0000gn/T/AppTranslocation/339F2D63-F831-4ADF-9F82-B7495B2EB259/d/Visual%20Studio%20Code%202.app/Contents/Resources/app/out/vs/code/electron-sandbox/workbench/workbench.htmlre
-            } else {
-                console.error("RTCPeerConnection is not available in this browser.");
-            }
-        }
-    }, []);
 
 
     return (

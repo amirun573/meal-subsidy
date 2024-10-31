@@ -1,7 +1,12 @@
+"use client";
 import Navbar from "@/Components/Navbar";
+import { useServiceWorker } from "@/_Common/function/ServiceWorker";
 import Image from "next/image";
 
 export default function Home() {
+
+  const { registerServiceWorker } = useServiceWorker();
+
   return (
     <>
       <Navbar />
