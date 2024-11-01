@@ -1,3 +1,4 @@
+// Import necessary modules
 import "module-alias/register";
 import express, { Request, Response } from "express";
 import next from "next";
@@ -7,6 +8,7 @@ import { createServer } from "http";
 import cors from "cors";
 import SocketRoute from "@/app/api/socket/socket-route";
 import { StatusAPICode } from "@/_Common/enum/status-api-code.enum";
+
 const dev = process?.env?.NODE_ENV !== "production";
 const app = next({ dev });
 const handle = app.getRequestHandler();
@@ -15,7 +17,7 @@ app.prepare().then(() => {
   const server = express();
   server.use(
     cors({
-      origin: "*",
+      origin: process.env.NEXT_PUBLIC_SERVER_URL || "*",
       methods: ["GET", "POST", "PUT", "DELETE"],
       allowedHeaders: ["Content-Type", "Authorization"],
       credentials: true,
@@ -29,24 +31,23 @@ app.prepare().then(() => {
   const httpServer = createServer(server);
   const io = new Server(httpServer, {
     cors: {
-      origin: [process.env.NEXT_PUBLIC_SERVER_URL || "*", "https://www.google.com","http://http://localhost:3000"],
+      origin: [process.env.NEXT_PUBLIC_SERVER_URL || "*"],
       methods: ["GET", "POST", "PUT", "DELETE"],
     },
-    pingInterval: 10000, // Set ping interval (default 25000 ms)
-    pingTimeout: 5000, // Set ping timeout (default 5000 ms)
+    pingInterval: 10000,
+    pingTimeout: 5000,
   });
+
   io.on("connection", (socket) => {
     console.log("Socket connected:", socket.id);
 
+    // Basic message handling
     socket.on("message", (message, callback) => {
       console.log("Message received:", message);
-
-      // Process the message, then send a response back to the client
-      const response = { status: "success", data: "Message received!" };
-      callback(response); // Send the acknowledgment
+      callback({ status: "success", data: "Message received!" });
     });
 
-    // Listen for the client's message
+    // Main message handler with async SocketRoute
     socket.on("clientMessage", async (message, callback) => {
       console.log(`Received message from client ${socket.id}: ${message}`);
 
@@ -54,12 +55,10 @@ app.prepare().then(() => {
         const data = JSON.parse(message);
 
         if (!data || !data.code) {
-          return callback(
-            JSON.stringify({
-              status: 400,
-              msg: "No Status API Code",
-            })
-          );
+          return callback({
+            status: 400,
+            msg: "No Status API Code",
+          });
         }
 
         const { code, ...body } = data;
@@ -67,15 +66,14 @@ app.prepare().then(() => {
         // Attempt to call the async `SocketRoute` function
         const response = await SocketRoute(code as StatusAPICode, body);
 
-        callback(JSON.stringify(response));
+        // Send a plain object back, no extra serialization needed
+        callback(response);
       } catch (error) {
         console.error("Error processing message:", error);
-        callback(
-          JSON.stringify({
-            status: 500,
-            msg: "Server error occurred",
-          })
-        );
+        callback({
+          status: 500,
+          msg: "Server error occurred",
+        });
       }
     });
 
@@ -93,9 +91,7 @@ app.prepare().then(() => {
   server.post("/api/data", (req: Request, res: Response) => {
     const data = req.body;
     console.log("Data received:", data);
-    res
-      .status(200)
-      .json({ receivedData: data, message: "Data received successfully!" });
+    res.status(200).json({ receivedData: data, message: "Data received successfully!" });
   });
 
   server.get("/api/user/:id", (req: Request, res: Response) => {
@@ -110,7 +106,7 @@ app.prepare().then(() => {
   });
 
   // Start the HTTP server instead of the Express server
-  httpServer.listen(3000, "0.0.0.0", (err?: any) => {
+  httpServer.listen(3000, (err?: any) => {
     if (err) {
       console.error("Error starting server:", err);
       process.exit(1);
