@@ -14,7 +14,7 @@ import { EmployeeSubmitPriceValidation } from '@/_Common/validation/subsidy.vali
 import { GetLocalStorageDetails, HandleUnAuthorized } from '@/_Common/function/LocalStorage';
 import { UserDetailsLocalStorage } from '@/_Common/interface/auth.interface';
 import Image from 'next/image';
-import ConnectivityDetector, { GetLocalIPs } from '../../Components/Connectivity/index';
+import { GetLocalIPs, ConnectivityDetector, InternetDetector } from '../../Components/Connectivity/index';
 import { useServiceWorker } from '@/_Common/function/ServiceWorker';
 const ScanPage = () => {
     const [employeeId, setEmployeeId] = useState<string>('');
@@ -32,7 +32,7 @@ const ScanPage = () => {
     const [subsidyCreditUUID, setSubsidyCreditUUID] = useState<string>('');
     const [isOnline, setIsOnline] = useState<boolean>(true); // Initialize the online status
 
-    const [localIP, setLocalIP] = useState<string>('');
+    const [internet, setInternet] = useState<boolean>(true);
 
     const isPasting = useRef(false); // Ref to track if pasting is occurring
     const lastKeyPressTime = useRef<number | null>(null); // Track the timestamp of the last key press
@@ -423,6 +423,12 @@ const ScanPage = () => {
         }
     };
 
+    const handleInternetStatusChange = (status: boolean) => {
+        setInternet(status); // Update the online status
+        // You can also perform other actions here based on the status change
+        console.log("Internet status changed to:", status);
+    };
+
     const handleStatusChange = (status: boolean) => {
         setIsOnline(status); // Update the online status
         // You can also perform other actions here based on the status change
@@ -485,6 +491,8 @@ const ScanPage = () => {
         <>
             <Navbar />
             <MainContent />
+            <InternetDetector onInternetStatusChange={handleInternetStatusChange} />
+
             <ConnectivityDetector onStatusChange={handleStatusChange} />
 
             <div>

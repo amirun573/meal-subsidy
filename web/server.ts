@@ -5,6 +5,8 @@ import "./cron";
 import { Server } from "socket.io";
 import { createServer } from "http";
 import cors from "cors";
+import SocketRoute from "@/app/api/socket/socket-route";
+import { StatusAPICode } from "@/_Common/enum/status-api-code.enum";
 const dev = process?.env?.NODE_ENV !== "production";
 const app = next({ dev });
 const handle = app.getRequestHandler();
@@ -27,7 +29,7 @@ app.prepare().then(() => {
   const httpServer = createServer(server);
   const io = new Server(httpServer, {
     cors: {
-      origin: [process.env.NEXT_PUBLIC_SERVER_URL || "*"],
+      origin: [process.env.NEXT_PUBLIC_SERVER_URL || "*", "https://www.google.com","http://http://localhost:3000"],
       methods: ["GET", "POST", "PUT", "DELETE"],
     },
     pingInterval: 10000, // Set ping interval (default 25000 ms)
@@ -45,12 +47,36 @@ app.prepare().then(() => {
     });
 
     // Listen for the client's message
-    socket.on("clientMessage", (message, callback) => {
+    socket.on("clientMessage", async (message, callback) => {
       console.log(`Received message from client ${socket.id}: ${message}`);
 
-      // Emit response back to the same client
-      const responseMessage = `Hello ${socket.id}, your message was received!`;
-      callback(responseMessage); // Use callback for acknowledgment or response
+      try {
+        const data = JSON.parse(message);
+
+        if (!data || !data.code) {
+          return callback(
+            JSON.stringify({
+              status: 400,
+              msg: "No Status API Code",
+            })
+          );
+        }
+
+        const { code, ...body } = data;
+
+        // Attempt to call the async `SocketRoute` function
+        const response = await SocketRoute(code as StatusAPICode, body);
+
+        callback(JSON.stringify(response));
+      } catch (error) {
+        console.error("Error processing message:", error);
+        callback(
+          JSON.stringify({
+            status: 500,
+            msg: "Server error occurred",
+          })
+        );
+      }
     });
 
     socket.on("disconnect", () => {

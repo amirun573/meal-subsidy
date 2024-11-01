@@ -58,12 +58,39 @@ export const useSocket = () => {
     };
   }, [serverUrl]);
 
-  const sendMessage = (message: string) => {
-    if (message.trim() && socket) {
-      socket.emit("clientMessage", message, (response: any) => {
-        console.log("Server response:", response); // This logs the server's reply
-      });
-    }
+  const sendMessage = async (message: string): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if (message.trim() && socket) {
+        console.log("Sending message:", message);
+        socket.emit("clientMessage", message, (response: any) => {
+          try {
+            // console.log("Server response:", response); // Log the raw response
+
+            const parsedResponse = JSON.parse(response); // Parse the response
+
+            console.log("Server parsedResponse:", parsedResponse); // Log the raw response
+
+            const { status, ...data } = parsedResponse;
+
+
+            if (!status || typeof status !== "number") {
+              reject(new Error("Invalid response structure"));
+            } else {
+              if (status !== 200) {
+                reject(new Error(`Error: ${data?.message}`)); // You can also pass a more specific error message
+              } else {
+                resolve(data); // Resolve the promise with the data
+              }
+            }
+          } catch (error) {
+            console.error("Error parsing server response:", error);
+            reject(error); // Reject the promise on error
+          }
+        });
+      } else {
+        reject(new Error("Invalid message or socket not connected"));
+      }
+    });
   };
 
   return { socket, messages, sendMessage, SocketConnected }; // Return isConnected status

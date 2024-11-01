@@ -9,7 +9,7 @@ import { StatusAPICode } from "@/_Common/enum/status-api-code.enum";
 import { decrypt } from "@/_Common/function/Hashing";
 import { UserDetailsLocalStorage } from "@/_Common/interface/auth.interface";
 import { SetUserDetailsLocalStoage } from "@/_Common/function/LocalStorage";
-import ConnectivityDetector, { GetLocalIPs } from "@/Components/Connectivity";
+import { GetLocalIPs, ConnectivityDetector, InternetDetector } from "@/Components/Connectivity";
 import { useSocket } from "@/_Common/function/Socket";
 import { useServiceWorker } from "@/_Common/function/ServiceWorker";
 function Login() {
@@ -26,6 +26,7 @@ function Login() {
     const { registerServiceWorker } = useServiceWorker();
 
     const [isOnline, setIsOnline] = useState<boolean>(true); // Initialize the online status
+    const [internet, setInternet] = useState<boolean>(true);
 
 
     const HandleEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,7 +72,7 @@ function Login() {
         try {
             await SignInFunctionValidation({ email, password });
 
-            if (!isOnline) {
+            if (internet) {
 
                 const SignInRequest = await axios.post(`/api/auth/sign-in`, {
                     email,
@@ -92,14 +93,35 @@ function Login() {
                     throw Error("Failed To Saved In Client Side");
                 }
 
-                //window.location.href = '/';
+                window.location.href = '/';
 
                 return;
 
             }
 
-            else if(SocketConnected){
-                sendMessage('sdsdsdsdsdsdsds');
+            else {
+                const data: any = await sendMessage(JSON.stringify({
+                    email,
+                    password,
+                    code: StatusAPICode.sign_in_request
+                }));
+
+                if (!data) {
+                    throw ("No Data Been Retrieved")
+                }
+
+                setUserDetails(data as UserDetailsLocalStorage);
+
+                const saveUserDetails = await SetUserDetailsLocalStoage(data as UserDetailsLocalStorage);
+
+
+                if (!saveUserDetails) {
+                    throw Error("Failed To Saved In Client Side");
+                }
+
+                window.location.href = '/';
+
+                return;
             }
 
 
@@ -124,6 +146,12 @@ function Login() {
         } else {
             console.log('No local IPs found');
         }
+    };
+
+    const handleInternetStatusChange = (status: boolean) => {
+        setInternet(status); // Update the online status
+        // You can also perform other actions here based on the status change
+        console.log("Internet status changed to:", status);
     };
 
     useEffect(() => {
@@ -157,6 +185,8 @@ function Login() {
         <>
 
             <div className="flex min-h-screen flex-1 flex-col justify-center px-4 py-12 bg-white lg:px-8">
+                <InternetDetector onInternetStatusChange={handleInternetStatusChange} />
+
                 <ConnectivityDetector onStatusChange={handleStatusChange} />
 
                 <div className="mx-auto w-full max-w-md">
