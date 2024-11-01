@@ -64,7 +64,7 @@ export const useSocket = () => {
         console.log("Sending message:", message);
         socket.emit("clientMessage", message, (response: any) => {
           try {
-            // console.log("Server response:", response); // Log the raw response
+            console.log("Server response:", response); // Log the raw response
 
             const parsedResponse = JSON.parse(response); // Parse the response
 

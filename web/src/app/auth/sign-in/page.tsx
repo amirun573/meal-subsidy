@@ -12,6 +12,8 @@ import { SetUserDetailsLocalStoage } from "@/_Common/function/LocalStorage";
 import { GetLocalIPs, ConnectivityDetector, InternetDetector } from "@/Components/Connectivity";
 import { useSocket } from "@/_Common/function/Socket";
 import { useServiceWorker } from "@/_Common/function/ServiceWorker";
+import React from "react";
+import { encrypt } from "../../../_Common/function/Hashing";
 function Login() {
 
 
@@ -72,7 +74,7 @@ function Login() {
         try {
             await SignInFunctionValidation({ email, password });
 
-            if (internet) {
+            if (!internet) {
 
                 const SignInRequest = await axios.post(`/api/auth/sign-in`, {
                     email,
@@ -100,11 +102,11 @@ function Login() {
             }
 
             else {
-                const data: any = await sendMessage(JSON.stringify({
+                const data: any = await sendMessage(encrypt(JSON.stringify({
                     email,
                     password,
                     code: StatusAPICode.sign_in_request
-                }));
+                })));
 
                 if (!data) {
                     throw ("No Data Been Retrieved")

@@ -93,7 +93,7 @@ interface InternetDetectorProps {
 }
 
 export const InternetDetector: React.FC<InternetDetectorProps> = ({ onInternetStatusChange }) => {
-    const [isOnline, setIsOnline] = useState<boolean>(false);
+    const [isOnline, setIsOnline] = useState<boolean>(true);
 
     const checkInternetAccess = async () => {
         try {
@@ -139,7 +139,7 @@ export const InternetDetector: React.FC<InternetDetectorProps> = ({ onInternetSt
 
     return (
         <div style={{ textAlign: 'center', padding: '20px' }}>
-            <h2>Connectivity Status</h2>
+            <h2>Internet Connectivity Status</h2>
             <p style={{ color: isOnline ? 'green' : 'red' }}>
                 You are currently {isOnline ? 'online' : 'offline'}.
             </p>

@@ -1014,11 +1014,9 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
 
       if (access_cards[0]?.card_value) {
         const access_card: Partial<AccessCard> | undefined =
-          get_access_cards.find(
-            (item) =>  item.card_value === access_card_no
-          );
+          get_access_cards.find((item) => item.card_value === access_card_no);
 
-          console.log("access_card==>", access_card);
+        console.log("access_card==>", access_card);
 
         if (access_cards[0].card_value !== access_card_no) {
           const access_card: Partial<AccessCard> = {
@@ -1298,5 +1296,173 @@ export async function ScanCheckEmployeeIDAuthService(
         status: error.statusCode || status,
       }
     );
+  }
+}
+
+export async function ScanCheckEmployeeIDAuthSocketService(
+  data: ScanCheckEmployeeID,
+  user_details: User
+) {
+  let message: string = "";
+  let status: number = 500;
+  try {
+    const { employeeID } = data;
+
+    const employee_id = decrypt(employeeID || "");
+
+    await ScanEmployeeIDValidation({ employeeID: employee_id });
+
+    console.log("user_details===>", user_details);
+    const checkCashier = await GetUserSingle({
+      where: {
+        user_id: user_details.user_id,
+        department: {
+          department_code: "cashier",
+        },
+      },
+    });
+
+    if (!checkCashier) {
+      status = 400;
+      throw Error(
+        "Transaction only can be done from Cashier In Checking Employee."
+      );
+    }
+
+    const user = await GetUserSingle({
+      where: {
+        OR: [
+          { employee_id: employee_id },
+          {
+            access_cards: {
+              some: {
+                active: true,
+                card_value: employee_id,
+              },
+            },
+          },
+        ],
+        AND: [
+          {
+            // subsidies: {
+            //   some: {
+            //     applicable: true,
+            //   },
+            // },
+          },
+          {
+            subsidies: {
+              some: {
+                active: true,
+                subsidy_type: {
+                  subsidy_type_code: SubsidyTypeCode.meal,
+                },
+              },
+            },
+          },
+        ],
+      },
+      select: {
+        user_id: true,
+        employee_id: true,
+        UserDetails: {
+          select: {
+            name: true,
+          },
+        },
+        subsidies: {
+          select: {
+            subsidy_id: true,
+            start_date: true,
+            end_date: true,
+            applicable: true,
+            active: true,
+            subsidy_type: {
+              select: {
+                subsidy_type_code: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      status = 400;
+      throw Error("Not Eligable For Subsidy Meal");
+    }
+
+    const { subsidies, ...withoutSubsidies } = user as any;
+
+    if ((subsidies as Subsidy[]).length !== 1) {
+      status = 400;
+      throw Error("User not applicable to any Subsidy ");
+    }
+
+    const subsidy: Subsidy | undefined = (subsidies as Subsidy[]).find(
+      (item) =>
+        (item as any)?.subsidy_type?.subsidy_type_code === SubsidyTypeCode.meal
+    );
+
+    if (!subsidy) {
+      status = 400;
+      throw Error("User not applicable to Meal Subsidy ");
+    }
+
+    const currentDate = new Date();
+
+    if (subsidy?.start_date) {
+      if (currentDate < subsidy?.start_date) {
+        status = 400;
+        throw Error(
+          "User not applicable to Meal Subsidy Due to Date not Start Yet "
+        );
+      }
+
+      if (subsidy?.end_date) {
+        if (currentDate > subsidy?.start_date) {
+          status = 400;
+          throw Error(
+            "User not applicable to Meal Subsidy Due to Date been set to End"
+          );
+        }
+      }
+    }
+
+    console.log("employee_id==>", employee_id);
+
+    console.log("User==>", user);
+
+    const subsidyCredit: Partial<SubsidyCredit> = (await GetSubsidyCreditSingle(
+      {
+        where: {
+          user_id: user?.user_id,
+          subsidy_id: (user as any)?.subsidies?.subsidy_id,
+          active: true,
+        },
+      }
+    )) as Partial<SubsidyCredit>;
+
+    if (!subsidyCredit) {
+      status = 400;
+      throw Error("No Subsidy Credit Found");
+    }
+
+    return {
+      status: 200,
+      employee_id: user.employee_id,
+      employee_name: (user as any)?.UserDetails?.name,
+      available_credit: subsidyCredit.credit_amount,
+      subsidyCreditUUID: subsidyCredit.uuid,
+    };
+  } catch (error: any) {
+    // logger.error("Failed at ScanCheckEmployeeIDService function ===>", { error });
+
+    console.error(error);
+    return {
+      message: error.message || message,
+
+      status: error.statusCode || status,
+    };
   }
 }

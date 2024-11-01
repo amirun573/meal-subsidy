@@ -8,6 +8,7 @@ import { createServer } from "http";
 import cors from "cors";
 import SocketRoute from "@/app/api/socket/socket-route";
 import { StatusAPICode } from "@/_Common/enum/status-api-code.enum";
+import { decrypt } from "./src/_Common/function/Hashing";
 
 const dev = process?.env?.NODE_ENV !== "production";
 const app = next({ dev });
@@ -25,7 +26,7 @@ app.prepare().then(() => {
   );
 
   // Middleware to parse JSON bodies for POST requests
-  server.use(express.json());
+  // server.use(express.json());
 
   // Create an HTTP server and attach Socket.IO to it
   const httpServer = createServer(server);
@@ -52,7 +53,15 @@ app.prepare().then(() => {
       console.log(`Received message from client ${socket.id}: ${message}`);
 
       try {
-        const data = JSON.parse(message);
+
+        if(!message){
+          callback({
+            status: 400,
+            msg: "Empty Message",
+          });
+        }
+
+        const data = JSON.parse(decrypt(message) || '{}');
 
         if (!data || !data.code) {
           return callback({
@@ -67,7 +76,7 @@ app.prepare().then(() => {
         const response = await SocketRoute(code as StatusAPICode, body);
 
         // Send a plain object back, no extra serialization needed
-        callback(response);
+        callback(JSON.stringify(response));
       } catch (error) {
         console.error("Error processing message:", error);
         callback({
@@ -80,24 +89,6 @@ app.prepare().then(() => {
     socket.on("disconnect", () => {
       console.log("Socket disconnected:", socket.id);
     });
-  });
-
-  // Custom API routes can be defined here
-  server.get("/api/testing", (req: Request, res: Response) => {
-    console.log("Testing API hit!!!!");
-    res.status(200).json({ message: "API is working!" });
-  });
-
-  server.post("/api/data", (req: Request, res: Response) => {
-    const data = req.body;
-    console.log("Data received:", data);
-    res.status(200).json({ receivedData: data, message: "Data received successfully!" });
-  });
-
-  server.get("/api/user/:id", (req: Request, res: Response) => {
-    const userId = req.params.id;
-    console.log("User ID:", userId);
-    res.status(200).json({ userId, message: `User with ID ${userId} found!` });
   });
 
   // Handle any other requests with Next.js
