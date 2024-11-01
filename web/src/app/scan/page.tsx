@@ -121,7 +121,7 @@ const ScanPage = () => {
                     throw Error("Access Token Not Exist. Please Login");
                 }
 
-                if (!internet) {
+                if (internet) {
                     // Make sure to await the API call
                     const employeeIDCheckRequest = await axios.get(`/api/user?${StatusAPICode.code}=${StatusAPICode.GET_CHECK_EMPLOYEE_ID_AUTH}&employeeID=${encrypt(employeeID)}`, {
                         headers: {
@@ -305,7 +305,7 @@ const ScanPage = () => {
 
             await EmployeeSubmitPriceValidation(data);
 
-            if (!internet) {
+            if (internet) {
                 const requestSubmitPrice = await axios.post(`/api/subsidy`, encryptedData, {
                     headers: {
                         Authorization: `Bearer ${userDetailsLocalStorage.accessToken}`

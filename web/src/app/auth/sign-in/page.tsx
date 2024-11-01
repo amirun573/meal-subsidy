@@ -74,7 +74,7 @@ function Login() {
         try {
             await SignInFunctionValidation({ email, password });
 
-            if (!internet) {
+            if (internet) {
 
                 const SignInRequest = await axios.post(`/api/auth/sign-in`, {
                     email,
