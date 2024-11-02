@@ -7,6 +7,7 @@ import { GetRoleFromId } from "@/_Common/function/Role";
 import { DisplayAlert } from '../../_Common/function/Error';
 import { HandleUnAuthorized, GetLocalStorageDetails } from "@/_Common/function/LocalStorage";
 import Image from "next/image";
+import { ClearAllCaches, ClearManifestCache, ClearSiteData } from "@/_Common/function/Cache";
 // Define an interface for your props
 interface NavbarProps {
   role: RoleList; // Use the appropriate type for the role
@@ -191,6 +192,10 @@ const Navbar = () => {
                   </Link>
                 </li>
               ))}
+              <li className="mb-4 ml-3">
+                <a onClick={ClearSiteData}>Clear Cache</a>
+              </li>
+
               <div>
                 {!userDetails ? (
                   <a
