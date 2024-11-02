@@ -476,7 +476,6 @@ const ChartComponent = () => {
 
             try {
 
-                console.log("Name==>", name, ".Value==>", value);
                 setSubmitDetails(prevState => ({
                     ...prevState,
                     [name]: value

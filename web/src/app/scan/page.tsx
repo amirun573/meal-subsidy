@@ -14,6 +14,10 @@ import { EmployeeSubmitPriceValidation } from '@/_Common/validation/subsidy.vali
 import { GetLocalStorageDetails, HandleUnAuthorized } from '@/_Common/function/LocalStorage';
 import { UserDetailsLocalStorage } from '@/_Common/interface/auth.interface';
 import Image from 'next/image';
+import { GetLocalIPs, ConnectivityDetector, InternetDetector } from '../../Components/Connectivity/index';
+import { useServiceWorker } from '@/_Common/function/ServiceWorker';
+import React from 'react';
+import { useSocket } from '@/_Common/function/Socket';
 const ScanPage = () => {
     const [employeeId, setEmployeeId] = useState<string>('');
     const [showScannerModal, setShowScannerModal] = useState<boolean>(true);
@@ -28,13 +32,17 @@ const ScanPage = () => {
     const [employeeName, setEmployeeName] = useState<string>('');
     const [calculatedFinalPrice, setCalculatedFinalPrice] = useState<number>(0);
     const [subsidyCreditUUID, setSubsidyCreditUUID] = useState<string>('');
+    const [isOnline, setIsOnline] = useState<boolean>(true); // Initialize the online status
 
+    const [internet, setInternet] = useState<boolean>(true);
 
     const isPasting = useRef(false); // Ref to track if pasting is occurring
     const lastKeyPressTime = useRef<number | null>(null); // Track the timestamp of the last key press
+    const { sendMessage } = useSocket();
 
     // Threshold for distinguishing between card reader input and manual typing (in milliseconds)
     const cardReaderThreshold = 50;
+
     // Callback function to get scan result
     const handleScanResult = (result: any) => {
         handleEmployeeID(result);
@@ -108,29 +116,64 @@ const ScanPage = () => {
                 if (!userDetailsLocalStorage) {
                     await HandleUnAuthorized(null);
                 }
-                // Make sure to await the API call
-                const employeeIDCheckRequest = await axios.get(`/api/user?${StatusAPICode.code}=${StatusAPICode.GET_CHECK_EMPLOYEE_ID_AUTH}&employeeID=${encrypt(employeeID)}`, {
-                    headers: {
-                        Authorization: `Bearer ${userDetailsLocalStorage.accessToken}`
-                    }
-                });
 
-                if (!employeeIDCheckRequest.data?.employee_id || !employeeIDCheckRequest.data?.employee_name || (typeof employeeIDCheckRequest.data?.available_credit !== 'number') || !employeeIDCheckRequest.data?.subsidyCreditUUID) {
-                    throw Error("Failed To Retrieve Subsidy Details");
+                if(!userDetailsLocalStorage?.accessToken){
+                    throw Error("Access Token Not Exist. Please Login");
                 }
 
-                setEmployeeId(employeeIDCheckRequest.data?.employee_id as string);
+                if (internet) {
+                    // Make sure to await the API call
+                    const employeeIDCheckRequest = await axios.get(`/api/user?${StatusAPICode.code}=${StatusAPICode.GET_CHECK_EMPLOYEE_ID_AUTH}&employeeID=${encrypt(employeeID)}`, {
+                        headers: {
+                            Authorization: `Bearer ${userDetailsLocalStorage.accessToken}`
+                        }
+                    });
+
+                    if (!employeeIDCheckRequest.data?.employee_id || !employeeIDCheckRequest.data?.employee_name || (typeof employeeIDCheckRequest.data?.available_credit !== 'number') || !employeeIDCheckRequest.data?.subsidyCreditUUID) {
+                        throw Error("Failed To Retrieve Subsidy Details");
+                    }
+
+                    setEmployeeId(employeeIDCheckRequest.data?.employee_id as string);
 
 
-                setSubsidyCreditUUID(employeeIDCheckRequest.data?.subsidyCreditUUID as string);
-                const newAvailableCredit: number = employeeIDCheckRequest.data?.available_credit as number > 0 ? employeeIDCheckRequest.data?.available_credit as number : 0;
+                    setSubsidyCreditUUID(employeeIDCheckRequest.data?.subsidyCreditUUID as string);
+                    const newAvailableCredit: number = employeeIDCheckRequest.data?.available_credit as number > 0 ? employeeIDCheckRequest.data?.available_credit as number : 0;
 
-                setEmployeeName(employeeIDCheckRequest.data?.employee_name);
-                setAvailableCredit(newAvailableCredit)
+                    setEmployeeName(employeeIDCheckRequest.data?.employee_name);
+                    setAvailableCredit(newAvailableCredit)
 
-                const newDiscount: number = newAvailableCredit > 0 ? newAvailableCredit - totalPrice : 0;
+                    const newDiscount: number = newAvailableCredit > 0 ? newAvailableCredit - totalPrice : 0;
 
-                setDiscount(newDiscount);
+                    setDiscount(newDiscount);
+                }
+
+                else {
+                    const data: any = await sendMessage(encrypt(JSON.stringify({
+                        employeeID: encrypt(employeeID),
+                        accessToken: userDetailsLocalStorage.accessToken,
+                        code: StatusAPICode.GET_CHECK_EMPLOYEE_ID_AUTH
+                    })));
+
+                    if (!data) {
+                        throw ("No Data Been Retrieved")
+                    }
+
+
+                    setEmployeeId(data?.employee_id as string);
+
+
+                    setSubsidyCreditUUID(data?.subsidyCreditUUID as string);
+                    const newAvailableCredit: number = data?.available_credit as number > 0 ? data?.available_credit as number : 0;
+
+                    setEmployeeName(data?.employee_name);
+                    setAvailableCredit(newAvailableCredit)
+
+                    const newDiscount: number = newAvailableCredit > 0 ? newAvailableCredit - totalPrice : 0;
+
+                    setDiscount(newDiscount);
+
+                }
+
                 // Process employeeIDCheckRequest response as necessary
             } else {
                 setEmployeeId('');
@@ -262,19 +305,42 @@ const ScanPage = () => {
 
             await EmployeeSubmitPriceValidation(data);
 
-            const requestSubmitPrice = await axios.post(`/api/subsidy`, encryptedData, {
-                headers: {
-                    Authorization: `Bearer ${userDetailsLocalStorage.accessToken}`
-                }
-            });
+            if (internet) {
+                const requestSubmitPrice = await axios.post(`/api/subsidy`, encryptedData, {
+                    headers: {
+                        Authorization: `Bearer ${userDetailsLocalStorage.accessToken}`
+                    }
+                });
 
-            if (!requestSubmitPrice.data?.updateSubsidy) {
-                throw Error("Cannot Retreive Data For Update Subisdy Credit");
+                if (!requestSubmitPrice.data?.updateSubsidy) {
+                    throw Error("Cannot Retreive Data For Update Subisdy Credit");
+                }
+
+                alert("Successfully Update");
+
+                window.location.reload();
             }
 
-            alert("Successfully Update");
+            else {
+                const requestBody: any = await sendMessage(encrypt(JSON.stringify({
+                    ...data,
+                    [StatusAPICode.code]: StatusAPICode.CREATE_SUBMIT_SUBSIDY_TRANSACTION_AUTH,
+                    accessToken: userDetailsLocalStorage.accessToken,
+                })));
 
-            window.location.reload();
+                if (!requestBody) {
+                    throw ("No Data Been Retrieved")
+                }
+                if (!requestBody?.updateSubsidy) {
+                    throw Error("Cannot Retreive Data For Update Subisdy Credit");
+                }
+
+                alert("Successfully Update");
+
+                window.location.reload();
+            }
+
+
 
         } catch (error) {
             console.error(error);
@@ -405,8 +471,6 @@ const ScanPage = () => {
             const modifiedText = pastedText.trim(); // Modify if necessary
 
 
-            console.log("modifiedText==>", modifiedText);
-
             setEmployeeId(modifiedText); // Set the modified value to employeeId
 
             // Reset the pasting flag AFTER the next event loop to ensure onChange doesn't fire immediately
@@ -417,6 +481,46 @@ const ScanPage = () => {
             console.error(error);
         }
     };
+
+    const handleInternetStatusChange = (status: boolean) => {
+        setInternet(status); // Update the online status
+        // You can also perform other actions here based on the status change
+    };
+
+    const handleStatusChange = (status: boolean) => {
+        setIsOnline(status); // Update the online status
+        // You can also perform other actions here based on the status change
+    };
+
+    const fetchLocalIP = async () => {
+        const localIPs = await GetLocalIPs();
+    };
+
+
+    useEffect(() => {
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(function (registration) {
+                    return navigator.serviceWorker.ready;
+                })
+                .then(function (registration) {
+                })
+                .catch(function (error) {
+                });
+        }
+    }, []); // Empty array ensures this runs only on component mount
+
+
+
+    const { registerServiceWorker } = useServiceWorker();
+
+
+    useEffect(() => {
+        if (!isOnline) {
+            fetchLocalIP();
+        }
+    }, [isOnline])
 
 
 
@@ -434,6 +538,10 @@ const ScanPage = () => {
         <>
             <Navbar />
             <MainContent />
+            <InternetDetector onInternetStatusChange={handleInternetStatusChange} />
+
+            <ConnectivityDetector onStatusChange={handleStatusChange} />
+
             <div>
                 {loading && <Spinner />}
 
@@ -462,7 +570,7 @@ const ScanPage = () => {
                         type='number'
                         name='totalPrice'
                         id='totalPrice'
-                        value={totalPrice > 0 ?totalPrice: '' }
+                        value={totalPrice > 0 ? totalPrice : ''}
                         style={{
                             padding: '10px',
                             width: '250px',

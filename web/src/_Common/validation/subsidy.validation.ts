@@ -12,7 +12,7 @@ import { SubsidyType } from "@prisma/client";
 const UserUpdateSubsidyValidation = yup.object().shape({
   uuid: yup.string().required("UUID Required"),
   applicable: yup.boolean().required("Applicable Required"),
-  code: yup.number().required("Code Required"),
+  // code: yup.number().required("Code Required"),
   subsidy_uuid: yup.string().required("Subsidy UUID Required"),
 });
 
@@ -22,7 +22,7 @@ const SubsidySubmitPriceValidation = yup.object().shape({
   availableCredit: yup.number().min(0).required("Available Credit Required"),
 
   discount: yup.number().required("Discount Required"),
-  code: yup.number().required("Code Required"),
+  // code: yup.number().required("Code Required"),
   employee_id: yup.string().required("Employee ID Required"),
 });
 

@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import Navbar from "@/Components/Navbar";
 import { DisplayAlert } from "@/_Common/function/Error";
@@ -9,6 +9,11 @@ import { StatusAPICode } from "@/_Common/enum/status-api-code.enum";
 import { decrypt } from "@/_Common/function/Hashing";
 import { UserDetailsLocalStorage } from "@/_Common/interface/auth.interface";
 import { SetUserDetailsLocalStoage } from "@/_Common/function/LocalStorage";
+import { GetLocalIPs, ConnectivityDetector, InternetDetector } from "@/Components/Connectivity";
+import { useSocket } from "@/_Common/function/Socket";
+import { useServiceWorker } from "@/_Common/function/ServiceWorker";
+import React from "react";
+import { encrypt } from "../../../_Common/function/Hashing";
 function Login() {
 
 
@@ -16,6 +21,15 @@ function Login() {
     const [password, setPassword] = useState<string>('');
     const [userDetails, setUserDetails] = useState<UserDetailsLocalStorage>();
     const [loading, setLoading] = useState<boolean>(false);
+
+
+    const { messages, sendMessage, SocketConnected } = useSocket();
+
+    const { registerServiceWorker } = useServiceWorker();
+
+    const [isOnline, setIsOnline] = useState<boolean>(true); // Initialize the online status
+    const [internet, setInternet] = useState<boolean>(true);
+
 
     const HandleEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         try {
@@ -58,31 +72,59 @@ function Login() {
     const HandleSignInSubmit = async () => {
         setLoading(true);
         try {
-
             await SignInFunctionValidation({ email, password });
 
-            const SignInRequest = await axios.post(`/api/auth/sign-in`, {
-                email,
-                password,
-                code: StatusAPICode.sign_in_request
-            });
+            if (internet) {
 
-            if (!SignInRequest.data?.userDetails) {
-                throw Error("Data Not Received");
+                const SignInRequest = await axios.post(`/api/auth/sign-in`, {
+                    email,
+                    password,
+                    code: StatusAPICode.sign_in_request
+                });
+
+                if (!SignInRequest.data?.userDetails) {
+                    throw Error("Data Not Received");
+                }
+
+                setUserDetails(SignInRequest.data?.userDetails as UserDetailsLocalStorage);
+
+                const saveUserDetails = await SetUserDetailsLocalStoage(SignInRequest.data?.userDetails as UserDetailsLocalStorage);
+
+
+                if (!saveUserDetails) {
+                    throw Error("Failed To Saved In Client Side");
+                }
+
+                window.location.href = '/';
+
+                return;
+
             }
 
-            setUserDetails(SignInRequest.data?.userDetails as UserDetailsLocalStorage);
+            else {
+                const data: any = await sendMessage(encrypt(JSON.stringify({
+                    email,
+                    password,
+                    code: StatusAPICode.sign_in_request
+                })));
 
-            const saveUserDetails = await SetUserDetailsLocalStoage(SignInRequest.data?.userDetails as UserDetailsLocalStorage);
+                if (!data) {
+                    throw ("No Data Been Retrieved")
+                }
+
+                setUserDetails(data as UserDetailsLocalStorage);
+
+                const saveUserDetails = await SetUserDetailsLocalStoage(data as UserDetailsLocalStorage);
 
 
-            if (!saveUserDetails) {
-                throw Error("Failed To Saved In Client Side");
+                if (!saveUserDetails) {
+                    throw Error("Failed To Saved In Client Side");
+                }
+
+                window.location.href = '/';
+
+                return;
             }
-
-            window.location.href = '/';
-
-            return;
 
 
         } catch (error) {
@@ -93,9 +135,52 @@ function Login() {
         }
     }
 
+    const handleStatusChange = (status: boolean) => {
+        setIsOnline(status); // Update the online status
+        // You can also perform other actions here based on the status change
+    };
+
+    const fetchLocalIP = async () => {
+        const localIPs = await GetLocalIPs();
+    };
+
+    const handleInternetStatusChange = (status: boolean) => {
+        setInternet(status); // Update the online status
+        // You can also perform other actions here based on the status change
+    };
+
+    useEffect(() => {
+        if (!isOnline) {
+            fetchLocalIP();
+        }
+    }, [isOnline])
+
+
+
+    // Example in _app.tsx
+    useEffect(() => {
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then((registration) => {
+                    })
+                    .catch((error) => {
+                    });
+            });
+        }
+
+
+
+
+    }, []);
     return (
         <>
+
             <div className="flex min-h-screen flex-1 flex-col justify-center px-4 py-12 bg-white lg:px-8">
+                <InternetDetector onInternetStatusChange={handleInternetStatusChange} />
+
+                <ConnectivityDetector onStatusChange={handleStatusChange} />
+
                 <div className="mx-auto w-full max-w-md">
                     <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
                         Sign in to your account

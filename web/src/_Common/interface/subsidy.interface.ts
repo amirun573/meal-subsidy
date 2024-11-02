@@ -13,7 +13,7 @@ export interface SubsidySubmitPrice {
   availableCredit: number;
   discount: number;
   employee_id: string;
-  [StatusAPICode.code]: StatusAPICode;
+  [StatusAPICode.code]?: StatusAPICode;
   subsidyCreditUUID: string;
 }
 

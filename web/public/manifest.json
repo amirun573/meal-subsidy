@@ -1,0 +1,22 @@
+{
+    "name": "Meal Subsidy System",
+    "short_name": "Meal Subsidy",
+    "description": "Scan QR Code to proceed",
+    "icons": [
+      {
+        "src": "/icon/Watlow_Logo_color_rev_192.png",
+        "type": "image/png",
+        "sizes": "192x192"
+      },
+      {
+        "src": "/icon/Watlow_Logo_color_rev_512.png",
+        "type": "image/png",
+        "sizes": "512x512"
+      }
+    ],
+    "start_url": "/",
+    "background_color": "#ffffff",
+    "display": "standalone",
+    "theme_color": "#000000"
+  }
+  
