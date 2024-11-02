@@ -471,8 +471,6 @@ const ScanPage = () => {
             const modifiedText = pastedText.trim(); // Modify if necessary
 
 
-            console.log("modifiedText==>", modifiedText);
-
             setEmployeeId(modifiedText); // Set the modified value to employeeId
 
             // Reset the pasting flag AFTER the next event loop to ensure onChange doesn't fire immediately
@@ -487,39 +485,28 @@ const ScanPage = () => {
     const handleInternetStatusChange = (status: boolean) => {
         setInternet(status); // Update the online status
         // You can also perform other actions here based on the status change
-        console.log("Internet status changed to:", status);
     };
 
     const handleStatusChange = (status: boolean) => {
         setIsOnline(status); // Update the online status
         // You can also perform other actions here based on the status change
-        console.log("Online status changed to:", status);
     };
 
     const fetchLocalIP = async () => {
         const localIPs = await GetLocalIPs();
-        if (localIPs) {
-            console.log('Local IPs:', localIPs);
-        } else {
-            console.log('No local IPs found');
-        }
     };
 
 
     useEffect(() => {
-        console.log("Checking Service Worker...");
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js')
                 .then(function (registration) {
-                    console.log('Service Worker registered with scope:', registration.scope);
                     return navigator.serviceWorker.ready;
                 })
                 .then(function (registration) {
-                    console.log('Service Worker is active:', registration);
                 })
                 .catch(function (error) {
-                    console.error('Service Worker registration or activation failed:', error);
                 });
         }
     }, []); // Empty array ensures this runs only on component mount
@@ -531,7 +518,6 @@ const ScanPage = () => {
 
     useEffect(() => {
         if (!isOnline) {
-            console.log("ISONLINE  ===>", isOnline);
             fetchLocalIP();
         }
     }, [isOnline])

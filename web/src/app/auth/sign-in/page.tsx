@@ -138,27 +138,19 @@ function Login() {
     const handleStatusChange = (status: boolean) => {
         setIsOnline(status); // Update the online status
         // You can also perform other actions here based on the status change
-        console.log("Online status changed to:", status);
     };
 
     const fetchLocalIP = async () => {
         const localIPs = await GetLocalIPs();
-        if (localIPs) {
-            console.log('Local IPs:', localIPs);
-        } else {
-            console.log('No local IPs found');
-        }
     };
 
     const handleInternetStatusChange = (status: boolean) => {
         setInternet(status); // Update the online status
         // You can also perform other actions here based on the status change
-        console.log("Internet status changed to:", status);
     };
 
     useEffect(() => {
         if (!isOnline) {
-            console.log("ISONLINE  ===>", isOnline);
             fetchLocalIP();
         }
     }, [isOnline])
@@ -171,10 +163,8 @@ function Login() {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/service-worker.js')
                     .then((registration) => {
-                        console.log('Service Worker registered with scope:', registration.scope);
                     })
                     .catch((error) => {
-                        console.log('Service Worker registration failed:', error);
                     });
             });
         }
