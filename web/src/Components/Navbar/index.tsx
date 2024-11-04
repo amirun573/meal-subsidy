@@ -192,9 +192,9 @@ const Navbar = () => {
                   </Link>
                 </li>
               ))}
-              <li className="mb-4 ml-3">
+              {/* <li className="mb-4 ml-3">
                 <a onClick={ClearSiteData}>Clear Cache</a>
-              </li>
+              </li> */}
 
               <div>
                 {!userDetails ? (

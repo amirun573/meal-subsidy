@@ -94,4 +94,6 @@ export async function ClearSiteData() {
   console.log("All cookies cleared.");
 
   console.log("All site data cleared.");
+
+  window.location.href = '/';
 }

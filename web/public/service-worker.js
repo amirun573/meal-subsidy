@@ -52,33 +52,33 @@ self.addEventListener('activate', (event) => {
 });
 
 // Fetch event to serve cached content or fetch from network
-self.addEventListener('fetch', (event) => {
-    console.log('Fetching:', event.request.url);
-    event.respondWith(
-        caches.match(event.request)
-            .then((response) => {
-                if (response) {
-                    console.log('Serving from cache:', event.request.url);
-                    return response; // Return cached response
-                }
-                console.log('Fetching from network:', event.request.url);
-                return fetch(event.request) // Fetch from network
-                    .then((networkResponse) => {
-                        // Check if we received a valid response
-                        if (!networkResponse || networkResponse.status !== 200) {
-                            return networkResponse;
-                        }
-                        // Cache the new response
-                        return caches.open(CACHE_NAME).then((cache) => {
-                            cache.put(event.request, networkResponse.clone());
-                            return networkResponse;
-                        });
-                    });
-            })
-            .catch((error) => {
-                console.error('Fetching failed:', error);
-            })
-    );
-});
+// self.addEventListener('fetch', (event) => {
+//     console.log('Fetching:', event.request.url);
+//     event.respondWith(
+//         caches.match(event.request)
+//             .then((response) => {
+//                 if (response) {
+//                     console.log('Serving from cache:', event.request.url);
+//                     return response; // Return cached response
+//                 }
+//                 console.log('Fetching from network:', event.request.url);
+//                 return fetch(event.request) // Fetch from network
+//                     .then((networkResponse) => {
+//                         // Check if we received a valid response
+//                         if (!networkResponse || networkResponse.status !== 200) {
+//                             return networkResponse;
+//                         }
+//                         // Cache the new response
+//                         return caches.open(CACHE_NAME).then((cache) => {
+//                             cache.put(event.request, networkResponse.clone());
+//                             return networkResponse;
+//                         });
+//                     });
+//             })
+//             .catch((error) => {
+//                 console.error('Fetching failed:', error);
+//             })
+//     );
+// });
 
 
