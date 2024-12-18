@@ -20,7 +20,7 @@ import React from 'react';
 import { useSocket } from '@/_Common/function/Socket';
 const ScanPage = () => {
     const [employeeId, setEmployeeId] = useState<string>('');
-    const [showScannerModal, setShowScannerModal] = useState<boolean>(true);
+    const [showScannerModal, setShowScannerModal] = useState<boolean>(false);
 
 
     const totalPriceInputRef = useRef<any>(null); // Create a ref for the input
@@ -117,7 +117,7 @@ const ScanPage = () => {
                     await HandleUnAuthorized(null);
                 }
 
-                if(!userDetailsLocalStorage?.accessToken){
+                if (!userDetailsLocalStorage?.accessToken) {
                     throw Error("Access Token Not Exist. Please Login");
                 }
 
@@ -254,10 +254,9 @@ const ScanPage = () => {
 
                 if (value_card.length >= 5) {
 
-                    const employee_card_value = encrypt(value_card);
-                    setEmployeeId(employee_card_value);
+                    setEmployeeId(value_card);
                     //For security purpose to ensure the value is not easily visible.
-                    HandleEmployeeIDString(employee_card_value);
+                    HandleEmployeeIDString(value_card);
 
                 }
 
