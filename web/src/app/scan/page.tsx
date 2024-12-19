@@ -20,7 +20,7 @@ import React from 'react';
 import { useSocket } from '@/_Common/function/Socket';
 const ScanPage = () => {
     const [employeeId, setEmployeeId] = useState<string>('');
-    const [showScannerModal, setShowScannerModal] = useState<boolean>(false);
+    const [showScannerModal, setShowScannerModal] = useState<boolean>(true);
 
 
     const totalPriceInputRef = useRef<any>(null); // Create a ref for the input
