@@ -24,7 +24,7 @@
     "flowbite": "^2.5.1",
     "flowbite-react": "^0.10.1",
     "formidable": "^3.5.1",
-    "fs": "^0.0.1-security",
+    "fs": "^0.0.2",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
     "module-alias": "^2.2.3",
