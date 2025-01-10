@@ -25,6 +25,59 @@ export async function GetUserSingle(
   }
 }
 
+export async function GetUserMany(data: PrismaCondtionFetch) {
+  try {
+    const { where, select } = data;
+
+    return prisma.user.findMany({
+      where,
+      select,
+    });
+  } catch (error) {
+    // logger.error("Failed at GetUserSingle function ===>", { error });
+
+    console.error(error);
+    return [];
+  }
+}
+
+export async function GetUserRawQuery() {
+  try {
+    let query = `
+    SELECT 
+    u.employee_id AS "Employee Id",
+    CONCAT(ud.first_name, ' ', ud.last_name) AS "Employee Name",
+    ec.employee_category_name AS "Employee Category",
+    d.department_name AS "Department Desc",
+    cc.cost_center_code AS "Value Stream",
+    CASE 
+        WHEN s.subsidy_id IS NOT NULL THEN 'Yes' 
+        ELSE 'No' 
+    END AS "Eligible Subsidy (Yes/No)",
+    ac.card_value AS "Access Card Number"
+FROM 
+    "User" u
+LEFT JOIN "UserDetails" ud ON u.user_id = ud.user_id
+LEFT JOIN "EmployeeCategory" ec ON u.employee_category_id = ec.employee_category_id
+LEFT JOIN "Department" d ON u.department_id = d.department_id
+LEFT JOIN "CostCenter" cc ON u.cost_center_id = cc.cost_center_id
+LEFT JOIN "Subsidy" s ON u.user_id = s.user_id AND s.active = TRUE
+LEFT JOIN "AccessCard" ac ON u.user_id = ac.user_id AND ac.active = TRUE
+WHERE 
+    u.deleted_at IS NULL AND u.active = TRUE
+ORDER BY 
+    u.employee_id;
+`;
+
+    return await prisma.$queryRawUnsafe(query);
+  } catch (error) {
+    // logger.error("Failed at GetUserSingle function ===>", { error });
+
+    console.error(error);
+    return [];
+  }
+}
+
 export async function GetTotalUser(data: PrismaCondtionFetch) {
   try {
     const { where } = data;
@@ -141,7 +194,10 @@ async function CreateUserDetailsMany(object: {
   }
 }
 
-export async function UpdateUser(object: { user: User; prismaTransaction?: any }) {
+export async function UpdateUser(object: {
+  user: User;
+  prismaTransaction?: any;
+}) {
   try {
     const { user, prismaTransaction } = object;
 

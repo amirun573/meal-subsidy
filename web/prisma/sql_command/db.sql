@@ -149,7 +149,7 @@ VALUES
   ('037-33',now(),now(),uuid_generate_v4()),
   ('037-32',now(),now(),uuid_generate_v4()),
   ('037-3801',now(),now(),uuid_generate_v4()),
-  ('037-3301',now(),now(),uuid_generate_v4()),
+  ('037-3301',now(),now(),uuid_generate_v4())
 
 ;
 

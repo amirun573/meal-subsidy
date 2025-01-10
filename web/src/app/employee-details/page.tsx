@@ -91,6 +91,8 @@ const EmployeeDetailsPage = () => {
 
     const [openModalUploadFile, setOpenModalUploadFile] = useState<boolean>(false);
     const [isOpenModalUploadFile, setIsOpenodalUploadFile] = useState(false);
+    const [isOpenModalUpdateUploadFile, setIsOpenodalUpdateUploadFile] = useState(false);
+
     const [isOpenModalEditSubsidyCredit, setIsOpenodalEditSubsidyCredit] = useState(false);
 
     const [currentEditEmployeeDetails, setCurrentEditEmployeeDetails] = useState<EmployeeDetails>();
@@ -994,6 +996,10 @@ const EmployeeDetailsPage = () => {
         setIsOpenodalUploadFile(false);
     };
 
+    const HandleCloseModalUpdateUploadFile = () => {
+        setIsOpenodalUpdateUploadFile(false);
+    };
+
 
     const ModalUploadUser = () => {
 
@@ -1115,6 +1121,146 @@ const EmployeeDetailsPage = () => {
                                     <button
                                         className="bg-gray-500 text-white px-4 py-2 rounded mr-2"
                                         onClick={HandleCloseModalUploadFile}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        className="bg-blue-500 text-white px-4 py-2 rounded"
+                                        onClick={HandleSubmit}
+                                    >
+                                        Submit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                )}
+            </>
+
+        );
+    }
+
+    const ModalUpdateUploadUser = () => {
+
+        const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+        const HandleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+            const file = event.target.files?.[0];
+            if (file) {
+                const fileType = file.type;
+                if (fileType !== FileMimeType.XLSX) {
+                    alert('Please upload a valid .xlsx file');
+                    event.target.value = ''; // Clear the input
+                    return;
+                }
+
+                console.log("event.target.files===>", file);
+                setSelectedFile(file);
+
+                // Proceed with handling the file
+                console.log('File is valid:', file);
+                // Add your file processing logic here
+
+
+            }
+        };
+
+
+        // Handle file submission
+        const HandleSubmit = async () => {
+            setLoading(true);
+            try {
+                if (!selectedFile) {
+                    alert('Please select a file to upload');
+                    return;
+                }
+
+                // Create FormData object
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                formData.append('code', StatusAPICode.UPLOAD_UPDATE_EXCEL_EMPLOYEE_CREATE.toString());
+
+
+                // Post request to API
+                const response = await axios.post('/api/user', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        Authorization: `Bearer ${userDetailLocal?.accessToken}`,
+
+                    },
+                });
+
+                // Handle the response
+                console.log('File uploaded successfully:', response.data);
+                alert(`File ${selectedFile.name} uploaded successfully!`);
+
+                // Close the modal and reset the file
+                setOpenModalAddBooking(false);
+                setSelectedFile(null);
+
+                window.location.reload();
+            } catch (error) {
+                console.error(error);
+                DisplayAlert(error);
+                await HandleUnAuthorized(error);
+            } finally {
+                setLoading(false);
+            }
+
+        };
+
+
+        return (
+            <>
+                {isOpenModalUpdateUploadFile && (
+                    <div className="flex items-center justify-center h-screen">
+                        <button
+                            className="bg-blue-500 text-white px-4 py-2 rounded"
+                            onClick={() => setIsOpenodalUpdateUploadFile(true)}
+                        >
+                            Upload File
+                        </button>
+
+
+                        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                            <div className="bg-white rounded-lg w-96 p-6">
+                                <div className="flex justify-between items-center border-b pb-3 mb-4">
+                                    <h2 className="text-xl font-semibold text-gray-700">Upload File</h2>
+                                    <button
+                                        className="text-gray-400 hover:text-gray-600"
+                                        onClick={HandleCloseModalUpdateUploadFile}
+                                    >
+                                        &times;
+                                    </button>
+                                </div>
+
+                                <div className="flex flex-col items-center space-y-4">
+                                    <label
+                                        htmlFor="fileUpload"
+                                        className="text-gray-600 font-medium"
+                                    >
+                                        Select a file to upload:
+                                    </label>
+                                    <input
+                                        type="file"
+                                        id="fileUpload"
+                                        className="border border-gray-300 rounded-md px-4 py-2 w-full"
+                                        onChange={HandleFileChange}
+                                        accept=".xlsx"
+                                    />
+
+                                    {selectedFile && (
+                                        <p className="text-sm text-green-500 mt-2">
+                                            Selected file: {selectedFile.name}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="flex justify-end mt-6">
+                                    <button
+                                        className="bg-gray-500 text-white px-4 py-2 rounded mr-2"
+                                        onClick={HandleCloseModalUpdateUploadFile}
                                     >
                                         Cancel
                                     </button>
@@ -1411,6 +1557,10 @@ const EmployeeDetailsPage = () => {
         setIsOpenodalUploadFile(true)
     }
 
+    const HandleUserUpdateUploadFileAction = () => {
+        setIsOpenodalUpdateUploadFile(true)
+    }
+
     const HandleCheckboxChange = async (e: any, index: number) => {
         setLoading(true);
         try {
@@ -1563,6 +1713,35 @@ const EmployeeDetailsPage = () => {
     }
 
 
+    const DownloadEmployeeDetails = async () => {
+        try {
+            const response = await axios.get(`/api/user?${StatusAPICode.code}=${StatusAPICode.GET_DOWNLOAD_EXCEL_EMPLOYEE}`, {
+                headers: {
+                    Authorization: `Bearer ${userDetailLocal?.accessToken}`,
+                },
+                responseType: 'blob', // Important for handling binary data
+
+            });
+
+            // Create a new Blob object using the response data
+            const blob = new Blob([response.data], {
+                type: FileMimeType.XLSX,
+            });
+
+            // Create a link element
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'employee_details.xlsx'; // Set the default file name for the download
+            document.body.appendChild(link);
+            link.click();
+
+            // Cleanup
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+        } catch (error) {
+
+        }
+    }
 
 
     return (<>
@@ -1601,6 +1780,18 @@ const EmployeeDetailsPage = () => {
                                     <path d="M4 14h20l4-4h32v36H4V14z" fill="#f5c38c" />
                                     <rect x="8" y="22" width="48" height="24" rx="2" fill="#fff" />
                                 </svg>
+                            </button>
+                            <button
+                                onClick={HandleUserUpdateUploadFileAction}
+                                className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded flex items-center justify-center w-full sm:w-auto"
+                            >
+                                Update User Bulk
+                            </button>
+                            <button
+                                onClick={DownloadEmployeeDetails}
+                                className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded flex items-center justify-center w-full sm:w-auto"
+                            >
+                                Download Employee Details
                             </button>
                             <button
                                 onClick={HandleTriggerCredit}
@@ -1745,6 +1936,9 @@ const EmployeeDetailsPage = () => {
                 </div>
                 <div>
                     <ModalEditSubsidyCredit />
+                </div>
+                <div>
+                    <ModalUpdateUploadUser />
                 </div>
             </div>
         </div>
