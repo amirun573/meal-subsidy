@@ -45,11 +45,11 @@ export async function GetUserRawQuery() {
   try {
     let query = `
     SELECT 
+    d.department_name AS "Department Desc",
+    cc.cost_center_code AS "Value Stream",
     u.employee_id AS "Employee Id",
     CONCAT(ud.first_name, ' ', ud.last_name) AS "Employee Name",
     ec.employee_category_name AS "Employee Category",
-    d.department_name AS "Department Desc",
-    cc.cost_center_code AS "Value Stream",
     CASE 
         WHEN s.subsidy_id IS NOT NULL THEN 'Yes' 
         ELSE 'No' 

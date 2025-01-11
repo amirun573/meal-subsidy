@@ -4,6 +4,7 @@ import {
   ScanCheckEmployeeID,
   UserPaginationRequest,
   CreateUserUserDetails,
+  UpdateUserUserDetails,
 } from "@/_Common/interface/user.interface";
 import {
   CreateUpdateEmployeeValidation,
@@ -787,26 +788,6 @@ export async function UpdateEmployeeBulkUpload(
   try {
     const { file } = data;
 
-    const columns = {
-      department_desc: "Department Desc",
-      cost_center: "Value Stream",
-      employee_id: "Employee Id",
-      employee_name: "Employee Name",
-      employee_category: "Employee  Category",
-      eligble_subsidy: "Eligble Subsidy (Yes/No)",
-      mifare_card_no: "Access Card Number",
-    };
-
-    const headers = [
-      columns.department_desc,
-      columns.cost_center,
-      columns.employee_id,
-      columns.employee_name,
-      columns.employee_category,
-      columns.eligble_subsidy,
-      columns.mifare_card_no,
-    ];
-
     var workbook = await ReadExcelFile(file);
 
     if (!workbook) {
@@ -816,181 +797,203 @@ export async function UpdateEmployeeBulkUpload(
 
     const dataExcel = ExtractExcelData(headers, workbook);
 
-    // const departments: Partial<Department>[] = await GetDepartmentLists({
-    //   where: {},
-    // });
+    const employees: Partial<User[]> = (await GetUserMany({
+      where: {},
+    })) as any;
 
-    // if (!departments || departments.length < 1) {
-    //   status = 400;
-    //   throw Error("No Departments Found");
-    // }
+    if (!employees) {
+      status = 400;
+      throw Error("No Employess Found");
+    }
 
-    // const costCenters: Partial<CostCenter>[] = await GetCostCenterLists({
-    //   where: {},
-    // });
+    if (dataExcel.length != employees.length) {
+      status = 400;
+      throw Error("There is Mismatch Data To Update Employees");
+    }
 
-    // if (!costCenters || costCenters.length < 1) {
-    //   status = 400;
-    //   throw Error("No Value Stream Found");
-    // }
+    const departments: Partial<Department>[] = await GetDepartmentLists({
+      where: {},
+    });
 
-    // const subsidyType: Partial<SubsidyType> = (await GetSubsidyTypeSingle({
-    //   where: {
-    //     subsidy_type_code: SubsidyTypeCode.meal,
-    //   },
-    // })) as Partial<SubsidyType>;
+    if (!departments || departments.length < 1) {
+      status = 400;
+      throw Error("No Departments Found");
+    }
 
-    // if (!subsidyType) {
-    //   status = 400;
-    //   throw Error("Subsidy Meal not Found");
-    // }
+    const costCenters: Partial<CostCenter>[] = await GetCostCenterLists({
+      where: {},
+    });
 
-    // const role: Partial<Role> = (await GetRoleSingle({
-    //   where: {
-    //     role_code: RoleCode.employee,
-    //   },
-    // })) as Partial<Role>;
+    if (!costCenters || costCenters.length < 1) {
+      status = 400;
+      throw Error("No Value Stream Found");
+    }
 
-    // if (!role) {
-    //   status = 400;
-    //   throw Error("Role not Found");
-    // }
+    const subsidyType: Partial<SubsidyType> = (await GetSubsidyTypeSingle({
+      where: {
+        subsidy_type_code: SubsidyTypeCode.meal,
+      },
+    })) as Partial<SubsidyType>;
 
-    // const employeeCategories: Partial<EmployeeCategory>[] =
-    //   await GetEmployeeCategoryLists({
-    //     where: {},
-    //   });
+    if (!subsidyType) {
+      status = 400;
+      throw Error("Subsidy Meal not Found");
+    }
 
-    // if (!employeeCategories || employeeCategories.length < 1) {
-    //   status = 400;
-    //   throw Error("Employee Category Not Found");
-    // }
+    const role: Partial<Role> = (await GetRoleSingle({
+      where: {
+        role_code: RoleCode.employee,
+      },
+    })) as Partial<Role>;
 
-    // const createUsers: CreateUserUserDetails[] = [];
+    if (!role) {
+      status = 400;
+      throw Error("Role not Found");
+    }
 
-    // dataExcel.map((items) => {
-    //   items.data.map((data) => {
-    //     const employee: ExcelCreateEmployee = {
-    //       department_desc: String(data[columns.department_desc]).trim(),
-    //       cost_center: String(data[columns.cost_center]).toLowerCase().trim(),
-    //       employee_id: String(data[columns.employee_id]).trim(),
-    //       employee_name: String(data[columns.employee_name])
-    //         .toLowerCase()
-    //         .trim(),
-    //       employee_category: String(data[columns.employee_category])
-    //         .toLowerCase()
-    //         .trim(),
-    //       eligble_subsidy: String(data[columns.eligble_subsidy])
-    //         .toLowerCase()
-    //         .trim(),
-    //       mifare_card_no: String(data[columns.mifare_card_no]).trim(),
-    //     };
+    const employeeCategories: Partial<EmployeeCategory>[] =
+      await GetEmployeeCategoryLists({
+        where: {},
+      });
 
-    //     const checkDuplicate = createUsers.findIndex(
-    //       (users) => users.user.employee_id === employee.employee_id
-    //     );
+    if (!employeeCategories || employeeCategories.length < 1) {
+      status = 400;
+      throw Error("Employee Category Not Found");
+    }
 
-    //     if (checkDuplicate !== -1) {
-    //       status = 400;
-    //       throw new Error(
-    //         `Duplicate Employee ID ${employee.employee_id} in Excel. Please Check at row for Employee ID ${employee.employee_id}`
-    //       );
-    //     }
+    const updateUsers: UpdateUserUserDetails[] = [];
 
-    //     // Validate that no values are null or undefined
-    //     const isValid = Object.values(employee).every(
-    //       (value) => value !== null && value !== undefined && value !== ""
-    //     );
+    dataExcel.map((items) => {
+      items.data.map((data) => {
+        const employee: ExcelCreateEmployee = {
+          department_desc: String(data[columns.department_desc]).trim(),
+          cost_center: String(data[columns.cost_center]).toLowerCase().trim(),
+          employee_id: String(data[columns.employee_id]).trim(),
+          employee_name: String(data[columns.employee_name])
+            .toLowerCase()
+            .trim(),
+          employee_category: String(data[columns.employee_category])
+            .toLowerCase()
+            .trim(),
+          eligble_subsidy: String(data[columns.eligble_subsidy])
+            .toLowerCase()
+            .trim(),
+          mifare_card_no: String(data[columns.mifare_card_no]).trim(),
+        };
 
-    //     if (!isValid) {
-    //       status = 400;
-    //       throw new Error(
-    //         `Validation error: Some fields are null, undefined, or empty at Employee ID ${employee.employee_id}`
-    //       );
-    //     }
+        const selectedEmployee: Partial<User> = employees.find(item => item?.employee_id === employee.employee_id) as Partial<User>;
 
-    //     // Validate eligibility subsidy
-    //     const validSubsidyValues = ["yes", "no"];
-    //     if (!validSubsidyValues.includes(employee.eligble_subsidy)) {
-    //       throw new Error(
-    //         `Invalid eligble_subsidy value: ${employee.eligble_subsidy}. It must be 'yes' or 'no'.`
-    //       );
-    //     }
+        const checkDuplicate = updateUsers.findIndex(
+          (users) => users.user.employee_id === employee.employee_id
+        );
 
-    //     const department: Partial<Department> | undefined = departments.find(
-    //       (item) =>
-    //         item.department_name?.toLocaleLowerCase() ===
-    //         employee.department_desc?.toLocaleLowerCase()
-    //     );
+        if (checkDuplicate !== -1) {
+          status = 400;
+          throw new Error(
+            `Duplicate Employee ID ${employee.employee_id} in Excel. Please Check at row for Employee ID ${employee.employee_id}`
+          );
+        }
 
-    //     if (!department) {
-    //       status = 400;
-    //       throw new Error(
-    //         `No name Department ${employee.department_desc} in database. Please Check at row for Employee ID ${employee.employee_id}`
-    //       );
-    //     }
+        // Validate that no values are null or undefined
+        const isValid = Object.values(employee).every(
+          (value) => value !== null && value !== undefined && value !== ""
+        );
 
-    //     const costcenter: Partial<CostCenter> | undefined = costCenters.find(
-    //       (items) => items.cost_center_code === employee.cost_center
-    //     );
+        if (!isValid) {
+          status = 400;
+          throw new Error(
+            `Validation error: Some fields are null, undefined, or empty at Employee ID ${employee.employee_id}`
+          );
+        }
 
-    //     if (!costcenter) {
-    //       status = 400;
-    //       throw new Error(
-    //         `No name Value Stream  ${employee.cost_center} in database. Please Check at row for Employee ID ${employee.employee_id}`
-    //       );
-    //     }
+        // Validate eligibility subsidy
+        const validSubsidyValues = ["yes", "no"];
+        if (!validSubsidyValues.includes(employee.eligble_subsidy)) {
+          throw new Error(
+            `Invalid eligble_subsidy value: ${employee.eligble_subsidy}. It must be 'yes' or 'no'.`
+          );
+        }
 
-    //     const employeeCategory: Partial<EmployeeCategory> | undefined =
-    //       employeeCategories.find(
-    //         (items) =>
-    //           items.employee_category_code ===
-    //           employee.employee_category.toLocaleLowerCase()
-    //       );
+        const department: Partial<Department> | undefined = departments.find(
+          (item) =>
+            item.department_name?.toLocaleLowerCase() ===
+            employee.department_desc?.toLocaleLowerCase()
+        );
 
-    //     if (!employeeCategory) {
-    //       status = 400;
-    //       throw new Error(
-    //         `No name Employee Category ${employee.employee_category} in database. Please Check at row for Employee ID ${employee.employee_id}`
-    //       );
-    //     }
+        if (!department) {
+          status = 400;
+          throw new Error(
+            `No name Department ${employee.department_desc} in database. Please Check at row for Employee ID ${employee.employee_id}`
+          );
+        }
 
-    //     const user: Partial<User> = {
-    //       employee_id: employee.employee_id,
-    //       role_id: role.role_id,
-    //       department_id: department.department_id,
-    //       is_email_verified: true,
-    //       is_acc_verify: true,
-    //       active: true,
-    //       employee_category_id: employeeCategory.employee_category_id,
-    //       cost_center_id: costcenter.cost_center_id,
-    //     };
+        const costcenter: Partial<CostCenter> | undefined = costCenters.find(
+          (items) => items.cost_center_code === employee.cost_center
+        );
 
-    //     const userDetails: Partial<UserDetails> = {
-    //       name: employee.employee_name,
-    //       user_id: 0,
-    //     };
+        if (!costcenter) {
+          status = 400;
+          throw new Error(
+            `No name Value Stream  ${employee.cost_center} in database. Please Check at row for Employee ID ${employee.employee_id}`
+          );
+        }
 
-    //     const SubsidyUser: Partial<Subsidy> = {
-    //       subsidy_type_id: subsidyType.subsidy_type_id,
-    //       user_id: 0,
-    //       applicable: employee.eligble_subsidy === "yes" ? true : false,
-    //     };
+        const employeeCategory: Partial<EmployeeCategory> | undefined =
+          employeeCategories.find(
+            (items) =>
+              items.employee_category_code ===
+              employee.employee_category.toLocaleLowerCase()
+          );
 
-    //     const accessCard: Partial<AccessCard> = {
-    //       card_value: employee.mifare_card_no,
-    //     };
+        if (!employeeCategory) {
+          status = 400;
+          throw new Error(
+            `No name Employee Category ${employee.employee_category} in database. Please Check at row for Employee ID ${employee.employee_id}`
+          );
+        }
 
-    //     const createUser: CreateUserUserDetails = {
-    //       user: user as User,
-    //       userDetails: userDetails as UserDetails,
-    //       subsidy: SubsidyUser as Subsidy,
-    //       accessCard: accessCard as AccessCard,
-    //     };
+        const user: Partial<User> = {
+          user_id: selectedEmployee.user_id || 0,
+          employee_id: employee.employee_id,
+          role_id: role.role_id,
+          department_id: department.department_id,
+          is_email_verified: true,
+          is_acc_verify: true,
+          active: true,
+          employee_category_id: employeeCategory.employee_category_id,
+          cost_center_id: costcenter.cost_center_id,
+        };
 
-    //     createUsers.push(createUser);
-    //   });
-    // });
+        const userDetails: Partial<UserDetails> = {
+          name: employee.employee_name,
+          user_id: 0,
+        };
+
+        const SubsidyUser: Partial<Subsidy> = {
+          subsidy_type_id: subsidyType.subsidy_type_id,
+          user_id: 0,
+          applicable: employee.eligble_subsidy === "yes" ? true : false,
+        };
+
+        const accessCard: Partial<AccessCard> = {
+          card_value: employee.mifare_card_no,
+        };
+
+        if(!user?.user_id){
+          status = 400;
+          throw(`Employee ID ${user.employee_id} Not Exist`);
+        }
+        const createUser: UpdateUserUserDetails = {
+          user_id: user?.user_id,
+          user: user as User,
+          userDetails: userDetails as UserDetails,
+          subsidy: SubsidyUser as Subsidy,
+          accessCard: accessCard as AccessCard,
+        };
+
+        updateUsers.push(createUser);
+      });
+    });
 
     // const createUserCascade = await CreateUserNUserDetailsManyCascade({
     //   details: createUsers,

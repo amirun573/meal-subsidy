@@ -104,6 +104,7 @@ model UserDetails {
   deleted_at                DateTime?
   id_number                 String?
   id_image                  String?
+  access_card_no                  String?
 
 
 }
