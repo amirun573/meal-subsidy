@@ -22,6 +22,7 @@ import {
   GetUserSingle,
   UpdateUser,
   GetUserRawQuery,
+  UpdateUserCascade,
 } from "../model/user.model";
 import { PaginationData } from "../../../../_Common/interface/pagination.interface";
 import { SubsidyTypeCode } from "@/_Common/enum/subsidy-type.enum";
@@ -797,8 +798,19 @@ export async function UpdateEmployeeBulkUpload(
 
     const dataExcel = ExtractExcelData(headers, workbook);
 
+    console.log("dataExcel==>", dataExcel[0].data);
+
     const employees: Partial<User[]> = (await GetUserMany({
       where: {},
+      select: {
+        user_id: true,
+        employee_id: true,
+        UserDetails: {
+          select: {
+            UserDetails_id: true,
+          },
+        },
+      },
     })) as any;
 
     if (!employees) {
@@ -881,7 +893,9 @@ export async function UpdateEmployeeBulkUpload(
           mifare_card_no: String(data[columns.mifare_card_no]).trim(),
         };
 
-        const selectedEmployee: Partial<User> = employees.find(item => item?.employee_id === employee.employee_id) as Partial<User>;
+        const selectedEmployee: Partial<User> = employees.find(
+          (item) => item?.employee_id === employee.employee_id
+        ) as Partial<User>;
 
         const checkDuplicate = updateUsers.findIndex(
           (users) => users.user.employee_id === employee.employee_id
@@ -894,10 +908,15 @@ export async function UpdateEmployeeBulkUpload(
           );
         }
 
-        // Validate that no values are null or undefined
-        const isValid = Object.values(employee).every(
-          (value) => value !== null && value !== undefined && value !== ""
-        );
+        const skipKeys = ["mifare_card_no"]; // Keys to skip validation
+
+        const isValid = Object.entries(employee).every(([key, value]) => {
+          console.log("Key==>", key, "Value==>", value);
+          if (skipKeys.includes(key)) {
+            return true; // Skip validation for keys in the skipKeys array
+          }
+          return value !== null && value !== undefined && value !== "";
+        });
 
         if (!isValid) {
           status = 400;
@@ -905,6 +924,11 @@ export async function UpdateEmployeeBulkUpload(
             `Validation error: Some fields are null, undefined, or empty at Employee ID ${employee.employee_id}`
           );
         }
+
+        // Validate that no values are null or undefined
+        // const isValid = Object.values(employee).every(
+        //   (value) => value !== null && value !== undefined && value !== ""
+        // );
 
         // Validate eligibility subsidy
         const validSubsidyValues = ["yes", "no"];
@@ -965,8 +989,11 @@ export async function UpdateEmployeeBulkUpload(
         };
 
         const userDetails: Partial<UserDetails> = {
+          UserDetails_id:
+            (selectedEmployee as any)?.UserDetails?.UserDetails_id || 0,
           name: employee.employee_name,
-          user_id: 0,
+          user_id: selectedEmployee.user_id || 0,
+          access_card_no: employee.mifare_card_no,
         };
 
         const SubsidyUser: Partial<Subsidy> = {
@@ -979,9 +1006,9 @@ export async function UpdateEmployeeBulkUpload(
           card_value: employee.mifare_card_no,
         };
 
-        if(!user?.user_id){
+        if (!user?.user_id) {
           status = 400;
-          throw(`Employee ID ${user.employee_id} Not Exist`);
+          throw `Employee ID ${user.employee_id} Not Exist`;
         }
         const createUser: UpdateUserUserDetails = {
           user_id: user?.user_id,
@@ -995,14 +1022,14 @@ export async function UpdateEmployeeBulkUpload(
       });
     });
 
-    // const createUserCascade = await CreateUserNUserDetailsManyCascade({
-    //   details: createUsers,
-    // });
+    const createUserCascade = await UpdateUserCascade({
+      details: updateUsers,
+    });
 
-    // if (!createUserCascade || createUserCascade.length !== createUsers.length) {
-    //   status = 400;
-    //   throw Error("No User Being Created");
-    // }
+    if (!createUserCascade || createUserCascade.length !== updateUsers.length) {
+      status = 400;
+      throw Error("No User Being Created");
+    }
 
     return NextResponse.json({
       message: "Successfully Create All Employees",

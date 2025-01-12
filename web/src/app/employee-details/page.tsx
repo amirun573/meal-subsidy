@@ -1781,12 +1781,12 @@ const EmployeeDetailsPage = () => {
                                     <rect x="8" y="22" width="48" height="24" rx="2" fill="#fff" />
                                 </svg>
                             </button>
-                            <button
+                            {/* <button
                                 onClick={HandleUserUpdateUploadFileAction}
                                 className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded flex items-center justify-center w-full sm:w-auto"
                             >
                                 Update User Bulk
-                            </button>
+                            </button> */}
                             <button
                                 onClick={DownloadEmployeeDetails}
                                 className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded flex items-center justify-center w-full sm:w-auto"
