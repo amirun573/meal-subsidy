@@ -25,6 +25,59 @@ export async function GetUserSingle(
   }
 }
 
+export async function GetUserMany(data: PrismaCondtionFetch) {
+  try {
+    const { where, select } = data;
+
+    return prisma.user.findMany({
+      where,
+      select,
+    });
+  } catch (error) {
+    // logger.error("Failed at GetUserSingle function ===>", { error });
+
+    console.error(error);
+    return [];
+  }
+}
+
+export async function GetUserRawQuery() {
+  try {
+    let query = `
+    SELECT 
+    d.department_name AS "Department Desc",
+    cc.cost_center_code AS "Value Stream",
+    u.employee_id AS "Employee Id",
+    ud.name AS "Employee Name",
+    ec.employee_category_code AS "Employee Category",
+    CASE 
+        WHEN s.subsidy_id IS NOT NULL THEN 'Yes' 
+        ELSE 'No' 
+    END AS "Eligible Subsidy (Yes/No)",
+    ud.access_card_no AS "Access Card Number"
+FROM 
+    "User" u
+LEFT JOIN "UserDetails" ud ON u.user_id = ud.user_id
+LEFT JOIN "EmployeeCategory" ec ON u.employee_category_id = ec.employee_category_id
+LEFT JOIN "Department" d ON u.department_id = d.department_id
+LEFT JOIN "CostCenter" cc ON u.cost_center_id = cc.cost_center_id
+LEFT JOIN "Subsidy" s ON u.user_id = s.user_id AND s.active = TRUE
+LEFT JOIN "AccessCard" ac ON u.user_id = ac.user_id AND ac.active = TRUE
+WHERE 
+    u.deleted_at IS NULL AND u.active = TRUE
+ORDER BY 
+    u.employee_id;
+`;
+
+    return await prisma.$queryRawUnsafe(query);
+  } catch (error) {
+    // logger.error("Failed at GetUserSingle function ===>", { error });
+
+    console.error(error);
+    return [];
+  }
+}
+
 export async function GetTotalUser(data: PrismaCondtionFetch) {
   try {
     const { where } = data;
@@ -141,7 +194,10 @@ async function CreateUserDetailsMany(object: {
   }
 }
 
-export async function UpdateUser(object: { user: User; prismaTransaction?: any }) {
+export async function UpdateUser(object: {
+  user: User;
+  prismaTransaction?: any;
+}) {
   try {
     const { user, prismaTransaction } = object;
 
@@ -406,3 +462,90 @@ export async function CreateUserNUserDetailsManyCascade(data: {
     return []; // Return an empty array in case of an error
   }
 }
+
+export async function UpdateUserCascade(data: {
+  details: CreateUserUserDetails[];
+}): Promise<CreateUserUserDetails[]> {
+  try {
+    const { details } = data;
+
+    const result: CreateUserUserDetails[] = await prisma.$transaction(
+      async (prisma) => {
+        const updateDetails: CreateUserUserDetails[] = [];
+        const subsidiesToUpdate: Subsidy[] = [];
+        const accessCardsToUpdate: AccessCard[] = [];
+
+        console.log("details==>", details);
+
+        // for (const detail of details) {
+        //   // Update or create the user
+        //   const user = await prisma.userDetails.upsert({
+        //     where: { user_id: detail.user.user_id },
+        //     update: {
+        //       name: detail.userDetails.name,
+        //       de: detail.user.department,
+        //       // Add other fields as needed
+        //     },
+        //     create: detail.user,
+        //   });
+
+        //   // Assign user_id to related records
+        //   detail.user.user_id = user.user_id;
+        //   detail.userDetails.user_id = user.user_id;
+
+        //   // Add subsidies and access cards to respective arrays
+        //   if (detail.subsidy) {
+        //     subsidiesToUpdate.push({
+        //       ...detail.subsidy,
+        //       user_id: user.user_id,
+        //     });
+        //   }
+
+        //   if (detail.accessCard) {
+        //     accessCardsToUpdate.push({
+        //       ...detail.accessCard,
+        //       user_id: user.user_id,
+        //     });
+        //   }
+
+        //   // Upsert UserDetails
+        //   await prisma.userDetails.upsert({
+        //     where: { user_id: detail.userDetails.user_id },
+        //     update: detail.userDetails,
+        //     create: detail.userDetails,
+        //   });
+
+        //   updateDetails.push(detail);
+        // }
+
+        // // Bulk upsert subsidies
+        // for (const subsidy of subsidiesToUpdate) {
+        //   await prisma.subsidy.upsert({
+        //     where: { user_id: subsidy.user_id },
+        //     update: subsidy,
+        //     create: subsidy,
+        //   });
+        // }
+
+        // // Bulk upsert access cards
+        // for (const accessCard of accessCardsToUpdate) {
+        //   await prisma.accessCard.upsert({
+        //     where: { user_id: accessCard.user_id },
+        //     update: accessCard,
+        //     create: accessCard,
+        //   });
+        // }
+
+        return updateDetails;
+      },
+      { timeout: 10000 } // Adjust the timeout as needed
+    );
+
+    return result;
+  } catch (error) {
+    console.error("Error in updateUserCascade:", error);
+    throw new Error("Failed to update user and related details.");
+  }
+}
+
+

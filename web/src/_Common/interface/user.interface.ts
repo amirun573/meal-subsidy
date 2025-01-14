@@ -48,4 +48,12 @@ export interface CreateUserUserDetails {
   accessCard?: AccessCard;
 }
 
+export interface UpdateUserUserDetails {
+  user_id: number,
+  user: User;
+  userDetails: UserDetails;
+  subsidy?: Subsidy;
+  accessCard?: AccessCard;
+}
+
 
