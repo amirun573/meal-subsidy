@@ -252,13 +252,12 @@ const ScanPage = () => {
 
 
 
-                if (value_card.length >= 5) {
 
-                    setEmployeeId(value_card);
-                    //For security purpose to ensure the value is not easily visible.
-                    HandleEmployeeIDString(value_card);
+                setEmployeeId(value_card);
+                //For security purpose to ensure the value is not easily visible.
+                HandleEmployeeIDString(value_card);
 
-                }
+
 
 
 

@@ -774,7 +774,7 @@ export async function CreateEmployeeBulkUpload(
 export async function UpdateEmployeeBulkUpload(
   data: CreateUserUploadExcel,
   user: User
-) {
+): Promise<any> {
   interface ExcelCreateEmployee {
     department_desc: string;
     cost_center: string;

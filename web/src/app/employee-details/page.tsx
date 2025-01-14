@@ -1715,7 +1715,7 @@ const EmployeeDetailsPage = () => {
 
     const DownloadEmployeeDetails = async () => {
         try {
-            const response = await axios.get(`/api/user?${StatusAPICode.code}=${StatusAPICode.GET_DOWNLOAD_EXCEL_EMPLOYEE}`, {
+            const response = await axios.post(`/api/user`, { code: StatusAPICode.GET_DOWNLOAD_EXCEL_EMPLOYEE }, {
                 headers: {
                     Authorization: `Bearer ${userDetailLocal?.accessToken}`,
                 },

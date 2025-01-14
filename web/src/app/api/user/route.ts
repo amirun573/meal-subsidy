@@ -150,15 +150,6 @@ export async function GET(req: any, res: any) {
         return ScanCheckEmployeeIDAuthService({ employeeID }, user);
       }
 
-      case StatusAPICode.GET_DOWNLOAD_EXCEL_EMPLOYEE: {
-        if (!user) {
-          statusCode = 400;
-          throw Error("No User Found.");
-        }
-
-        return GetDownloadExcelEmployeeDetails();
-      }
-
       default: {
         statusCode = 400;
         throw Error("Code not Found");
@@ -269,6 +260,15 @@ export async function POST(req: any, res: any) {
           }
 
           return CreateEmployeeBulkUpload(data, user);
+        }
+
+        case StatusAPICode.GET_DOWNLOAD_EXCEL_EMPLOYEE: {
+          if (!user) {
+            statusCode = 400;
+            throw Error("No User Found.");
+          }
+
+          return GetDownloadExcelEmployeeDetails();
         }
 
         case StatusAPICode.UPLOAD_UPDATE_EXCEL_EMPLOYEE_CREATE: {
