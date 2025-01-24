@@ -3,13 +3,15 @@ import React, { Suspense, useEffect, useRef, useState } from 'react';
 import Navbar from '@/Components/Navbar';
 import { MainContent } from '@/Components/Main';
 import { DisplayAlert } from '@/_Common/function/Error';
-import { ConvertToFiveDigits } from '@/_Common/function/Card';
+import { ExtractCardNumber } from '@/_Common/function/Card';
+import { debounce } from 'lodash'; // or implement your own debounce
+
 const PasswordHashing = () => {
     const [password, setPassword] = useState<string>('');
     const [hashingPassword, setHashingPassword] = useState<string>('');
     const [loading, setLoading] = useState(false);
     const lastKeyPressTime = useRef<number | null>(null); // Track the timestamp of the last key press
-    const inputBuffer = useRef<string>(''); // Buffer to accumulate card reader input
+    const [inputBuffer, setInputBuffer] = useState<string>('');
     const cardReaderThreshold = 50; // Threshold for differentiating card reader input from manual input (in ms)
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -19,13 +21,18 @@ const PasswordHashing = () => {
             inputRef.current.focus();
         }
     }, []);
+
+    const debouncedHandleCardInput = debounce((buffer: string) => {
+        handleCardInput(buffer);
+        setInputBuffer('');
+    }, 500); // Adjust the timeout based on how fast your card reader inputs
+
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setPassword(e.target.value);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-
-
         const currentTime = Date.now();
 
         if (lastKeyPressTime.current) {
@@ -34,30 +41,17 @@ const PasswordHashing = () => {
             if (timeDifference < cardReaderThreshold) {
                 // Assume card reader input
                 if (e.key !== 'Enter') {
-                    inputBuffer.current += e.key; // Accumulate the keypress
+                    setInputBuffer(prevBuffer => prevBuffer + e.key);
+                } else {
+                    debouncedHandleCardInput(inputBuffer);
                 }
-
-                else {
-                    handleCardInput(inputBuffer.current);
-
-                }
-
-                console.log('Card Reader Input:', inputBuffer.current)
-            } else if (e.key === 'Enter') {
-                // Handle manual input submission
-                console.log('Manual Submission:', inputBuffer.current)
-
-                handleCardInput(inputBuffer.current);
-                inputBuffer.current = ''; // Clear buffer after processing
-            }
-        } else {
-            // Start tracking input time
-            if (e.key !== 'Enter') {
-                inputBuffer.current = e.key;
+            } else {
+                // Clear buffer for manual input, as this seems like the start of a new entry
+                setInputBuffer('');
             }
         }
 
-        lastKeyPressTime.current = currentTime; // Update the last keypress time
+        lastKeyPressTime.current = currentTime;
     };
 
     const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
@@ -77,7 +71,10 @@ const PasswordHashing = () => {
 
                 setPassword(cardData); // Update the password input field
 
-                setHashingPassword(ConvertToFiveDigits(cardData));
+                const decryptCard = ExtractCardNumber(cardData);
+
+                console.log("decryptCard==>", decryptCard);
+                setHashingPassword(decryptCard);
 
             }
         } catch (error) {
@@ -90,8 +87,14 @@ const PasswordHashing = () => {
 
     const handleConvert = () => {
 
+        console.log(password);
         if (password) {
-            setHashingPassword(ConvertToFiveDigits(password));
+            setHashingPassword(() => {
+                const newHashingPassword = ExtractCardNumber(password);
+
+                // Any additional logic can be placed here
+                return newHashingPassword; // Return the updated state
+            });
 
         }
 
