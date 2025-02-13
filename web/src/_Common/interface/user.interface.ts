@@ -52,7 +52,7 @@ export interface UpdateUserUserDetails {
   user: User;
   userDetails: UserDetails;
   subsidy?: Subsidy;
-  accessCard?: AccessCard;
+  accessCard?: Partial<AccessCard>[];
 }
 
 // export interface UpdateUserUserDetails {

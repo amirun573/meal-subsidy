@@ -573,6 +573,40 @@ export async function CreateEmployeeBulkUpload(
 
     const users: Partial<User>[] = await GetUserMany({
       where: {},
+      select: {
+        user_id: true,
+        employee_id: true,
+        uuid: true,
+        role_id: true,
+        deleted_at: true,
+        department_id: true,
+        cost_center_id: true,
+        employee_category_id: true,
+        UserDetails: {
+          select: {
+            name: true,
+            first_name: true,
+            last_name: true,
+            mobile_phone: true,
+            access_card_no: true,
+          },
+        },
+        subsidies: {
+          select: {
+            subsidy_id: true,
+            subsidy_type: true,
+            applicable: true,
+            active: true,
+          },
+        },
+        access_cards: {
+          select: {
+            card_id: true,
+            card_value: true,
+            active: true,
+          },
+        },
+      },
     });
 
     const departments: Partial<Department>[] = await GetDepartmentLists({
@@ -626,7 +660,7 @@ export async function CreateEmployeeBulkUpload(
     }
 
     const createUsers: CreateUserUserDetails[] = [];
-    const updateUsers: CreateUserUserDetails[] = [];
+    const updateUsers: UpdateUserUserDetails[] = [];
 
     dataExcel.map((items) => {
       items.data.map((data) => {
@@ -738,17 +772,6 @@ export async function CreateEmployeeBulkUpload(
           access_card_no: employee.access_card ? employee.access_card : null,
         };
 
-        if (users.length > 0) {
-          const userIndex: number = users.findIndex(
-            (user) => user.employee_id === employee.employee_id
-          );
-
-          if (userIndex !== -1) {
-            user.user_id = users[userIndex].user_id;
-            userDetails.user_id = users[userIndex].user_id;
-          }
-        }
-
         const SubsidyUser: Partial<Subsidy> = {
           subsidy_type_id: subsidyType.subsidy_type_id,
           user_id: 0,
@@ -757,6 +780,8 @@ export async function CreateEmployeeBulkUpload(
 
         const accessCard: Partial<AccessCard> = {
           card_value: employee.access_card,
+          user_id: 0,
+          active: true,
         };
 
         const createUser: CreateUserUserDetails = {
@@ -765,24 +790,78 @@ export async function CreateEmployeeBulkUpload(
           subsidy: SubsidyUser as Subsidy,
           accessCard: accessCard as AccessCard,
         };
+        const userIndex: number = users.findIndex(
+          (user) => user.employee_id === employee.employee_id
+        );
+        if (userIndex !== -1) {
+          if (userIndex !== -1 && users[userIndex]?.user_id) {
+            if (
+              users[userIndex].user_id !== undefined &&
+              users[userIndex].user_id !== 0
+            ) {
+              const UpdateUsersDetails: UpdateUserUserDetails = {
+                user: user as User,
+                userDetails: userDetails as UserDetails,
+                subsidy: SubsidyUser as Subsidy,
+              };
 
-        if (!user?.user_id) {
-          createUsers.push(createUser);
+              const user_id: number = users[userIndex].user_id as number;
+              UpdateUsersDetails.user.user_id = user_id;
+              UpdateUsersDetails.userDetails.user_id = user_id;
+
+              const subsidyTypeIndex: number = (
+                (users as any)[userIndex]?.subsidies as Subsidy[]
+              ).findIndex(
+                (subsidy) =>
+                  (subsidy as any)?.subsidy_type.subsidy_type_id ===
+                  subsidyType.subsidy_type_id
+              );
+              console.log("subsidyTypeIndex==>", subsidyTypeIndex);
+              if (subsidyTypeIndex !== -1) {
+                SubsidyUser.subsidy_id = (users as any)[userIndex]?.subsidies[
+                  subsidyTypeIndex
+                ].subsidy_id as number;
+                SubsidyUser.user_id = user_id;
+              }
+              UpdateUsersDetails.subsidy = SubsidyUser as Subsidy;
+              accessCard.user_id = user_id;
+
+              const accessCardUpdate: Partial<AccessCard>[] = [accessCard];
+              const access_card_validate = (users as any)[userIndex]
+                ?.access_cards as AccessCard[];
+
+              if (
+                access_card_validate.findIndex(
+                  (accessCard) => accessCard.card_value === employee.access_card
+                ) !== -1
+              ) {
+                if (access_card_validate.length > 0) {
+                  access_card_validate.map((accessCard) => {
+                    accessCard.active = false;
+                    accessCardUpdate.push(accessCard);
+                  });
+                }
+
+                UpdateUsersDetails.accessCard = accessCardUpdate;
+              }
+              updateUsers.push(UpdateUsersDetails);
+            }
+          }
         } else {
-          updateUsers.push(createUser);
+          createUsers.push(createUser);
         }
       });
     });
 
-    console.log("createUsers==>",createUsers);
-    console.log("updateUsers==>",updateUsers);
+    console.log("createUsers==>", createUsers);
+    console.log("UpdateUsers==>", updateUsers);
 
     const createUpdateUserCascade: boolean = await CreateUpdateUserCascade({
       create: createUsers,
       update: updateUsers,
     });
 
-    console.log("createUpdateUserCascade==>", createUpdateUserCascade)
+    // console.log("createUpdateUserCascade==>", createUpdateUserCascade);
 
     if (!createUpdateUserCascade) {
       status = 400;
