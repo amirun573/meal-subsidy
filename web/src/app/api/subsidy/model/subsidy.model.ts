@@ -515,14 +515,15 @@ export async function CreateSubsidyCreditMany(object: {
     return [];
   }
 }
-async function UpdateSubsidiesInBulk(
+export async function UpdateSubsidiesInBulk(data:{
   subsidies: Subsidy[],
   prismaTransaction?: any
-) {
+}) {
   try {
     let amountCase = "CASE ";
     let subsidyIds: any = [];
 
+    const {subsidies, prismaTransaction} = data;
     // Generate CASE statements for `active` and `amount`
     subsidies.forEach((subsidy) => {
       amountCase += `WHEN "subsidy_id" = ${subsidy.subsidy_id} THEN ${subsidy.amount} `;
@@ -577,7 +578,7 @@ export async function TriggerSubsidyCreditCascade(data: {
           throw Error("Failed to Flush Subsidy Credit");
         }
 
-        const updateSubsidy = await UpdateSubsidiesInBulk(subsidies);
+        const updateSubsidy = await UpdateSubsidiesInBulk({subsidies});
 
         if (!updateSubsidy) {
           throw Error("Failed To Update Subsidy");

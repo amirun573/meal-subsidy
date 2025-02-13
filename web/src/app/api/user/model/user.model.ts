@@ -2,8 +2,14 @@ import { AccessCard, Subsidy, User, UserDetails } from "@prisma/client";
 import { PrismaCondtionFetch } from "@/_Common/interface/database.interface";
 import { prisma, timeout } from "../../../../../libs/prisma";
 import { PaginationData } from "@/_Common/interface/pagination.interface";
-import { CreateUserUserDetails } from "@/_Common/interface/user.interface";
-import { CreateSubsidyMany } from "../../subsidy/model/subsidy.model";
+import {
+  CreateUserUserDetails,
+  UpdateUserUserDetails,
+} from "@/_Common/interface/user.interface";
+import {
+  CreateSubsidyMany,
+  UpdateSubsidiesInBulk,
+} from "../../subsidy/model/subsidy.model";
 import { CreateAccessCardMany } from "../../accessCard/model/accessCard.model";
 // import logger from "../../../../../libs/winston";
 
@@ -48,13 +54,14 @@ export async function GetUserRawQuery() {
     d.department_name AS "Department Desc",
     cc.cost_center_code AS "Value Stream",
     u.employee_id AS "Employee Id",
-    ud.name AS "Employee Name",
+    UPPER(ud.name) AS "Employee Name",
     ec.employee_category_code AS "Employee Category",
     CASE 
         WHEN s.subsidy_id IS NOT NULL THEN 'Yes' 
         ELSE 'No' 
     END AS "Eligible Subsidy (Yes/No)",
-    ud.access_card_no AS "Access Card Number"
+    ud.access_card_no AS "Access Card Number",
+    u.uuid AS "UUID"
 FROM 
     "User" u
 LEFT JOIN "UserDetails" ud ON u.user_id = ud.user_id
@@ -164,6 +171,42 @@ async function CreateUserMany(object: {
     // logger.error("Failed at CreateUserMany function ===>", { error });
 
     console.error(error);
+    return [];
+  }
+}
+
+async function UpdateUserMany(object: {
+  data: User[];
+  prismaTransaction?: any;
+}) {
+  try {
+    const { data, prismaTransaction } = object;
+    const prismaClient = prismaTransaction || prisma;
+
+    const updates = data.map(({ user_id, ...updateData }) => ({
+      where: { user_id },
+      data: updateData,
+    }));
+
+    await Promise.all(
+      updates.map(({ where, data }) =>
+        prismaClient.user.updateMany({
+          where,
+          data,
+        })
+      )
+    );
+
+    // Retrieve the updated users after update
+    const updatedUsers = await prismaClient.user.findMany({
+      where: {
+        user_id: { in: data.map((user) => user.user_id) },
+      },
+    });
+
+    return updatedUsers;
+  } catch (error) {
+    console.error("Error in UpdateUserMany:", error);
     return [];
   }
 }
@@ -282,6 +325,43 @@ async function UpdateUserDetails(object: {
   }
 }
 
+async function UpdateUserDetailsMany(object: {
+  data: UserDetails[];
+  prismaTransaction?: any;
+}) {
+  try {
+    const { data, prismaTransaction } = object;
+    const prismaClient = prismaTransaction || prisma;
+
+    const updates = data.map(({ user_id, ...updateData }) => ({
+      where: { user_id },
+      data: updateData,
+    }));
+
+    await Promise.all(
+      updates.map(({ where, data }) =>
+        prismaClient.userDetails.updateMany({
+          where,
+          data,
+        })
+      )
+    );
+
+    // Retrieve updated user_id after update
+    const updatedUsers = await prismaClient.userDetails.findMany({
+      where: {
+        user_id: { in: data.map((user) => user.user_id) },
+      },
+      select: { user_id: true }, // Only fetch user_id
+    });
+
+    return updatedUsers;
+  } catch (error) {
+    console.error("Error in UpdateUserDetailsMany:", error);
+    return [];
+  }
+}
+
 export async function CreateUserNUserDetailsCascade(data: {
   user: User;
   userDetails: UserDetails;
@@ -347,110 +427,115 @@ export async function CreateUserNUserDetailsCascade(data: {
 
 export async function CreateUserNUserDetailsManyCascade(data: {
   details: CreateUserUserDetails[];
+  prismaTransaction?: any;
 }): Promise<CreateUserUserDetails[]> {
   try {
-    const { details } = data;
+    const { details, prismaTransaction } = data;
 
-    const result: CreateUserUserDetails[] = await prisma.$transaction(
-      async (prisma) => {
-        // Extract user[] from details
-        const users: User[] = details.map((detail) => detail.user);
+    const prismaClient = prismaTransaction || prisma;
+    let result: CreateUserUserDetails[] = [];
+    if (details.length > 0) {
+      result = await prismaClient.$transaction(
+        async (prisma: any) => {
+          // Extract user[] from details
+          const users: User[] = details.map((detail) => detail.user);
 
-        // Create users in bulk using the provided transaction
-        const userTransaction: User[] = await CreateUserMany({
-          data: users,
-          prismaTransaction: prisma,
-        });
+          // Create users in bulk using the provided transaction
+          const userTransaction: User[] = await CreateUserMany({
+            data: users,
+            prismaTransaction: prisma,
+          });
 
-        console.log("users.length==>", users.length);
-        console.log("userTransaction.length==>", userTransaction.length);
+          console.log("users.length==>", users.length);
+          console.log("userTransaction.length==>", userTransaction.length);
 
-        // Validate that the same number of users were created
-        if (!userTransaction || userTransaction.length !== users.length) {
-          throw Error("No Users Been Created");
-        }
+          // Validate that the same number of users were created
+          if (!userTransaction || userTransaction.length !== users.length) {
+            throw Error("No Users Been Created");
+          }
 
-        const updateDetails: CreateUserUserDetails[] = [];
+          const updateDetails: CreateUserUserDetails[] = [];
 
-        const createSubsidies: Subsidy[] = [];
-        const createAccessCard: AccessCard[] = [];
+          const createSubsidies: Subsidy[] = [];
+          const createAccessCard: AccessCard[] = [];
 
-        // Use forEach since you're performing side effects (modifying details)
-        details.forEach((detail) => {
-          // Find the created user using the employee_id
-          const user: User | undefined = userTransaction.find(
-            (item) => item.employee_id === detail.user.employee_id
+          // Use forEach since you're performing side effects (modifying details)
+          details.forEach((detail) => {
+            // Find the created user using the employee_id
+            const user: User | undefined = userTransaction.find(
+              (item) => item.employee_id === detail.user.employee_id
+            );
+
+            if (!user) {
+              throw Error("Cannot Find User That Has Been Inserted.");
+            }
+
+            // // Update user_id for both user and userDetails in the details array
+            detail.user.user_id = user.user_id;
+            detail.userDetails.user_id = user.user_id;
+
+            // Check if 'subsidy' exists before assigning 'user_id'
+            if (detail.subsidy) {
+              detail.subsidy.user_id = user.user_id;
+
+              createSubsidies.push(detail.subsidy);
+            }
+
+            // if (detail.accessCard) {
+            //   detail.accessCard.user_id = user.user_id;
+            //   createAccessCard.push(detail.accessCard);
+            // }
+
+            // Push the updated detail to the updateDetails array
+            updateDetails.push(detail);
+          });
+
+          // Extract userDetails[] from the updated details array
+          const usersDetails: UserDetails[] = updateDetails.map(
+            (detail) => detail.userDetails
           );
 
-          if (!user) {
-            throw Error("Cannot Find User That Has Been Inserted.");
-          }
-
-          // Update user_id for both user and userDetails in the details array
-          detail.user.user_id = user.user_id;
-          detail.userDetails.user_id = user.user_id;
-
-          // Check if 'subsidy' exists before assigning 'user_id'
-          if (detail.subsidy) {
-            detail.subsidy.user_id = user.user_id;
-
-            createSubsidies.push(detail.subsidy);
-          }
-
-          if (detail.accessCard) {
-            detail.accessCard.user_id = user.user_id;
-            createAccessCard.push(detail.accessCard);
-          }
-
-          // Push the updated detail to the updateDetails array
-          updateDetails.push(detail);
-        });
-
-        // Extract userDetails[] from the updated details array
-        const usersDetails: UserDetails[] = updateDetails.map(
-          (detail) => detail.userDetails
-        );
-
-        // Create userDetails in bulk using the same transaction
-        const userDetailsTransaction = await CreateUserDetailsMany({
-          data: usersDetails,
-          prismaTransaction: prisma,
-        });
-
-        // Validate that the same number of userDetails were created
-        if (
-          !userDetailsTransaction ||
-          userDetailsTransaction.length !== usersDetails.length
-        ) {
-          throw Error("No User Details Been Created");
-        }
-
-        if (createSubsidies.length > 0) {
-          const subsidyTransaction = await CreateSubsidyMany({
-            data: createSubsidies,
+          // Create userDetails in bulk using the same transaction
+          const userDetailsTransaction = await CreateUserDetailsMany({
+            data: usersDetails,
             prismaTransaction: prisma,
           });
 
-          if (subsidyTransaction.length !== createSubsidies.length) {
-            throw Error("Failed To Create User Subsidy ");
+          // Validate that the same number of userDetails were created
+          if (
+            !userDetailsTransaction ||
+            userDetailsTransaction.length !== usersDetails.length
+          ) {
+            throw Error("No User Details Been Created");
           }
-        }
 
-        if (createAccessCard.length > 0) {
-          const accessCardTransaction = await CreateAccessCardMany({
-            data: createAccessCard,
-            prismaTransaction: prisma,
-          });
+          if (createSubsidies.length > 0) {
+            const subsidyTransaction = await CreateSubsidyMany({
+              data: createSubsidies,
+              prismaTransaction: prisma,
+            });
 
-          if (accessCardTransaction.length !== createSubsidies.length) {
-            throw Error("Failed To Access Card Details To All Users");
+            if (subsidyTransaction.length !== createSubsidies.length) {
+              throw Error("Failed To Create User Subsidy ");
+            }
           }
-        }
 
-        return updateDetails; // Return the updated details array
-      },
-      { timeout }
-    );
+          if (createAccessCard.length > 0) {
+            const accessCardTransaction = await CreateAccessCardMany({
+              data: createAccessCard,
+              prismaTransaction: prisma,
+            });
+
+            if (accessCardTransaction.length !== createSubsidies.length) {
+              throw Error("Failed To Access Card Details To All Users");
+            }
+          }
+
+          return updateDetails; // Return the updated details array
+        },
+        { timeout }
+      );
+    }
 
     return result; // Return the result from the transaction
   } catch (error) {
@@ -548,4 +633,159 @@ export async function UpdateUserCascade(data: {
   }
 }
 
+export async function UpdateUserNUserDetailsManyCascade(data: {
+  details: UpdateUserUserDetails[];
+  prismaTransaction?: any;
+}): Promise<UpdateUserUserDetails[]> {
+  try {
+    const { details } = data;
 
+    let result: UpdateUserUserDetails[] = [];
+    if (details.length > 0) {
+      result = await prisma.$transaction(
+        async (prismaTransaction) => {
+          // Extract user[] from details
+          const users: User[] = details.map((detail) => detail.user);
+
+          // Create users in bulk using the provided transaction
+          const userTransaction: User[] = await UpdateUserMany({
+            data: users,
+            prismaTransaction,
+          });
+
+          console.log("users.length==>", users.length);
+          console.log("userTransaction.length==>", userTransaction);
+
+          // Validate that the same number of users were created
+          if (!userTransaction || userTransaction.length !== users.length) {
+            throw Error("No Users Been Created");
+          }
+
+          const updateDetails: CreateUserUserDetails[] = [];
+
+          const createSubsidies: Subsidy[] = [];
+          const createAccessCard: AccessCard[] = [];
+
+          // Use forEach since you're performing side effects (modifying details)
+          details.forEach((detail) => {
+            // Find the created user using the employee_id
+            const user: User | undefined = userTransaction.find(
+              (item) => item.employee_id === detail.user.employee_id
+            );
+
+            if (!user) {
+              throw Error("Cannot Find User That Has Been Inserted.");
+            }
+
+            // Update user_id for both user and userDetails in the details array
+            detail.user.user_id = user.user_id;
+            detail.userDetails.user_id = user.user_id;
+
+            // Check if 'subsidy' exists before assigning 'user_id'
+            if (detail.subsidy) {
+              detail.subsidy.user_id = user.user_id;
+
+              createSubsidies.push(detail.subsidy);
+            }
+
+            if (detail.accessCard) {
+              detail.accessCard.user_id = user.user_id;
+              createAccessCard.push(detail.accessCard);
+            }
+
+            // Push the updated detail to the updateDetails array
+            updateDetails.push(detail);
+          });
+
+          // Extract userDetails[] from the updated details array
+          const usersDetails: UserDetails[] = updateDetails.map(
+            (detail) => detail.userDetails
+          );
+
+          // Create userDetails in bulk using the same transaction
+          const userDetailsTransaction = await UpdateUserDetailsMany({
+            data: usersDetails,
+            prismaTransaction,
+          });
+
+          // Validate that the same number of userDetails were created
+          if (
+            !userDetailsTransaction ||
+            userDetailsTransaction.length !== usersDetails.length
+          ) {
+            throw Error("No User Details Been Created");
+          }
+
+          if (createSubsidies.length > 0) {
+            const subsidyTransaction = await UpdateSubsidiesInBulk({
+              subsidies: createSubsidies,
+              prismaTransaction,
+            });
+
+            if (subsidyTransaction.length !== createSubsidies.length) {
+              throw Error("Failed To Create User Subsidy ");
+            }
+          }
+
+          // if (createAccessCard.length > 0) {
+          //   const accessCardTransaction = await CreateAccessCardMany({
+          //     data: createAccessCard,
+          //     prismaTransaction,
+          //   });
+
+          //   if (accessCardTransaction.length !== createSubsidies.length) {
+          //     throw Error("Failed To Access Card Details To All Users");
+          //   }
+          // }
+
+          return updateDetails; // Return the updated details array
+        },
+        { timeout }
+      );
+    }
+
+    return result; // Return the result from the transaction
+  } catch (error) {
+    // logger.error("Failed at CreateUserNUserDetailsManyCascade function ===>", {
+    //   error,
+    // });
+
+    console.error(error);
+    return []; // Return an empty array in case of an error
+  }
+}
+
+export async function CreateUpdateUserCascade(data: {
+  create: CreateUserUserDetails[];
+  update: UpdateUserUserDetails[];
+}): Promise<boolean> {
+  try {
+    const { create, update } = data;
+
+    await prisma.$transaction(
+      async (prisma) => {
+        try {
+          await Promise.all([
+            CreateUserNUserDetailsManyCascade({
+              details: create,
+              prismaTransaction: prisma,
+            }),
+            UpdateUserNUserDetailsManyCascade({
+              details: update,
+              prismaTransaction: prisma,
+            }),
+          ]);
+        } catch (error) {
+          console.error("Transaction failed, rolling back...", error);
+          throw error; // Ensures rollback happens
+        }
+      },
+      { timeout }
+    );
+
+    return true;
+  } catch (error) {
+    console.log("Error in CreateUpdateUserCascade:", error);
+    return false;
+  }
+}

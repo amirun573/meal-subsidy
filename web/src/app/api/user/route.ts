@@ -16,7 +16,6 @@ import {
   ScanCheckEmployeeIDAuthService,
   ScanCheckEmployeeIDService,
   UpdateEmployee,
-  UpdateEmployeeBulkUpload,
   UpdateStatusEmployeeService,
   UserPaginationService,
   GetDownloadExcelEmployeeDetails,
@@ -271,30 +270,30 @@ export async function POST(req: any, res: any) {
           return GetDownloadExcelEmployeeDetails();
         }
 
-        case StatusAPICode.UPLOAD_UPDATE_EXCEL_EMPLOYEE_CREATE: {
-          const data: CreateUserUploadExcel = body as CreateUserUploadExcel;
+        // case StatusAPICode.UPLOAD_UPDATE_EXCEL_EMPLOYEE_CREATE: {
+        //   const data: CreateUserUploadExcel = body as CreateUserUploadExcel;
 
-          if (!user) {
-            statusCode = 401;
-            throw Error(`Unaunthorized Detected.`);
-          }
+        //   if (!user) {
+        //     statusCode = 401;
+        //     throw Error(`Unaunthorized Detected.`);
+        //   }
 
-          const user_features: UserFeatures[] = (user as any)
-            ?.user_features as UserFeatures[];
+        //   const user_features: UserFeatures[] = (user as any)
+        //     ?.user_features as UserFeatures[];
 
-          const checkFeature: boolean = await CheckFeatureAllowed({
-            user_features,
-            action: ActionEnableFeature.WRITE,
-            feature_code: feature_code_employee_details,
-          });
+        //   const checkFeature: boolean = await CheckFeatureAllowed({
+        //     user_features,
+        //     action: ActionEnableFeature.WRITE,
+        //     feature_code: feature_code_employee_details,
+        //   });
 
-          if (!checkFeature) {
-            statusCode = 400;
-            throw Error(`Unaunthorized Action For ${user.employee_id}`);
-          }
+        //   if (!checkFeature) {
+        //     statusCode = 400;
+        //     throw Error(`Unaunthorized Action For ${user.employee_id}`);
+        //   }
 
-          return UpdateEmployeeBulkUpload(data, user);
-        }
+        //   return UpdateEmployeeBulkUpload(data, user);
+        // }
 
         default: {
           throw Error("No Code Found");

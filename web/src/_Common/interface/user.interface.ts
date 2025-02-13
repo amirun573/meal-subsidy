@@ -49,11 +49,18 @@ export interface CreateUserUserDetails {
 }
 
 export interface UpdateUserUserDetails {
-  user_id: number,
   user: User;
   userDetails: UserDetails;
   subsidy?: Subsidy;
   accessCard?: AccessCard;
 }
+
+// export interface UpdateUserUserDetails {
+//   user_id: number,
+//   user: User;
+//   userDetails: UserDetails;
+//   subsidy?: Subsidy;
+//   accessCard?: AccessCard;
+// }
 
 
