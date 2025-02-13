@@ -684,9 +684,11 @@ export async function UpdateUserManyCascade(data: {
           prismaTransaction: prisma,
         });
 
-        // if (subsidyTransaction.length !== subsidies.length) {
-        //   throw Error("Failed To Create User Subsidy ");
-        // }
+        console.log("subsidyTransaction==>", subsidyTransaction);
+
+        if (subsidyTransaction !== subsidies.length) {
+          throw Error("Failed To Create User Subsidy ");
+        }
       }
 
       const accessCard: AccessCard[] = details.map(
