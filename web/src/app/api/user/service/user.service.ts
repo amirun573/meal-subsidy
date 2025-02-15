@@ -1582,10 +1582,9 @@ export async function ScanCheckEmployeeIDAuthService(
         OR: [
           { employee_id: employee_id },
           {
-            access_cards: {
+            UserDetails: {
               some: {
-                active: true,
-                card_value: employee_id,
+                access_card_no: employee_id,
               },
             },
           },
@@ -1696,12 +1695,20 @@ export async function ScanCheckEmployeeIDAuthService(
       throw Error("No Subsidy Credit Found");
     }
 
-    return NextResponse.json({
+    return {
+      status: 200,
       employee_id: user.employee_id,
       employee_name: (user as any)?.UserDetails?.name,
       available_credit: subsidyCredit.credit_amount,
       subsidyCreditUUID: subsidyCredit.uuid,
-    });
+    };
+
+    // return NextResponse.json({
+    //   employee_id: user.employee_id,
+    //   employee_name: (user as any)?.UserDetails?.name,
+    //   available_credit: subsidyCredit.credit_amount,
+    //   subsidyCreditUUID: subsidyCredit.uuid,
+    // });
   } catch (error: any) {
     // logger.error("Failed at ScanCheckEmployeeIDService function ===>", { error });
 
@@ -1752,10 +1759,9 @@ export async function ScanCheckEmployeeIDAuthSocketService(
         OR: [
           { employee_id: employee_id },
           {
-            access_cards: {
+            UserDetails: {
               some: {
-                active: true,
-                card_value: employee_id,
+                access_card_no: employee_id,
               },
             },
           },

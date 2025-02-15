@@ -146,7 +146,14 @@ export async function GET(req: any, res: any) {
           throw Error("No User Found.");
         }
 
-        return ScanCheckEmployeeIDAuthService({ employeeID }, user);
+        const employee = ScanCheckEmployeeIDAuthService({ employeeID }, user);
+
+        return NextResponse.json({
+          employee_id: user.employee_id,
+          employee_name: (employee as any)?.user?.UserDetails?.name,
+          available_credit: (employee as any).subsidyCredit.credit_amount,
+          subsidyCreditUUID: (employee as any).subsidyCredit.uuid,
+        });
       }
 
       default: {
