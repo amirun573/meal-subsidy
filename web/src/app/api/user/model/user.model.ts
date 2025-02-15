@@ -10,7 +10,7 @@ import {
   CreateSubsidyMany,
   UpdateSubsidiesInBulk,
 } from "../../subsidy/model/subsidy.model";
-import { CreateAccessCardMany } from "../../accessCard/model/accessCard.model";
+import { CreateAccessCardMany, UpdateAccessCardsInBulk } from "../../accessCard/model/accessCard.model";
 // import logger from "../../../../../libs/winston";
 
 export async function GetUserSingle(
@@ -635,7 +635,6 @@ export async function UpdateUserManyCascade(data: {
   try {
     const { details, prismaTransaction } = data;
 
-    let result: UpdateUserUserDetails[] = [];
     if (details.length > 0) {
       // Extract user[] from details
       const users: User[] = details.map((detail) => detail.user);
@@ -643,17 +642,13 @@ export async function UpdateUserManyCascade(data: {
       // Create users in bulk using the provided transaction
       const userTransaction: User[] = await UpdateUserMany({
         data: users,
-        prismaTransaction: prisma,
+        prismaTransaction,
       });
 
       // Validate that the same number of users were created
       if (!userTransaction || userTransaction.length !== users.length) {
         throw Error("No Users Been Created");
       }
-
-
-      const createAccessCard: AccessCard[] = [];
-
       // Extract userDetails[] from the updated details array
       const usersDetails: UserDetails[] = details.map(
         (detail) => detail.userDetails
@@ -662,7 +657,7 @@ export async function UpdateUserManyCascade(data: {
       // Create userDetails in bulk using the same transaction
       const userDetailsTransaction = await UpdateUserDetailsMany({
         data: usersDetails,
-        prismaTransaction: prisma,
+        prismaTransaction,
       });
 
       // Validate that the same number of userDetails were created
@@ -681,7 +676,7 @@ export async function UpdateUserManyCascade(data: {
 
         const subsidyTransaction = await UpdateSubsidiesInBulk({
           subsidies,
-          prismaTransaction: prisma,
+          prismaTransaction,
         });
 
         console.log("subsidyTransaction==>", subsidyTransaction);
@@ -695,13 +690,15 @@ export async function UpdateUserManyCascade(data: {
         (detail) => detail.accessCard as any
       );
 
-      if (createAccessCard.length > 0) {
-        const accessCardTransaction = await CreateAccessCardMany({
-          data: createAccessCard,
-          prismaTransaction: prisma,
+
+      console.log("AccessCard==>", accessCard);
+      if (accessCard.length > 0) {
+        const accessCardTransaction = await UpdateAccessCardsInBulk({
+          accessCards: accessCard,
+          prismaTransaction,
         });
 
-        if (accessCardTransaction.length !== accessCard.length) {
+        if (accessCardTransaction !== accessCard.length) {
           throw Error("Failed To Access Card Details To All Users");
         }
       }

@@ -50,6 +50,66 @@ export async function CreateAccessCardMany(object: {
   }
 }
 
+export async function UpdateAccessCardsInBulk(data: {
+  accessCards: AccessCard[];
+  prismaTransaction?: any;
+}): Promise<number> {
+  try {
+    const { accessCards, prismaTransaction } = data;
+    const setClauses: string[] = [];
+    const values: any[] = [];
+    const cardIds: number[] = accessCards.map((card) => card.card_id);
+
+    const fieldsToUpdate = [
+      "card_value",
+      "active",
+      "user_id",
+    ];
+
+    for (const field of fieldsToUpdate) {
+      const cases: string[] = [];
+      accessCards.forEach((card: any) => {
+        if (card[field] !== undefined) {
+          cases.push(`WHEN "card_id" = $${values.length + 1} THEN $${values.length + 2}`);
+          values.push(card.card_id, card[field]);
+        }
+      });
+
+      if (cases.length > 0) {
+        setClauses.push(`"${field}" = CASE ${cases.join(" ")} ELSE "${field}" END`);
+      }
+    }
+
+    // Ensure there's something to update
+    if (setClauses.length === 0) {
+      console.warn("No valid updates found");
+      return 0;
+    }
+
+    // Construct final query
+    const query = `
+      UPDATE "AccessCard"
+      SET ${setClauses.join(", ")}, "updated_at" = NOW()
+      WHERE "card_id" IN (${cardIds.map((_, index) => `$${values.length + index + 1}`).join(", ")});
+    `;
+
+    values.push(...cardIds);
+
+    // Execute the query
+    let result: number;
+    if (!prismaTransaction) {
+      result = await prisma.$executeRawUnsafe(query, ...values);
+    } else {
+      result = await prismaTransaction.$executeRawUnsafe(query, ...values);
+    }
+
+    return result;
+  } catch (e) {
+    console.error(e);
+    return 0;
+  }
+}
+
 export async function DisableAccessByUserId(object: {
   user_id: number;
   prismaTransaction?: any;

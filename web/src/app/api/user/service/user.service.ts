@@ -816,7 +816,6 @@ export async function CreateEmployeeBulkUpload(
                   (subsidy as any)?.subsidy_type.subsidy_type_id ===
                   subsidyType.subsidy_type_id
               );
-              console.log("subsidyTypeIndex==>", subsidyTypeIndex);
               if (subsidyTypeIndex !== -1) {
                 SubsidyUser.subsidy_id = (users as any)[userIndex]?.subsidies[
                   subsidyTypeIndex
