@@ -792,8 +792,10 @@ export async function CreateEmployeeBulkUpload(
           subsidy: SubsidyUser as Subsidy,
           accessCard: accessCard as AccessCard,
         };
+
+        //Compare by UUID
         const userIndex: number = users.findIndex(
-          (user) => user.employee_id === employee.employee_id
+          (user) => user.uuid === employee.uuid
         );
         if (userIndex !== -1 && users[userIndex]?.user_id) {
           if (

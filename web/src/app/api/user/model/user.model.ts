@@ -520,16 +520,18 @@ export async function CreateUserNUserDetailsManyCascade(data: {
         }
       }
 
-      if (createAccessCard.length > 0) {
-        const accessCardTransaction = await CreateAccessCardMany({
-          data: createAccessCard,
-          prismaTransaction,
-        });
+      //Update in future if needed
 
-        if (accessCardTransaction.length !== createSubsidies.length) {
-          throw Error("Failed To Access Card Details To All Users");
-        }
-      }
+      // if (createAccessCard.length > 0) {
+      //   const accessCardTransaction = await CreateAccessCardMany({
+      //     data: createAccessCard,
+      //     prismaTransaction,
+      //   });
+
+      //   if (accessCardTransaction.length !== createSubsidies.length) {
+      //     throw Error("Failed To Access Card Details To All Users");
+      //   }
+      // }
 
       return updateDetails; // Return the updated details array
     }
