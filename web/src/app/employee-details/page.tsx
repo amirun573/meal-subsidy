@@ -145,7 +145,7 @@ const EmployeeDetailsPage = () => {
                         employee_category_name: (user as any)?.employee_category?.employee_category_name || '',
                         employee_category_code: (user as any)?.employee_category?.employee_category_code || '',
                         cost_center_code: (user as any)?.cost_center?.cost_center_code || '',
-                        access_card_no: (user as any)?.access_cards[0]?.card_value || '',
+                        access_card_no: (user as any)?.UserDetails?.access_card_no || '',
                         user_active: user?.active || false,
                         current_subsidy_value: (subsidies as any)?.amount || 0,
                         subsidy_uuid: subsidies?.uuid || '',

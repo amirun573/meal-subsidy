@@ -10,7 +10,10 @@ import {
   CreateSubsidyMany,
   UpdateSubsidiesInBulk,
 } from "../../subsidy/model/subsidy.model";
-import { CreateAccessCardMany, UpdateAccessCardsInBulk } from "../../accessCard/model/accessCard.model";
+import {
+  CreateAccessCardMany,
+  UpsertAccessCardsInBulk,
+} from "../../accessCard/model/accessCard.model";
 // import logger from "../../../../../libs/winston";
 
 export async function GetUserSingle(
@@ -154,7 +157,7 @@ async function CreateUser(object: { user: User; prismaTransaction?: any }) {
 async function CreateUserMany(object: {
   data: User[];
   prismaTransaction?: any;
-}) {
+}): Promise<User[]> {
   try {
     const { data, prismaTransaction } = object;
 
@@ -627,7 +630,6 @@ export async function UpdateUserCascade(data: {
   }
 }
 
-
 export async function UpdateUserManyCascade(data: {
   details: UpdateUserUserDetails[];
   prismaTransaction?: any;
@@ -673,7 +675,6 @@ export async function UpdateUserManyCascade(data: {
       );
 
       if (subsidies.length > 0) {
-
         const subsidyTransaction = await UpdateSubsidiesInBulk({
           subsidies,
           prismaTransaction,
@@ -686,14 +687,13 @@ export async function UpdateUserManyCascade(data: {
         }
       }
 
-      const accessCard: AccessCard[] = details.map(
-        (detail) => detail.accessCard as any
-      );
-
+      const accessCard: AccessCard[] = details
+        .map((detail) => detail.accessCard as any)
+        .filter((card): card is AccessCard => card !== undefined);
 
       console.log("AccessCard==>", accessCard);
       if (accessCard.length > 0) {
-        const accessCardTransaction = await UpdateAccessCardsInBulk({
+        const accessCardTransaction = await UpsertAccessCardsInBulk({
           accessCards: accessCard,
           prismaTransaction,
         });

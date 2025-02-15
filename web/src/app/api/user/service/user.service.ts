@@ -192,6 +192,7 @@ export async function UserPaginationService(data: UserPaginationRequest) {
         UserDetails: {
           select: {
             name: true,
+            access_card_no: true,
           },
         },
         cost_center: {
@@ -480,6 +481,7 @@ export async function CreateEmployee(data: CreateUpdateUser) {
 
     const userDetails: Partial<UserDetails> = {
       name: name.toLowerCase(),
+      access_card_no,
     };
 
     const createUser = await CreateUserNUserDetailsCascade({
@@ -793,58 +795,72 @@ export async function CreateEmployeeBulkUpload(
         const userIndex: number = users.findIndex(
           (user) => user.employee_id === employee.employee_id
         );
-        if (userIndex !== -1) {
-          if (userIndex !== -1 && users[userIndex]?.user_id) {
-            if (
-              users[userIndex].user_id !== undefined &&
-              users[userIndex].user_id !== 0
-            ) {
-              const UpdateUsersDetails: UpdateUserUserDetails = {
-                user: user as User,
-                userDetails: userDetails as UserDetails,
-                subsidy: SubsidyUser as Subsidy,
-              };
+        if (userIndex !== -1 && users[userIndex]?.user_id) {
+          if (
+            users[userIndex].user_id !== undefined &&
+            users[userIndex].user_id !== 0
+          ) {
+            const UpdateUsersDetails: UpdateUserUserDetails = {
+              user: user as User,
+              userDetails: userDetails as UserDetails,
+              subsidy: SubsidyUser as Subsidy,
+            };
 
-              const user_id: number = users[userIndex].user_id as number;
-              UpdateUsersDetails.user.user_id = user_id;
-              UpdateUsersDetails.userDetails.user_id = user_id;
+            const user_id: number = users[userIndex].user_id as number;
+            UpdateUsersDetails.user.user_id = user_id;
+            UpdateUsersDetails.userDetails.user_id = user_id;
 
-              const subsidyTypeIndex: number = (
-                (users as any)[userIndex]?.subsidies as Subsidy[]
-              ).findIndex(
-                (subsidy) =>
-                  (subsidy as any)?.subsidy_type.subsidy_type_id ===
-                  subsidyType.subsidy_type_id
-              );
-              if (subsidyTypeIndex !== -1) {
-                SubsidyUser.subsidy_id = (users as any)[userIndex]?.subsidies[
-                  subsidyTypeIndex
-                ].subsidy_id as number;
-                SubsidyUser.user_id = user_id;
-              }
-              UpdateUsersDetails.subsidy = SubsidyUser as Subsidy;
-              accessCard.user_id = user_id;
-
-              const accessCardUpdate: Partial<AccessCard>[] = [accessCard];
-              const access_card_validate = (users as any)[userIndex]
-                ?.access_cards as AccessCard[];
-
-              if (
-                access_card_validate.findIndex(
-                  (accessCard) => accessCard.card_value === employee.access_card
-                ) !== -1
-              ) {
-                if (access_card_validate.length > 0) {
-                  access_card_validate.map((accessCard) => {
-                    accessCard.active = false;
-                    accessCardUpdate.push(accessCard);
-                  });
-                }
-
-                UpdateUsersDetails.accessCard = accessCardUpdate;
-              }
-              updateUsers.push(UpdateUsersDetails);
+            const subsidyTypeIndex: number = (
+              (users as any)[userIndex]?.subsidies as Subsidy[]
+            ).findIndex(
+              (subsidy) =>
+                (subsidy as any)?.subsidy_type.subsidy_type_id ===
+                subsidyType.subsidy_type_id
+            );
+            if (subsidyTypeIndex !== -1) {
+              SubsidyUser.subsidy_id = (users as any)[userIndex]?.subsidies[
+                subsidyTypeIndex
+              ].subsidy_id as number;
+              SubsidyUser.user_id = user_id;
             }
+            UpdateUsersDetails.subsidy = SubsidyUser as Subsidy;
+            accessCard.user_id = user_id;
+
+            const accessCardUpdate: Partial<AccessCard>[] = [];
+            const access_card_validate = ((users as any)[userIndex]?.access_cards as AccessCard[]) ?? [];
+            
+            const accessCardIndex = access_card_validate.findIndex(
+              (accessCard) => accessCard.card_value === employee.access_card
+            );
+            
+            // If access card exists, deactivate all and update
+            if (accessCardIndex !== -1) {
+              if (access_card_validate.length > 0) {
+                access_card_validate.forEach((accessCard) => {
+                  accessCard.active = false;
+                  accessCard.user_id = user_id;
+                  accessCardUpdate.push(accessCard);
+                });
+              }
+            }
+            
+            // If there is no access card at all, create a new one
+            if (access_card_validate.length === 0) {
+              if (employee.access_card && employee.access_card.trim() !== "") {
+                accessCardUpdate.push({
+                  card_value: employee.access_card,
+                  active: true,
+                  user_id: user_id,
+                } as Partial<AccessCard>);
+              }
+            }
+
+            UpdateUsersDetails.accessCard = accessCardUpdate
+
+            updateUsers.push(UpdateUsersDetails);
+
+          } else {
+            createUsers.push(createUser);
           }
         } else {
           createUsers.push(createUser);
@@ -1343,6 +1359,7 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
       name: name.toLowerCase(),
       user_id: getUser.user_id,
       UserDetails_id: (getUser as any)?.UserDetails?.UserDetails_id,
+      access_card_no,
     };
 
     const getSubsidies: Subsidy[] = (getUser as any)?.subsidies as Subsidy[];
