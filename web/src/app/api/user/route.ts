@@ -146,7 +146,7 @@ export async function GET(req: any, res: any) {
           throw Error("No User Found.");
         }
 
-        const employee = ScanCheckEmployeeIDAuthService({ employeeID }, user);
+        const employee: any = ScanCheckEmployeeIDAuthService({ employeeID }, user) as any;
 
         return NextResponse.json({
           employee_id: (employee as any)?.employee_id,
@@ -176,7 +176,7 @@ export async function GET(req: any, res: any) {
   }
 }
 
-export async function POST(req: any, res: any) {
+export async function POST(req: any, res: any): Promise<any> {
   let statusCode: number = 500;
   try {
     let body: any = await GetBodyData(req);
