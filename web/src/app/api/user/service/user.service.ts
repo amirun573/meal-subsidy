@@ -76,6 +76,7 @@ import { FileMimeType } from "@/_Common/enum/file-type.enum";
 // import logger from "../../../../../libs/winston";
 import { ConvertExcel } from "@/_Common/function/SpreedSheet";
 import { GetUserFeaturesSingle } from "../../feature/model/feature.model";
+import { ConvertToFiveDigits } from "@/_Common/function/Card";
 
 const columns = {
   department_desc: "Department Desc",
@@ -1584,7 +1585,7 @@ export async function ScanCheckEmployeeIDAuthService(
           {
             UserDetails: {
               some: {
-                access_card_no: employee_id,
+                access_card_no: ConvertToFiveDigits(employee_id || '') || 'NaN',
               },
             },
           },

@@ -149,10 +149,10 @@ export async function GET(req: any, res: any) {
         const employee = ScanCheckEmployeeIDAuthService({ employeeID }, user);
 
         return NextResponse.json({
-          employee_id: user.employee_id,
-          employee_name: (employee as any)?.user?.UserDetails?.name,
-          available_credit: (employee as any).subsidyCredit.credit_amount,
-          subsidyCreditUUID: (employee as any).subsidyCredit.uuid,
+          employee_id: (employee as any)?.employee_id,
+          employee_name: (employee as any)?.employee_name,
+          available_credit: (employee as any).available_credit,
+          subsidyCreditUUID: (employee as any).subsidyCreditUUID,
         });
       }
 
