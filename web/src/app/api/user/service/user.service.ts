@@ -1561,7 +1561,6 @@ export async function ScanCheckEmployeeIDAuthService(
 
     await ScanEmployeeIDValidation({ employeeID: employee_id });
 
-    console.log("user_details===>", user_details);
     const checkCashier = await GetUserSingle({
       where: {
         user_id: user_details.user_id,
