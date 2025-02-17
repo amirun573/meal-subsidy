@@ -18,6 +18,8 @@ import { GetLocalIPs, ConnectivityDetector, InternetDetector } from '../../Compo
 import { useServiceWorker } from '@/_Common/function/ServiceWorker';
 import React from 'react';
 import { useSocket } from '@/_Common/function/Socket';
+import { debounce } from 'lodash';
+import { ExtractCardNumber } from '@/_Common/function/Card';
 const ScanPage = () => {
     const [employeeId, setEmployeeId] = useState<string>('');
     const [showScannerModal, setShowScannerModal] = useState<boolean>(true);
@@ -38,11 +40,50 @@ const ScanPage = () => {
 
     const isPasting = useRef(false); // Ref to track if pasting is occurring
     const lastKeyPressTime = useRef<number | null>(null); // Track the timestamp of the last key press
+
+    const [finishPasting, setFinishPasting] = useState<boolean>(false);
+    const [pastedValue, setPastedValue] = useState<string | null>(null);
+
     const { sendMessage } = useSocket();
 
     // Threshold for distinguishing between card reader input and manual typing (in milliseconds)
     const cardReaderThreshold = 50;
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [inputBuffer, setInputBuffer] = useState<string>('');
+    // Automatically focus the input field when the page loads
+    useEffect(() => {
+        if (inputRef.current) {
+            inputRef.current.focus();
+        }
+    }, []);
 
+    const debouncedHandleCardInput = debounce((buffer: string) => {
+        handleCardInput(buffer);
+        setInputBuffer('');
+    }, 500); // Adjust the timeout based on how fast your card reader inputs
+
+    const handleCardInput = (cardData: string) => {
+        setLoading(true);
+        try {
+            if (cardData) {
+                // Perform validation or processing of cardData here
+                console.log('Card Data:', cardData);
+
+
+                const decryptCard = ExtractCardNumber(cardData);
+
+                console.log("decryptCard==>", decryptCard);
+                setEmployeeId(decryptCard); // Update the password input field
+                setFinishPasting(true);
+
+            }
+        } catch (error) {
+            console.error("Error processing card input:", error);
+            DisplayAlert(error);
+        } finally {
+            setLoading(false);
+        }
+    };
     // Callback function to get scan result
     const handleScanResult = (result: any) => {
         handleEmployeeID(result);
@@ -106,6 +147,7 @@ const ScanPage = () => {
         try {
             const employeeID = String(event?.target?.value || event); // Ensure value is string
 
+            console.log("employee ID", employeeID);
             if (employeeID) {
 
 
@@ -188,89 +230,99 @@ const ScanPage = () => {
         }
     };
 
-    const HandleEmployeeIDString = async (employe_id: string) => {
-        setLoading(true);
-        try {
-            const employeeID = employe_id; // Ensure value is string
+    // const HandleEmployeeIDString = async (employe_id: string) => {
+    //     setLoading(true);
+    //     try {
+    //         const employeeID = employe_id; // Ensure value is string
 
-            if (employeeID) {
-
-
-                await ScanEmployeeIDValidation({ employeeID });
-
-                const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
-
-                if (!userDetailsLocalStorage) {
-                    await HandleUnAuthorized(null);
-                }
-                // Make sure to await the API call
-                const employeeIDCheckRequest = await axios.get(`/api/user?${StatusAPICode.code}=${StatusAPICode.GET_CHECK_EMPLOYEE_ID_AUTH}&employeeID=${encrypt(employeeID)}`, {
-                    headers: {
-                        Authorization: `Bearer ${userDetailsLocalStorage.accessToken}`
-                    }
-                });
-
-                if (!employeeIDCheckRequest.data?.employee_id || !employeeIDCheckRequest.data?.employee_name || (typeof employeeIDCheckRequest.data?.available_credit !== 'number') || !employeeIDCheckRequest.data?.subsidyCreditUUID) {
-                    throw Error("Failed To Retrieve Subsidy Details");
-                }
-
-                setEmployeeId(employeeIDCheckRequest.data?.employee_id as string);
+    //         if (employeeID) {
 
 
-                setSubsidyCreditUUID(employeeIDCheckRequest.data?.subsidyCreditUUID as string);
-                const newAvailableCredit: number = employeeIDCheckRequest.data?.available_credit as number > 0 ? employeeIDCheckRequest.data?.available_credit as number : 0;
+    //             await ScanEmployeeIDValidation({ employeeID });
 
-                setEmployeeName(employeeIDCheckRequest.data?.employee_name);
-                setAvailableCredit(newAvailableCredit)
+    //             const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
 
-                const newDiscount: number = newAvailableCredit > 0 ? newAvailableCredit - totalPrice : 0;
+    //             if (!userDetailsLocalStorage) {
+    //                 await HandleUnAuthorized(null);
+    //             }
+    //             // Make sure to await the API call
+    //             const employeeIDCheckRequest = await axios.get(`/api/user?${StatusAPICode.code}=${StatusAPICode.GET_CHECK_EMPLOYEE_ID_AUTH}&employeeID=${encrypt(employeeID)}`, {
+    //                 headers: {
+    //                     Authorization: `Bearer ${userDetailsLocalStorage.accessToken}`
+    //                 }
+    //             });
 
-                setDiscount(newDiscount);
-                // Process employeeIDCheckRequest response as necessary
-            } else {
-                setEmployeeId('');
-            }
+    //             if (!employeeIDCheckRequest.data?.employee_id || !employeeIDCheckRequest.data?.employee_name || (typeof employeeIDCheckRequest.data?.available_credit !== 'number') || !employeeIDCheckRequest.data?.subsidyCreditUUID) {
+    //                 throw Error("Failed To Retrieve Subsidy Details");
+    //             }
 
-        } catch (error) {
-            console.error("Error occurred:", error);
-            DisplayAlert(error); // Make sure this doesn't block code execution
-        } finally {
-            // This should always execute regardless of error
-            setLoading(false);
-        }
-    };
+    //             setEmployeeId(employeeIDCheckRequest.data?.employee_id as string);
 
-    const HandleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+
+    //             setSubsidyCreditUUID(employeeIDCheckRequest.data?.subsidyCreditUUID as string);
+    //             const newAvailableCredit: number = employeeIDCheckRequest.data?.available_credit as number > 0 ? employeeIDCheckRequest.data?.available_credit as number : 0;
+
+    //             setEmployeeName(employeeIDCheckRequest.data?.employee_name);
+    //             setAvailableCredit(newAvailableCredit)
+
+    //             const newDiscount: number = newAvailableCredit > 0 ? newAvailableCredit - totalPrice : 0;
+
+    //             setDiscount(newDiscount);
+    //             // Process employeeIDCheckRequest response as necessary
+    //         } else {
+    //             setEmployeeId('');
+    //         }
+
+    //     } catch (error) {
+    //         console.error("Error occurred:", error);
+    //         DisplayAlert(error); // Make sure this doesn't block code execution
+    //     } finally {
+    //         // This should always execute regardless of error
+    //         setLoading(false);
+    //     }
+    // };
+
+    // const HandleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    //     const currentTime = Date.now();
+
+    //     if (lastKeyPressTime.current) {
+    //         const timeDifference = currentTime - lastKeyPressTime.current;
+
+    //         if (timeDifference < cardReaderThreshold) {
+    //             // Detected fast input from a card reader
+    //             const value_card = e.currentTarget.value.trim();
+    //             setEmployeeId(value_card);
+    //             console.log("Card Reader Input:", value_card);
+    //         } else {
+    //             // Handle manual input (e.g., Enter key)
+    //             if (e.key === 'Enter') {
+    //                 handleEmployeeID(e as unknown as React.ChangeEvent<HTMLInputElement>);
+    //             }
+    //         }
+    //     }
+
+    //     lastKeyPressTime.current = currentTime;
+    // };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         const currentTime = Date.now();
 
         if (lastKeyPressTime.current) {
             const timeDifference = currentTime - lastKeyPressTime.current;
 
             if (timeDifference < cardReaderThreshold) {
-
-                const value_card: string = String((e as unknown as React.ChangeEvent<HTMLInputElement>).target.value.trim());
-
-
-
-
-                setEmployeeId(value_card);
-                //For security purpose to ensure the value is not easily visible.
-                HandleEmployeeIDString(value_card);
-
-
-
-
-
-                // Handle the card reader action
-            } else {
-                // Handle manual input (i.e., when Enter is pressed)
-                if (e.key === 'Enter') {
-                    handleEmployeeID(e as unknown as React.ChangeEvent<HTMLInputElement>);
+                // Assume card reader input
+                if (e.key !== 'Enter') {
+                    setInputBuffer(prevBuffer => prevBuffer + e.key);
+                } else {
+                    debouncedHandleCardInput(inputBuffer);
                 }
+            } else {
+                // Clear buffer for manual input, as this seems like the start of a new entry
+                setInputBuffer('');
             }
         }
 
-        // Update the last key press time
         lastKeyPressTime.current = currentTime;
     };
 
@@ -450,34 +502,45 @@ const ScanPage = () => {
         }
     }
 
-    const HandleEmployeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        // Check if pasting is happening and prevent onChange update during pasting
-        if (!isPasting.current) {
-            setEmployeeId(e.target.value); // Handle typing input normally
-        }
-    };
+    // const HandleEmployeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    //     if (!isPasting.current) {
+    //         console.log("Manual input detected:", e.target.value);
+    //         setEmployeeId(e.target.value);
+    //         // Cancel paste delay if user types manually
+    //         setPastedValue(null);
+    //     } else {
+    //         console.log("Pasting detected but ignored onChange.");
+    //         setFinishPasting(true);
+    //     }
+    // };
 
 
 
     const HandlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
         try {
-            e.preventDefault(); // Prevent the default paste behavior
-            isPasting.current = true; // Set pasting flag to true
+            e.preventDefault(); // Prevent default paste behavior
+            isPasting.current = true;
 
+            const pastedText = e.clipboardData.getData("text").trim();
+            setPastedValue(pastedText); // Store in temporary state
 
-            const pastedText = (e.clipboardData || window.Clipboard).getData('text'); // Get the pasted text
-            const modifiedText = pastedText.trim(); // Modify if necessary
+            console.log("Pasting detected, waiting 5 seconds before assigning...");
 
-
-            setEmployeeId(modifiedText); // Set the modified value to employeeId
-
-            // Reset the pasting flag AFTER the next event loop to ensure onChange doesn't fire immediately
+            // Delay assignment for 5 seconds
             setTimeout(() => {
+                setEmployeeId(ExtractCardNumber(pastedText)); // Assign after 5 seconds
+                console.log("Pasted value assigned to employeeId:", ExtractCardNumber(pastedText));
                 isPasting.current = false;
-            }, 0); // Ensure the flag is reset after the paste action is fully complete
+                setFinishPasting(true);
+            }, 5); // 5-second delay
+
         } catch (error) {
             console.error(error);
         }
+    };
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setEmployeeId(e.target.value);
     };
 
     const handleInternetStatusChange = (status: boolean) => {
@@ -531,7 +594,13 @@ const ScanPage = () => {
 
     }, [totalPrice, availableCredit, discount]);
 
-
+    // Handle pasting completion safely
+    useEffect(() => {
+        if (finishPasting) {
+            handleEmployeeID(employeeId as any);
+            setFinishPasting(false);
+        }
+    }, [finishPasting]);
     return (
         <>
             <Navbar />
@@ -614,9 +683,9 @@ const ScanPage = () => {
                             display: 'block',
                             margin: '0 auto', // Center the input
                         }}
-                        onChange={HandleEmployeeChange}
-                        onPaste={HandlePaste}
-                        onKeyDown={HandleKeyDown} // Trigger action when Enter is pressed
+                        onChange={handleInputChange}
+                            onKeyDown={handleKeyDown}
+                            onPaste={HandlePaste}
 
                     />
 
