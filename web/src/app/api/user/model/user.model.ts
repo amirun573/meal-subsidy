@@ -34,7 +34,9 @@ export async function GetUserSingle(
   }
 }
 
-export async function GetUserMany(data: PrismaCondtionFetch) {
+export async function GetUserMany(
+  data: PrismaCondtionFetch
+): Promise<Partial<User>[]> {
   try {
     const { where, select } = data;
 
@@ -689,21 +691,21 @@ export async function UpdateUserManyCascade(data: {
         }
       }
 
-      const accessCard: AccessCard[] = details
-        .map((detail) => detail.accessCard as any)
-        .filter((card): card is AccessCard => card !== undefined);
+      // const accessCard: AccessCard[] = details
+      //   .map((detail) => detail.accessCard as any)
+      //   .filter((card): card is AccessCard => card !== undefined);
 
-      console.log("AccessCard==>", accessCard);
-      if (accessCard.length > 0) {
-        const accessCardTransaction = await UpsertAccessCardsInBulk({
-          accessCards: accessCard,
-          prismaTransaction,
-        });
+      // console.log("AccessCard==>", accessCard);
+      // if (accessCard.length > 0) {
+      //   const accessCardTransaction = await UpsertAccessCardsInBulk({
+      //     accessCards: accessCard,
+      //     prismaTransaction,
+      //   });
 
-        if (accessCardTransaction !== accessCard.length) {
-          throw Error("Failed To Access Card Details To All Users");
-        }
-      }
+      //   if (accessCardTransaction !== accessCard.length) {
+      //     throw Error("Failed To Access Card Details To All Users");
+      //   }
+      // }
 
       return true; // Return the updated details array
     }
@@ -726,30 +728,30 @@ export async function CreateUpdateUserCascade(data: {
   try {
     const { create, update } = data;
 
-    await prisma.$transaction(
-      async (prismaTransaction) => {
-        try {
-          await Promise.all([
-            CreateUserNUserDetailsManyCascade({
-              details: create,
-              prismaTransaction,
-            }),
-            UpdateUserManyCascade({
-              details: update,
-              prismaTransaction,
-            }),
-          ]);
-        } catch (error) {
-          console.error("Transaction failed, rolling back...", error);
-          throw error; // Ensures rollback happens
-        }
-      },
-      { timeout }
-    );
+    const result = await prisma.$transaction(async (prismaTransaction) => {
+      try {
+        const createTransaction = await CreateUserNUserDetailsManyCascade({
+          details: create,
+          prismaTransaction,
+        });
 
-    return true;
+        const updateTransaction = await UpdateUserManyCascade({
+          details: update,
+          prismaTransaction,
+        });
+
+        // Ensure both transactions succeed before returning true
+        return createTransaction && updateTransaction;
+      } catch (error) {
+        console.error("Transaction failed, rolling back...", error);
+        throw error; // Ensures rollback happens
+      }
+    });
+
+    return result; // The transaction result (true or false) is returned here
   } catch (error) {
     console.log("Error in CreateUpdateUserCascade:", error);
     return false;
   }
 }
+

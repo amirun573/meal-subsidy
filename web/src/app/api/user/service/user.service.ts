@@ -97,6 +97,8 @@ const headers = [
   columns.employee_category,
   columns.eligble_subsidy,
   columns.access_card,
+  columns.uuid,
+
 ];
 
 export async function UserPaginationService(data: UserPaginationRequest) {
@@ -798,6 +800,8 @@ export async function CreateEmployeeBulkUpload(
         const userIndex: number = users.findIndex(
           (user) => user.uuid === employee.uuid
         );
+
+
         if (userIndex !== -1 && users[userIndex]?.user_id) {
           if (
             users[userIndex].user_id !== undefined &&
@@ -871,8 +875,6 @@ export async function CreateEmployeeBulkUpload(
       });
     });
 
-    console.log("createUsers==>", createUsers);
-    console.log("UpdateUsers==>", updateUsers);
 
     const createUpdateUserCascade: boolean = await CreateUpdateUserCascade({
       create: createUsers,

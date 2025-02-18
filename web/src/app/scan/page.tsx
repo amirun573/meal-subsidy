@@ -304,27 +304,42 @@ const ScanPage = () => {
     //     lastKeyPressTime.current = currentTime;
     // };
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
         const currentTime = Date.now();
+        const timeDifference = lastKeyPressTime.current ? currentTime - lastKeyPressTime.current : null;
+        lastKeyPressTime.current = currentTime;
 
-        if (lastKeyPressTime.current) {
-            const timeDifference = currentTime - lastKeyPressTime.current;
+        if (timeDifference !== null && timeDifference < cardReaderThreshold) {
+            // Card reader input (debounced)
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                console.log("Card reader detected, processing buffer:", inputBuffer);
 
-            if (timeDifference < cardReaderThreshold) {
-                // Assume card reader input
-                if (e.key !== 'Enter') {
-                    setInputBuffer(prevBuffer => prevBuffer + e.key);
-                } else {
-                    debouncedHandleCardInput(inputBuffer);
-                }
+                setEmployeeId(inputBuffer);
+                debouncedHandleCardInput(inputBuffer); // Debounced call
+                setInputBuffer(''); // Clear buffer
             } else {
-                // Clear buffer for manual input, as this seems like the start of a new entry
-                setInputBuffer('');
+                setInputBuffer(prevBuffer => prevBuffer + e.key);
+            }
+        } else {
+            // Manual input (instant execution)
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                console.log("Manual input Enter pressed, processing buffer:", inputBuffer);
+                setEmployeeId(inputBuffer); // Schedules state update
+                console.log("Employee ID:", inputBuffer); // ✅ Use inputBuffer directly
+                setInputBuffer(''); // Clear buffer
+                 await handleEmployeeID(inputBuffer as any)
+            }
+             else {
+                setInputBuffer(prevBuffer => prevBuffer + e.key);
             }
         }
-
-        lastKeyPressTime.current = currentTime;
     };
+
+
+
+
 
 
     const HandleSubmitTotalPrice = async () => {
@@ -540,6 +555,7 @@ const ScanPage = () => {
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        console.log("jererererer")
         setEmployeeId(e.target.value);
     };
 
@@ -684,8 +700,8 @@ const ScanPage = () => {
                             margin: '0 auto', // Center the input
                         }}
                         onChange={handleInputChange}
-                            onKeyDown={handleKeyDown}
-                            onPaste={HandlePaste}
+                        onKeyDown={handleKeyDown}
+                        onPaste={HandlePaste}
 
                     />
 
