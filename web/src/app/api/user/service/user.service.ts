@@ -23,6 +23,7 @@ import {
   UpdateUser,
   GetUserRawQuery,
   UpdateUserCascade,
+  CreateUpdateUserCascade,
 } from "../model/user.model";
 import { PaginationData } from "../../../../_Common/interface/pagination.interface";
 import { SubsidyTypeCode } from "@/_Common/enum/subsidy-type.enum";
@@ -75,6 +76,7 @@ import { FileMimeType } from "@/_Common/enum/file-type.enum";
 // import logger from "../../../../../libs/winston";
 import { ConvertExcel } from "@/_Common/function/SpreedSheet";
 import { GetUserFeaturesSingle } from "../../feature/model/feature.model";
+import { ConvertToFiveDigits, ExtractCardNumber } from "@/_Common/function/Card";
 
 const columns = {
   department_desc: "Department Desc",
@@ -83,7 +85,8 @@ const columns = {
   employee_name: "Employee Name",
   employee_category: "Employee  Category",
   eligble_subsidy: "Eligble Subsidy (Yes/No)",
-  mifare_card_no: "Access Card Number",
+  access_card: "Access Card Number",
+  uuid: "UUID",
 };
 
 const headers = [
@@ -93,7 +96,9 @@ const headers = [
   columns.employee_name,
   columns.employee_category,
   columns.eligble_subsidy,
-  columns.mifare_card_no,
+  columns.access_card,
+  columns.uuid,
+
 ];
 
 export async function UserPaginationService(data: UserPaginationRequest) {
@@ -190,6 +195,7 @@ export async function UserPaginationService(data: UserPaginationRequest) {
         UserDetails: {
           select: {
             name: true,
+            access_card_no: true,
           },
         },
         cost_center: {
@@ -478,6 +484,7 @@ export async function CreateEmployee(data: CreateUpdateUser) {
 
     const userDetails: Partial<UserDetails> = {
       name: name.toLowerCase(),
+      access_card_no,
     };
 
     const createUser = await CreateUserNUserDetailsCascade({
@@ -552,7 +559,8 @@ export async function CreateEmployeeBulkUpload(
     employee_name: string;
     employee_category: string;
     eligble_subsidy: string;
-    mifare_card_no: string;
+    access_card: string;
+    uuid: string;
   }
   let message: string = "";
   let status: number = 500;
@@ -567,6 +575,44 @@ export async function CreateEmployeeBulkUpload(
     }
 
     const dataExcel = ExtractExcelData(headers, workbook);
+
+    const users: Partial<User>[] = await GetUserMany({
+      where: {},
+      select: {
+        user_id: true,
+        employee_id: true,
+        uuid: true,
+        role_id: true,
+        deleted_at: true,
+        department_id: true,
+        cost_center_id: true,
+        employee_category_id: true,
+        UserDetails: {
+          select: {
+            name: true,
+            first_name: true,
+            last_name: true,
+            mobile_phone: true,
+            access_card_no: true,
+          },
+        },
+        subsidies: {
+          select: {
+            subsidy_id: true,
+            subsidy_type: true,
+            applicable: true,
+            active: true,
+          },
+        },
+        access_cards: {
+          select: {
+            card_id: true,
+            card_value: true,
+            active: true,
+          },
+        },
+      },
+    });
 
     const departments: Partial<Department>[] = await GetDepartmentLists({
       where: {},
@@ -619,260 +665,6 @@ export async function CreateEmployeeBulkUpload(
     }
 
     const createUsers: CreateUserUserDetails[] = [];
-
-    dataExcel.map((items) => {
-      items.data.map((data) => {
-        const employee: ExcelCreateEmployee = {
-          department_desc: String(data[columns.department_desc]).trim(),
-          cost_center: String(data[columns.cost_center]).toLowerCase().trim(),
-          employee_id: String(data[columns.employee_id]).trim(),
-          employee_name: String(data[columns.employee_name])
-            .toLowerCase()
-            .trim(),
-          employee_category: String(data[columns.employee_category])
-            .toLowerCase()
-            .trim(),
-          eligble_subsidy: String(data[columns.eligble_subsidy])
-            .toLowerCase()
-            .trim(),
-          mifare_card_no: String(data[columns.mifare_card_no]).trim(),
-        };
-
-        const checkDuplicate = createUsers.findIndex(
-          (users) => users.user.employee_id === employee.employee_id
-        );
-
-        if (checkDuplicate !== -1) {
-          status = 400;
-          throw new Error(
-            `Duplicate Employee ID ${employee.employee_id} in Excel. Please Check at row for Employee ID ${employee.employee_id}`
-          );
-        }
-
-        // Validate that no values are null or undefined
-        const isValid = Object.values(employee).every(
-          (value) => value !== null && value !== undefined && value !== ""
-        );
-
-        if (!isValid) {
-          status = 400;
-          throw new Error(
-            `Validation error: Some fields are null, undefined, or empty at Employee ID ${employee.employee_id}`
-          );
-        }
-
-        // Validate eligibility subsidy
-        const validSubsidyValues = ["yes", "no"];
-        if (!validSubsidyValues.includes(employee.eligble_subsidy)) {
-          throw new Error(
-            `Invalid eligble_subsidy value: ${employee.eligble_subsidy}. It must be 'yes' or 'no'.`
-          );
-        }
-
-        const department: Partial<Department> | undefined = departments.find(
-          (item) =>
-            item.department_name?.toLocaleLowerCase() ===
-            employee.department_desc?.toLocaleLowerCase()
-        );
-
-        if (!department) {
-          status = 400;
-          throw new Error(
-            `No name Department ${employee.department_desc} in database. Please Check at row for Employee ID ${employee.employee_id}`
-          );
-        }
-
-        const costcenter: Partial<CostCenter> | undefined = costCenters.find(
-          (items) => items.cost_center_code === employee.cost_center
-        );
-
-        if (!costcenter) {
-          status = 400;
-          throw new Error(
-            `No name Value Stream  ${employee.cost_center} in database. Please Check at row for Employee ID ${employee.employee_id}`
-          );
-        }
-
-        const employeeCategory: Partial<EmployeeCategory> | undefined =
-          employeeCategories.find(
-            (items) =>
-              items.employee_category_code ===
-              employee.employee_category.toLocaleLowerCase()
-          );
-
-        if (!employeeCategory) {
-          status = 400;
-          throw new Error(
-            `No name Employee Category ${employee.employee_category} in database. Please Check at row for Employee ID ${employee.employee_id}`
-          );
-        }
-
-        const user: Partial<User> = {
-          employee_id: employee.employee_id,
-          role_id: role.role_id,
-          department_id: department.department_id,
-          is_email_verified: true,
-          is_acc_verify: true,
-          active: true,
-          employee_category_id: employeeCategory.employee_category_id,
-          cost_center_id: costcenter.cost_center_id,
-        };
-
-        const userDetails: Partial<UserDetails> = {
-          name: employee.employee_name,
-          user_id: 0,
-        };
-
-        const SubsidyUser: Partial<Subsidy> = {
-          subsidy_type_id: subsidyType.subsidy_type_id,
-          user_id: 0,
-          applicable: employee.eligble_subsidy === "yes" ? true : false,
-        };
-
-        const accessCard: Partial<AccessCard> = {
-          card_value: employee.mifare_card_no,
-        };
-
-        const createUser: CreateUserUserDetails = {
-          user: user as User,
-          userDetails: userDetails as UserDetails,
-          subsidy: SubsidyUser as Subsidy,
-          accessCard: accessCard as AccessCard,
-        };
-
-        createUsers.push(createUser);
-      });
-    });
-
-    const createUserCascade = await CreateUserNUserDetailsManyCascade({
-      details: createUsers,
-    });
-
-    if (!createUserCascade || createUserCascade.length !== createUsers.length) {
-      status = 400;
-      throw Error("No User Being Created");
-    }
-
-    return NextResponse.json({
-      message: "Successfully Create All Employees",
-    });
-  } catch (error: any) {
-    // logger.error("Failed at CreateEmployeeBulkUpload function ===>", { error });
-
-    console.error(error);
-    return NextResponse.json(
-      {
-        message: error.message || message,
-      },
-      {
-        status: error.statusCode || status,
-      }
-    );
-  }
-}
-
-export async function UpdateEmployeeBulkUpload(
-  data: CreateUserUploadExcel,
-  user: User
-): Promise<any> {
-  interface ExcelCreateEmployee {
-    department_desc: string;
-    cost_center: string;
-    employee_id: string;
-    employee_name: string;
-    employee_category: string;
-    eligble_subsidy: string;
-    mifare_card_no: string;
-  }
-  let message: string = "";
-  let status: number = 500;
-  try {
-    const { file } = data;
-
-    var workbook = await ReadExcelFile(file);
-
-    if (!workbook) {
-      status = 400;
-      throw Error("Workbook Cannot Generate");
-    }
-
-    const dataExcel = ExtractExcelData(headers, workbook);
-
-    console.log("dataExcel==>", dataExcel[0].data);
-
-    const employees: Partial<User[]> = (await GetUserMany({
-      where: {},
-      select: {
-        user_id: true,
-        employee_id: true,
-        UserDetails: {
-          select: {
-            UserDetails_id: true,
-          },
-        },
-      },
-    })) as any;
-
-    if (!employees) {
-      status = 400;
-      throw Error("No Employess Found");
-    }
-
-    if (dataExcel.length != employees.length) {
-      status = 400;
-      throw Error("There is Mismatch Data To Update Employees");
-    }
-
-    const departments: Partial<Department>[] = await GetDepartmentLists({
-      where: {},
-    });
-
-    if (!departments || departments.length < 1) {
-      status = 400;
-      throw Error("No Departments Found");
-    }
-
-    const costCenters: Partial<CostCenter>[] = await GetCostCenterLists({
-      where: {},
-    });
-
-    if (!costCenters || costCenters.length < 1) {
-      status = 400;
-      throw Error("No Value Stream Found");
-    }
-
-    const subsidyType: Partial<SubsidyType> = (await GetSubsidyTypeSingle({
-      where: {
-        subsidy_type_code: SubsidyTypeCode.meal,
-      },
-    })) as Partial<SubsidyType>;
-
-    if (!subsidyType) {
-      status = 400;
-      throw Error("Subsidy Meal not Found");
-    }
-
-    const role: Partial<Role> = (await GetRoleSingle({
-      where: {
-        role_code: RoleCode.employee,
-      },
-    })) as Partial<Role>;
-
-    if (!role) {
-      status = 400;
-      throw Error("Role not Found");
-    }
-
-    const employeeCategories: Partial<EmployeeCategory>[] =
-      await GetEmployeeCategoryLists({
-        where: {},
-      });
-
-    if (!employeeCategories || employeeCategories.length < 1) {
-      status = 400;
-      throw Error("Employee Category Not Found");
-    }
-
     const updateUsers: UpdateUserUserDetails[] = [];
 
     dataExcel.map((items) => {
@@ -890,14 +682,11 @@ export async function UpdateEmployeeBulkUpload(
           eligble_subsidy: String(data[columns.eligble_subsidy])
             .toLowerCase()
             .trim(),
-          mifare_card_no: String(data[columns.mifare_card_no]).trim(),
+          access_card: String(data[columns.access_card]).trim(),
+          uuid: String(data[columns.uuid]).trim(),
         };
 
-        const selectedEmployee: Partial<User> = employees.find(
-          (item) => item?.employee_id === employee.employee_id
-        ) as Partial<User>;
-
-        const checkDuplicate = updateUsers.findIndex(
+        const checkDuplicate = createUsers.findIndex(
           (users) => users.user.employee_id === employee.employee_id
         );
 
@@ -908,10 +697,10 @@ export async function UpdateEmployeeBulkUpload(
           );
         }
 
-        const skipKeys = ["mifare_card_no"]; // Keys to skip validation
+        // Validate that no values are null or undefined
+        const skipKeys = ["access_card", "uuid"]; // Keys to skip validation
 
         const isValid = Object.entries(employee).every(([key, value]) => {
-          console.log("Key==>", key, "Value==>", value);
           if (skipKeys.includes(key)) {
             return true; // Skip validation for keys in the skipKeys array
           }
@@ -924,11 +713,6 @@ export async function UpdateEmployeeBulkUpload(
             `Validation error: Some fields are null, undefined, or empty at Employee ID ${employee.employee_id}`
           );
         }
-
-        // Validate that no values are null or undefined
-        // const isValid = Object.values(employee).every(
-        //   (value) => value !== null && value !== undefined && value !== ""
-        // );
 
         // Validate eligibility subsidy
         const validSubsidyValues = ["yes", "no"];
@@ -977,7 +761,6 @@ export async function UpdateEmployeeBulkUpload(
         }
 
         const user: Partial<User> = {
-          user_id: selectedEmployee.user_id || 0,
           employee_id: employee.employee_id,
           role_id: role.role_id,
           department_id: department.department_id,
@@ -989,11 +772,9 @@ export async function UpdateEmployeeBulkUpload(
         };
 
         const userDetails: Partial<UserDetails> = {
-          UserDetails_id:
-            (selectedEmployee as any)?.UserDetails?.UserDetails_id || 0,
           name: employee.employee_name,
-          user_id: selectedEmployee.user_id || 0,
-          access_card_no: employee.mifare_card_no,
+          user_id: 0,
+          access_card_no: employee.access_card ? employee.access_card : null,
         };
 
         const SubsidyUser: Partial<Subsidy> = {
@@ -1003,30 +784,106 @@ export async function UpdateEmployeeBulkUpload(
         };
 
         const accessCard: Partial<AccessCard> = {
-          card_value: employee.mifare_card_no,
+          card_value: employee.access_card,
+          user_id: 0,
+          active: true,
         };
 
-        if (!user?.user_id) {
-          status = 400;
-          throw `Employee ID ${user.employee_id} Not Exist`;
-        }
-        const createUser: UpdateUserUserDetails = {
-          user_id: user?.user_id,
+        const createUser: CreateUserUserDetails = {
           user: user as User,
           userDetails: userDetails as UserDetails,
           subsidy: SubsidyUser as Subsidy,
           accessCard: accessCard as AccessCard,
         };
 
-        updateUsers.push(createUser);
+        //Compare by UUID
+        const userIndex: number = users.findIndex(
+          (user) => user.uuid === employee.uuid
+        );
+
+
+        if (userIndex !== -1 && users[userIndex]?.user_id) {
+          if (
+            users[userIndex].user_id !== undefined &&
+            users[userIndex].user_id !== 0
+          ) {
+            const UpdateUsersDetails: UpdateUserUserDetails = {
+              user: user as User,
+              userDetails: userDetails as UserDetails,
+              subsidy: SubsidyUser as Subsidy,
+            };
+
+            const user_id: number = users[userIndex].user_id as number;
+            UpdateUsersDetails.user.user_id = user_id;
+            UpdateUsersDetails.userDetails.user_id = user_id;
+
+            const subsidyTypeIndex: number = (
+              (users as any)[userIndex]?.subsidies as Subsidy[]
+            ).findIndex(
+              (subsidy) =>
+                (subsidy as any)?.subsidy_type.subsidy_type_id ===
+                subsidyType.subsidy_type_id
+            );
+            if (subsidyTypeIndex !== -1) {
+              SubsidyUser.subsidy_id = (users as any)[userIndex]?.subsidies[
+                subsidyTypeIndex
+              ].subsidy_id as number;
+              SubsidyUser.user_id = user_id;
+            }
+            UpdateUsersDetails.subsidy = SubsidyUser as Subsidy;
+            accessCard.user_id = user_id;
+
+            const accessCardUpdate: Partial<AccessCard>[] = [];
+            const access_card_validate = ((users as any)[userIndex]?.access_cards as AccessCard[]) ?? [];
+            
+            const accessCardIndex = access_card_validate.findIndex(
+              (accessCard) => accessCard.card_value === employee.access_card
+            );
+            
+            // If access card exists, deactivate all and update
+            if (accessCardIndex !== -1) {
+              if (access_card_validate.length > 0) {
+                access_card_validate.forEach((accessCard) => {
+                  accessCard.active = false;
+                  accessCard.user_id = user_id;
+                  accessCardUpdate.push(accessCard);
+                });
+              }
+            }
+            
+            // If there is no access card at all, create a new one
+            if (access_card_validate.length === 0) {
+              if (employee.access_card && employee.access_card.trim() !== "") {
+                accessCardUpdate.push({
+                  card_value: employee.access_card,
+                  active: true,
+                  user_id: user_id,
+                } as Partial<AccessCard>);
+              }
+            }
+
+            UpdateUsersDetails.accessCard = accessCardUpdate
+
+            updateUsers.push(UpdateUsersDetails);
+
+          } else {
+            createUsers.push(createUser);
+          }
+        } else {
+          createUsers.push(createUser);
+        }
       });
     });
 
-    const createUserCascade = await UpdateUserCascade({
-      details: updateUsers,
+
+    const createUpdateUserCascade: boolean = await CreateUpdateUserCascade({
+      create: createUsers,
+      update: updateUsers,
     });
 
-    if (!createUserCascade || createUserCascade.length !== updateUsers.length) {
+    // console.log("createUpdateUserCascade==>", createUpdateUserCascade);
+
+    if (!createUpdateUserCascade) {
       status = 400;
       throw Error("No User Being Created");
     }
@@ -1048,6 +905,284 @@ export async function UpdateEmployeeBulkUpload(
     );
   }
 }
+
+// export async function UpdateEmployeeBulkUpload(
+//   data: CreateUserUploadExcel,
+//   user: User
+// ): Promise<any> {
+//   interface ExcelCreateEmployee {
+//     department_desc: string;
+//     cost_center: string;
+//     employee_id: string;
+//     employee_name: string;
+//     employee_category: string;
+//     eligble_subsidy: string;
+//     mifare_card_no: string;
+//   }
+//   let message: string = "";
+//   let status: number = 500;
+//   try {
+//     const { file } = data;
+
+//     var workbook = await ReadExcelFile(file);
+
+//     if (!workbook) {
+//       status = 400;
+//       throw Error("Workbook Cannot Generate");
+//     }
+
+//     const dataExcel = ExtractExcelData(headers, workbook);
+
+//     console.log("dataExcel==>", dataExcel[0].data);
+
+//     const employees: Partial<User[]> = (await GetUserMany({
+//       where: {},
+//       select: {
+//         user_id: true,
+//         employee_id: true,
+//         UserDetails: {
+//           select: {
+//             UserDetails_id: true,
+//           },
+//         },
+//       },
+//     })) as any;
+
+//     if (!employees) {
+//       status = 400;
+//       throw Error("No Employess Found");
+//     }
+
+//     if (dataExcel.length != employees.length) {
+//       status = 400;
+//       throw Error("There is Mismatch Data To Update Employees");
+//     }
+
+//     const departments: Partial<Department>[] = await GetDepartmentLists({
+//       where: {},
+//     });
+
+//     if (!departments || departments.length < 1) {
+//       status = 400;
+//       throw Error("No Departments Found");
+//     }
+
+//     const costCenters: Partial<CostCenter>[] = await GetCostCenterLists({
+//       where: {},
+//     });
+
+//     if (!costCenters || costCenters.length < 1) {
+//       status = 400;
+//       throw Error("No Value Stream Found");
+//     }
+
+//     const subsidyType: Partial<SubsidyType> = (await GetSubsidyTypeSingle({
+//       where: {
+//         subsidy_type_code: SubsidyTypeCode.meal,
+//       },
+//     })) as Partial<SubsidyType>;
+
+//     if (!subsidyType) {
+//       status = 400;
+//       throw Error("Subsidy Meal not Found");
+//     }
+
+//     const role: Partial<Role> = (await GetRoleSingle({
+//       where: {
+//         role_code: RoleCode.employee,
+//       },
+//     })) as Partial<Role>;
+
+//     if (!role) {
+//       status = 400;
+//       throw Error("Role not Found");
+//     }
+
+//     const employeeCategories: Partial<EmployeeCategory>[] =
+//       await GetEmployeeCategoryLists({
+//         where: {},
+//       });
+
+//     if (!employeeCategories || employeeCategories.length < 1) {
+//       status = 400;
+//       throw Error("Employee Category Not Found");
+//     }
+
+//     const updateUsers: UpdateUserUserDetails[] = [];
+
+//     dataExcel.map((items) => {
+//       items.data.map((data) => {
+//         const employee: ExcelCreateEmployee = {
+//           department_desc: String(data[columns.department_desc]).trim(),
+//           cost_center: String(data[columns.cost_center]).toLowerCase().trim(),
+//           employee_id: String(data[columns.employee_id]).trim(),
+//           employee_name: String(data[columns.employee_name])
+//             .toLowerCase()
+//             .trim(),
+//           employee_category: String(data[columns.employee_category])
+//             .toLowerCase()
+//             .trim(),
+//           eligble_subsidy: String(data[columns.eligble_subsidy])
+//             .toLowerCase()
+//             .trim(),
+//           mifare_card_no: String(data[columns.mifare_card_no]).trim(),
+//         };
+
+//         const selectedEmployee: Partial<User> = employees.find(
+//           (item) => item?.employee_id === employee.employee_id
+//         ) as Partial<User>;
+
+//         const checkDuplicate = updateUsers.findIndex(
+//           (users) => users.user.employee_id === employee.employee_id
+//         );
+
+//         if (checkDuplicate !== -1) {
+//           status = 400;
+//           throw new Error(
+//             `Duplicate Employee ID ${employee.employee_id} in Excel. Please Check at row for Employee ID ${employee.employee_id}`
+//           );
+//         }
+
+//         const skipKeys = ["mifare_card_no"]; // Keys to skip validation
+
+//         const isValid = Object.entries(employee).every(([key, value]) => {
+//           console.log("Key==>", key, "Value==>", value);
+//           if (skipKeys.includes(key)) {
+//             return true; // Skip validation for keys in the skipKeys array
+//           }
+//           return value !== null && value !== undefined && value !== "";
+//         });
+
+//         if (!isValid) {
+//           status = 400;
+//           throw new Error(
+//             `Validation error: Some fields are null, undefined, or empty at Employee ID ${employee.employee_id}`
+//           );
+//         }
+
+//         // Validate that no values are null or undefined
+//         // const isValid = Object.values(employee).every(
+//         //   (value) => value !== null && value !== undefined && value !== ""
+//         // );
+
+//         // Validate eligibility subsidy
+//         const validSubsidyValues = ["yes", "no"];
+//         if (!validSubsidyValues.includes(employee.eligble_subsidy)) {
+//           throw new Error(
+//             `Invalid eligble_subsidy value: ${employee.eligble_subsidy}. It must be 'yes' or 'no'.`
+//           );
+//         }
+
+//         const department: Partial<Department> | undefined = departments.find(
+//           (item) =>
+//             item.department_name?.toLocaleLowerCase() ===
+//             employee.department_desc?.toLocaleLowerCase()
+//         );
+
+//         if (!department) {
+//           status = 400;
+//           throw new Error(
+//             `No name Department ${employee.department_desc} in database. Please Check at row for Employee ID ${employee.employee_id}`
+//           );
+//         }
+
+//         const costcenter: Partial<CostCenter> | undefined = costCenters.find(
+//           (items) => items.cost_center_code === employee.cost_center
+//         );
+
+//         if (!costcenter) {
+//           status = 400;
+//           throw new Error(
+//             `No name Value Stream  ${employee.cost_center} in database. Please Check at row for Employee ID ${employee.employee_id}`
+//           );
+//         }
+
+//         const employeeCategory: Partial<EmployeeCategory> | undefined =
+//           employeeCategories.find(
+//             (items) =>
+//               items.employee_category_code ===
+//               employee.employee_category.toLocaleLowerCase()
+//           );
+
+//         if (!employeeCategory) {
+//           status = 400;
+//           throw new Error(
+//             `No name Employee Category ${employee.employee_category} in database. Please Check at row for Employee ID ${employee.employee_id}`
+//           );
+//         }
+
+//         const user: Partial<User> = {
+//           user_id: selectedEmployee.user_id || 0,
+//           employee_id: employee.employee_id,
+//           role_id: role.role_id,
+//           department_id: department.department_id,
+//           is_email_verified: true,
+//           is_acc_verify: true,
+//           active: true,
+//           employee_category_id: employeeCategory.employee_category_id,
+//           cost_center_id: costcenter.cost_center_id,
+//         };
+
+//         const userDetails: Partial<UserDetails> = {
+//           UserDetails_id:
+//             (selectedEmployee as any)?.UserDetails?.UserDetails_id || 0,
+//           name: employee.employee_name,
+//           user_id: selectedEmployee.user_id || 0,
+//           access_card_no: employee.mifare_card_no,
+//         };
+
+//         const SubsidyUser: Partial<Subsidy> = {
+//           subsidy_type_id: subsidyType.subsidy_type_id,
+//           user_id: 0,
+//           applicable: employee.eligble_subsidy === "yes" ? true : false,
+//         };
+
+//         const accessCard: Partial<AccessCard> = {
+//           card_value: employee.mifare_card_no,
+//         };
+
+//         if (!user?.user_id) {
+//           status = 400;
+//           throw `Employee ID ${user.employee_id} Not Exist`;
+//         }
+//         const createUser: UpdateUserUserDetails = {
+//           user_id: user?.user_id,
+//           user: user as User,
+//           userDetails: userDetails as UserDetails,
+//           subsidy: SubsidyUser as Subsidy,
+//           accessCard: accessCard as AccessCard,
+//         };
+
+//         updateUsers.push(createUser);
+//       });
+//     });
+
+//     const createUserCascade = await UpdateUserCascade({
+//       details: updateUsers,
+//     });
+
+//     if (!createUserCascade || createUserCascade.length !== updateUsers.length) {
+//       status = 400;
+//       throw Error("No User Being Created");
+//     }
+
+//     return NextResponse.json({
+//       message: "Successfully Create All Employees",
+//     });
+//   } catch (error: any) {
+//     // logger.error("Failed at CreateEmployeeBulkUpload function ===>", { error });
+
+//     console.error(error);
+//     return NextResponse.json(
+//       {
+//         message: error.message || message,
+//       },
+//       {
+//         status: error.statusCode || status,
+//       }
+//     );
+//   }
+// }
 
 //Deploy
 export async function UpdateEmployee(data: CreateUpdateUser) {
@@ -1229,6 +1364,7 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
       name: name.toLowerCase(),
       user_id: getUser.user_id,
       UserDetails_id: (getUser as any)?.UserDetails?.UserDetails_id,
+      access_card_no,
     };
 
     const getSubsidies: Subsidy[] = (getUser as any)?.subsidies as Subsidy[];
@@ -1427,7 +1563,6 @@ export async function ScanCheckEmployeeIDAuthService(
 
     await ScanEmployeeIDValidation({ employeeID: employee_id });
 
-    console.log("user_details===>", user_details);
     const checkCashier = await GetUserSingle({
       where: {
         user_id: user_details.user_id,
@@ -1443,69 +1578,73 @@ export async function ScanCheckEmployeeIDAuthService(
         "Transaction only can be done from Cashier In Checking Employee."
       );
     }
+    const accessCard: string = (employee_id || '');
 
-    const user = await GetUserSingle({
-      where: {
-        OR: [
-          { employee_id: employee_id },
-          {
-            access_cards: {
-              some: {
-                active: true,
-                card_value: employee_id,
+
+
+       const user: Partial<User> = await GetUserSingle({
+        where: {
+          OR: [
+            { employee_id: employee_id },
+            {
+              UserDetails: {
+                  access_card_no: accessCard,
               },
             },
+          ],
+          AND: [
+            {
+              // subsidies: {
+              //   some: {
+              //     applicable: true,
+              //   },
+              // },
+            },
+            {
+              subsidies: {
+                some: {
+                  active: true,
+                  subsidy_type: {
+                    subsidy_type_code: SubsidyTypeCode.meal,
+                  },
+                },
+              },
+            },
+          ],
+        },
+        select: {
+          user_id: true,
+          employee_id: true,
+          UserDetails: {
+            select: {
+              name: true,
+            },
           },
-        ],
-        AND: [
-          {
-            // subsidies: {
-            //   some: {
-            //     applicable: true,
-            //   },
-            // },
-          },
-          {
-            subsidies: {
-              some: {
-                active: true,
-                subsidy_type: {
-                  subsidy_type_code: SubsidyTypeCode.meal,
+          subsidies: {
+            select: {
+              subsidy_id: true,
+              start_date: true,
+              end_date: true,
+              applicable: true,
+              active: true,
+              subsidy_type: {
+                select: {
+                  subsidy_type_code: true,
                 },
               },
             },
           },
-        ],
-      },
-      select: {
-        user_id: true,
-        employee_id: true,
-        UserDetails: {
-          select: {
-            name: true,
-          },
         },
-        subsidies: {
-          select: {
-            subsidy_id: true,
-            start_date: true,
-            end_date: true,
-            applicable: true,
-            active: true,
-            subsidy_type: {
-              select: {
-                subsidy_type_code: true,
-              },
-            },
-          },
-        },
-      },
-    });
+      }) as Partial<User> ;
+    
+    
+
 
     if (!user) {
       status = 400;
       throw Error("Not Eligable For Subsidy Meal");
     }
+
 
     const { subsidies, ...withoutSubsidies } = user as any;
 
@@ -1544,11 +1683,9 @@ export async function ScanCheckEmployeeIDAuthService(
       }
     }
 
-    console.log("employee_id==>", employee_id);
 
-    console.log("User==>", user);
 
-    const subsidyCredit: Partial<SubsidyCredit> = (await GetSubsidyCreditSingle(
+    const subsidyCredit: Partial<SubsidyCredit> = await GetSubsidyCreditSingle(
       {
         where: {
           user_id: user?.user_id,
@@ -1556,19 +1693,28 @@ export async function ScanCheckEmployeeIDAuthService(
           active: true,
         },
       }
-    )) as Partial<SubsidyCredit>;
+    ) as Partial<SubsidyCredit>;
 
     if (!subsidyCredit) {
       status = 400;
       throw Error("No Subsidy Credit Found");
     }
 
-    return NextResponse.json({
+  
+    return {
+      status: 200,
       employee_id: user.employee_id,
       employee_name: (user as any)?.UserDetails?.name,
       available_credit: subsidyCredit.credit_amount,
       subsidyCreditUUID: subsidyCredit.uuid,
-    });
+    };
+
+    // return NextResponse.json({
+    //   employee_id: user.employee_id,
+    //   employee_name: (user as any)?.UserDetails?.name,
+    //   available_credit: subsidyCredit.credit_amount,
+    //   subsidyCreditUUID: subsidyCredit.uuid,
+    // });
   } catch (error: any) {
     // logger.error("Failed at ScanCheckEmployeeIDService function ===>", { error });
 
@@ -1619,10 +1765,9 @@ export async function ScanCheckEmployeeIDAuthSocketService(
         OR: [
           { employee_id: employee_id },
           {
-            access_cards: {
+            UserDetails: {
               some: {
-                active: true,
-                card_value: employee_id,
+                access_card_no: employee_id,
               },
             },
           },
@@ -1759,6 +1904,8 @@ export async function GetDownloadExcelEmployeeDetails() {
     const HEADER_ORDER_LIST: string[][] = [headers];
 
     const users = await GetUserRawQuery();
+
+    console.log("users==>", users);
 
     const writeExcel = ConvertExcel(HEADER_ORDER_LIST, users);
 

@@ -5,7 +5,7 @@ import {
 } from "@/_Common/interface/auth.interface";
 import { SignInSocketService } from "../auth/service/auth.service";
 import { JWTDecode } from "../auth/model/auth.model";
-import { ScanCheckEmployeeIDAuthSocketService } from "../user/service/user.service";
+import { ScanCheckEmployeeIDAuthService, ScanCheckEmployeeIDAuthSocketService } from "../user/service/user.service";
 import { SubsidySubmitPrice } from "@/_Common/interface/subsidy.interface";
 import { CreateSubsidyTransactionServiceSocketAuth } from "../subsidy/service/subsidy.service";
 
@@ -42,7 +42,7 @@ export default async function SocketRoute(
 
         const { user } = auth as JWTDecodeInterface;
 
-        return ScanCheckEmployeeIDAuthSocketService({ employeeID }, user);
+        return ScanCheckEmployeeIDAuthService({ employeeID }, user);
       }
 
       case StatusAPICode.CREATE_SUBMIT_SUBSIDY_TRANSACTION_AUTH: {

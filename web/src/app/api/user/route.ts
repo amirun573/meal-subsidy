@@ -16,7 +16,6 @@ import {
   ScanCheckEmployeeIDAuthService,
   ScanCheckEmployeeIDService,
   UpdateEmployee,
-  UpdateEmployeeBulkUpload,
   UpdateStatusEmployeeService,
   UserPaginationService,
   GetDownloadExcelEmployeeDetails,
@@ -147,7 +146,14 @@ export async function GET(req: any, res: any) {
           throw Error("No User Found.");
         }
 
-        return ScanCheckEmployeeIDAuthService({ employeeID }, user);
+        const employee: any = await ScanCheckEmployeeIDAuthService({ employeeID }, user) as any;
+
+        return NextResponse.json({
+          employee_id: (employee as any)?.employee_id,
+          employee_name: (employee as any)?.employee_name,
+          available_credit: (employee as any).available_credit,
+          subsidyCreditUUID: (employee as any).subsidyCreditUUID,
+        });
       }
 
       default: {
@@ -170,7 +176,7 @@ export async function GET(req: any, res: any) {
   }
 }
 
-export async function POST(req: any, res: any) {
+export async function POST(req: any, res: any): Promise<any> {
   let statusCode: number = 500;
   try {
     let body: any = await GetBodyData(req);
@@ -271,30 +277,30 @@ export async function POST(req: any, res: any) {
           return GetDownloadExcelEmployeeDetails();
         }
 
-        case StatusAPICode.UPLOAD_UPDATE_EXCEL_EMPLOYEE_CREATE: {
-          const data: CreateUserUploadExcel = body as CreateUserUploadExcel;
+        // case StatusAPICode.UPLOAD_UPDATE_EXCEL_EMPLOYEE_CREATE: {
+        //   const data: CreateUserUploadExcel = body as CreateUserUploadExcel;
 
-          if (!user) {
-            statusCode = 401;
-            throw Error(`Unaunthorized Detected.`);
-          }
+        //   if (!user) {
+        //     statusCode = 401;
+        //     throw Error(`Unaunthorized Detected.`);
+        //   }
 
-          const user_features: UserFeatures[] = (user as any)
-            ?.user_features as UserFeatures[];
+        //   const user_features: UserFeatures[] = (user as any)
+        //     ?.user_features as UserFeatures[];
 
-          const checkFeature: boolean = await CheckFeatureAllowed({
-            user_features,
-            action: ActionEnableFeature.WRITE,
-            feature_code: feature_code_employee_details,
-          });
+        //   const checkFeature: boolean = await CheckFeatureAllowed({
+        //     user_features,
+        //     action: ActionEnableFeature.WRITE,
+        //     feature_code: feature_code_employee_details,
+        //   });
 
-          if (!checkFeature) {
-            statusCode = 400;
-            throw Error(`Unaunthorized Action For ${user.employee_id}`);
-          }
+        //   if (!checkFeature) {
+        //     statusCode = 400;
+        //     throw Error(`Unaunthorized Action For ${user.employee_id}`);
+        //   }
 
-          return UpdateEmployeeBulkUpload(data, user);
-        }
+        //   return UpdateEmployeeBulkUpload(data, user);
+        // }
 
         default: {
           throw Error("No Code Found");

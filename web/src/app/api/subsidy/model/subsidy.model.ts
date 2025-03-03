@@ -515,51 +515,70 @@ export async function CreateSubsidyCreditMany(object: {
     return [];
   }
 }
-async function UpdateSubsidiesInBulk(
-  subsidies: Subsidy[],
-  prismaTransaction?: any
-) {
+export async function UpdateSubsidiesInBulk(data: {
+  subsidies: Subsidy[];
+  prismaTransaction?: any;
+}):Promise<number> {
   try {
-    let amountCase = "CASE ";
-    let subsidyIds: any = [];
+    const { subsidies, prismaTransaction } = data;
+    const setClauses: string[] = [];
+    const values: any[] = [];
+    const subsidyIds: number[] = subsidies.map((s) => s.subsidy_id);
 
-    // Generate CASE statements for `active` and `amount`
-    subsidies.forEach((subsidy) => {
-      amountCase += `WHEN "subsidy_id" = ${subsidy.subsidy_id} THEN ${subsidy.amount} `;
-      subsidyIds.push(subsidy.subsidy_id);
-    });
+    const fieldsToUpdate = [
+      "subsidy_type_id",
+      "applicable",
+      "start_date",
+      "end_date",
+      "active",
+      "amount",
+      "user_id",
+    ];
 
-    // Close the CASE statements
-    amountCase += "END";
+    for (const field of fieldsToUpdate) {
+      const cases: string[] = [];
+      subsidies.forEach((subsidy: any) => {
+        if (subsidy[field] !== undefined) {
+          cases.push(`WHEN "subsidy_id" = $${values.length + 1} THEN $${values.length + 2}`);
+          values.push(subsidy.subsidy_id, subsidy[field]);
+        }
+      });
 
-    // Convert the subsidy IDs array to a string for the WHERE clause
-    const subsidyIdsString = subsidyIds.join(", ");
+      if (cases.length > 0) {
+        setClauses.push(`"${field}" = CASE ${cases.join(" ")} ELSE "${field}" END`);
+      }
+    }
 
-    // Construct the final query
+    // Ensure there's something to update
+    if (setClauses.length === 0) {
+      console.warn("No valid updates found");
+      return 0;
+    }
+
+    // Construct final query
     const query = `
-    UPDATE "Subsidy"
-    SET 
-      "amount" = ${amountCase},
-      "updated_at" = NOW()
-    WHERE "subsidy_id" IN (${subsidyIdsString});
-  `;
+      UPDATE "Subsidy"
+      SET ${setClauses.join(", ")}, "updated_at" = NOW()
+      WHERE "subsidy_id" IN (${subsidyIds.map((_, index) => `$${values.length + index + 1}`).join(", ")});
+    `;
+
+    values.push(...subsidyIds);
 
     // Execute the query
-
-    let result: any;
+    let result: number;
     if (!prismaTransaction) {
-      result = await prisma.$executeRawUnsafe(query); // Using `executeRawUnsafe` for dynamic raw SQL
+      result = await prisma.$executeRawUnsafe(query, ...values);
     } else {
-      result = await prismaTransaction.$executeRawUnsafe(query); // Using `executeRawUnsafe` for dynamic raw SQL
+      result = await prismaTransaction.$executeRawUnsafe(query, ...values);
     }
 
     return result;
-
-    console.log(`Update result:`, result);
-  } catch (e: any) {
+  } catch (e) {
     console.error(e);
+    return 0;
   }
 }
+
 
 export async function TriggerSubsidyCreditCascade(data: {
   subsidies: Subsidy[];
@@ -577,7 +596,7 @@ export async function TriggerSubsidyCreditCascade(data: {
           throw Error("Failed to Flush Subsidy Credit");
         }
 
-        const updateSubsidy = await UpdateSubsidiesInBulk(subsidies);
+        const updateSubsidy = await UpdateSubsidiesInBulk({ subsidies });
 
         if (!updateSubsidy) {
           throw Error("Failed To Update Subsidy");
@@ -757,7 +776,6 @@ export async function UpdateSubsidyCascade(data: { subsidy: Subsidy }) {
         if (!subsidyTransaction) {
           throw Error("Failed at Subsidy Transaction");
         }
-
 
         return subsidyTransaction;
       },

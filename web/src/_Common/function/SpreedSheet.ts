@@ -13,20 +13,16 @@ export function ExtractExcelData(
   const excelInfo: Array<ExtractExcelInterface> = [];
 
   workbook.SheetNames.map((sheetName) => {
-
     const sheet = workbook.Sheets[sheetName];
     const data: any = utils.sheet_to_json(sheet, {
       defval: ExcelCharacterisitics.defval,
     });
-
-
 
     if (data.length <= 0) {
       throw Error("No Data Inside Excel");
     }
 
     headers.map((header) => {
-
       const checkHeader = _.map(data, header);
 
       if (typeof head(checkHeader) == "undefined" || checkHeader.length <= 0) {
