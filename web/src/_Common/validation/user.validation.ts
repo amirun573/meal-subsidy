@@ -47,6 +47,7 @@ const CreateUpdateEmployeeValidationSchema = yup.object().shape({
     .string()
     .required("Subsidy Meal Applicable is required")
     .oneOf(["yes", "no"], "Subsidy Meal Applicable must be 'yes' or 'no'"),
+  uuid: yup.string().required("UUID is required"),
 });
 
 const UpdateEmployeeStatusValidationSchema = yup.object().shape({

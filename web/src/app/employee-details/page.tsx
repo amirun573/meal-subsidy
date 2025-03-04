@@ -83,6 +83,7 @@ const EmployeeDetailsPage = () => {
         cost_center_code: '',
         access_card_no: '',
         subsidy_meal_applicable: 'yes',
+        uuid: ''
     }
     const [initializeSubmitDetails, setInitializeSubmitDetails] = useState<CreateUpdateUser>(initial);
 
@@ -1541,7 +1542,8 @@ const EmployeeDetailsPage = () => {
                 access_card_no: employee.access_card_no,
                 subsidy_meal_applicable: employee.is_meal_subsidiry_active ? 'yes' : 'no',
                 start_date: employee.start_date,
-                end_date: employee.end_date
+                end_date: employee.end_date,
+                uuid: employee?.uuid
             }
 
             console.log("updateEmployee===>", updateEmployee);
