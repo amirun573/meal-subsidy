@@ -14,6 +14,9 @@ const PasswordHashing = () => {
     const [inputBuffer, setInputBuffer] = useState<string>('');
     const cardReaderThreshold = 50; // Threshold for differentiating card reader input from manual input (in ms)
     const inputRef = useRef<HTMLInputElement>(null);
+    const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
+    const isPasting = useRef(false); // Ref to track if pasting is occurring
+    const [finishPasting, setFinishPasting] = useState<boolean>(false);
 
     // Automatically focus the input field when the page loads
     useEffect(() => {
@@ -29,8 +32,25 @@ const PasswordHashing = () => {
 
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setPassword(e.target.value);
+        const value = e.target.value;
+        setPassword(value);
+
+        // Clear previous timeout
+        if (typingTimeout) clearTimeout(typingTimeout);
+
+        // Set a new timeout to trigger when pasting/input stops
+        const timeout = setTimeout(() => {
+            setHashingPassword(ExtractCardNumber(value)); // Assign after 5 seconds
+                isPasting.current = false;
+                setFinishPasting(true);
+            // You can process the card ID here (e.g., send request)
+        }, 300); // Adjust delay based on card reader speed
+
+        setTypingTimeout(timeout);
     };
+    // const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    //     setPassword(e.target.value);
+    // };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         const currentTime = Date.now();
@@ -67,13 +87,11 @@ const PasswordHashing = () => {
         try {
             if (cardData) {
                 // Perform validation or processing of cardData here
-                console.log('Card Data:', cardData);
 
                 setPassword(cardData); // Update the password input field
 
                 const decryptCard = ExtractCardNumber(cardData);
 
-                console.log("decryptCard==>", decryptCard);
                 setHashingPassword(decryptCard);
 
             }
@@ -87,7 +105,6 @@ const PasswordHashing = () => {
 
     const handleConvert = () => {
 
-        console.log(password);
         if (password) {
             setHashingPassword(() => {
                 const newHashingPassword = ExtractCardNumber(password);
