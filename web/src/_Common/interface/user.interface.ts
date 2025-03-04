@@ -34,6 +34,7 @@ export interface CreateUpdateUser {
 
   start_date?: string;
   end_date?: string;
+  uuid: string;
 }
 
 export interface CreateUserUploadExcel {

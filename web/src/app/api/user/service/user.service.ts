@@ -76,7 +76,10 @@ import { FileMimeType } from "@/_Common/enum/file-type.enum";
 // import logger from "../../../../../libs/winston";
 import { ConvertExcel } from "@/_Common/function/SpreedSheet";
 import { GetUserFeaturesSingle } from "../../feature/model/feature.model";
-import { ConvertToFiveDigits, ExtractCardNumber } from "@/_Common/function/Card";
+import {
+  ConvertToFiveDigits,
+  ExtractCardNumber,
+} from "@/_Common/function/Card";
 
 const columns = {
   department_desc: "Department Desc",
@@ -98,7 +101,6 @@ const headers = [
   columns.eligble_subsidy,
   columns.access_card,
   columns.uuid,
-
 ];
 
 export async function UserPaginationService(data: UserPaginationRequest) {
@@ -801,7 +803,6 @@ export async function CreateEmployeeBulkUpload(
           (user) => user.uuid === employee.uuid
         );
 
-
         if (userIndex !== -1 && users[userIndex]?.user_id) {
           if (
             users[userIndex].user_id !== undefined &&
@@ -834,12 +835,13 @@ export async function CreateEmployeeBulkUpload(
             accessCard.user_id = user_id;
 
             const accessCardUpdate: Partial<AccessCard>[] = [];
-            const access_card_validate = ((users as any)[userIndex]?.access_cards as AccessCard[]) ?? [];
-            
+            const access_card_validate =
+              ((users as any)[userIndex]?.access_cards as AccessCard[]) ?? [];
+
             const accessCardIndex = access_card_validate.findIndex(
               (accessCard) => accessCard.card_value === employee.access_card
             );
-            
+
             // If access card exists, deactivate all and update
             if (accessCardIndex !== -1) {
               if (access_card_validate.length > 0) {
@@ -850,7 +852,7 @@ export async function CreateEmployeeBulkUpload(
                 });
               }
             }
-            
+
             // If there is no access card at all, create a new one
             if (access_card_validate.length === 0) {
               if (employee.access_card && employee.access_card.trim() !== "") {
@@ -862,10 +864,9 @@ export async function CreateEmployeeBulkUpload(
               }
             }
 
-            UpdateUsersDetails.accessCard = accessCardUpdate
+            UpdateUsersDetails.accessCard = accessCardUpdate;
 
             updateUsers.push(UpdateUsersDetails);
-
           } else {
             createUsers.push(createUser);
           }
@@ -874,7 +875,6 @@ export async function CreateEmployeeBulkUpload(
         }
       });
     });
-
 
     const createUpdateUserCascade: boolean = await CreateUpdateUserCascade({
       create: createUsers,
@@ -1205,11 +1205,12 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
       subsidy_meal_applicable,
       start_date,
       end_date,
+      uuid,
     } = data;
 
     const getUser: Partial<User> | null = await GetUserSingle({
       where: {
-        employee_id,
+        uuid,
         subsidies: {
           some: {
             active: true,
@@ -1349,7 +1350,7 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
     const user: Partial<User> = {
       user_id: getUser.user_id,
       email: email ? email : null,
-      // employee_id,
+      employee_id,
       password_hash: hashpassword,
       role_id: role.role_id,
       department_id: department.department_id,
@@ -1578,73 +1579,67 @@ export async function ScanCheckEmployeeIDAuthService(
         "Transaction only can be done from Cashier In Checking Employee."
       );
     }
-    const accessCard: string = (employee_id || '');
+    const accessCard: string = employee_id || "";
 
-
-
-       const user: Partial<User> = await GetUserSingle({
-        where: {
-          OR: [
-            { employee_id: employee_id },
-            {
-              UserDetails: {
-                  access_card_no: accessCard,
-              },
-            },
-          ],
-          AND: [
-            {
-              // subsidies: {
-              //   some: {
-              //     applicable: true,
-              //   },
-              // },
-            },
-            {
-              subsidies: {
-                some: {
-                  active: true,
-                  subsidy_type: {
-                    subsidy_type_code: SubsidyTypeCode.meal,
-                  },
-                },
-              },
-            },
-          ],
-        },
-        select: {
-          user_id: true,
-          employee_id: true,
-          UserDetails: {
-            select: {
-              name: true,
+    const user: Partial<User> = (await GetUserSingle({
+      where: {
+        OR: [
+          { employee_id: employee_id },
+          {
+            UserDetails: {
+              access_card_no: accessCard,
             },
           },
-          subsidies: {
-            select: {
-              subsidy_id: true,
-              start_date: true,
-              end_date: true,
-              applicable: true,
-              active: true,
-              subsidy_type: {
-                select: {
-                  subsidy_type_code: true,
+        ],
+        AND: [
+          {
+            // subsidies: {
+            //   some: {
+            //     applicable: true,
+            //   },
+            // },
+          },
+          {
+            subsidies: {
+              some: {
+                active: true,
+                subsidy_type: {
+                  subsidy_type_code: SubsidyTypeCode.meal,
                 },
               },
             },
           },
+        ],
+      },
+      select: {
+        user_id: true,
+        employee_id: true,
+        UserDetails: {
+          select: {
+            name: true,
+          },
         },
-      }) as Partial<User> ;
-    
-    
-
+        subsidies: {
+          select: {
+            subsidy_id: true,
+            start_date: true,
+            end_date: true,
+            applicable: true,
+            active: true,
+            subsidy_type: {
+              select: {
+                subsidy_type_code: true,
+              },
+            },
+          },
+        },
+      },
+    })) as Partial<User>;
 
     if (!user) {
       status = 400;
       throw Error("Not Eligable For Subsidy Meal");
     }
-
 
     const { subsidies, ...withoutSubsidies } = user as any;
 
@@ -1683,9 +1678,7 @@ export async function ScanCheckEmployeeIDAuthService(
       }
     }
 
-
-
-    const subsidyCredit: Partial<SubsidyCredit> = await GetSubsidyCreditSingle(
+    const subsidyCredit: Partial<SubsidyCredit> = (await GetSubsidyCreditSingle(
       {
         where: {
           user_id: user?.user_id,
@@ -1693,14 +1686,13 @@ export async function ScanCheckEmployeeIDAuthService(
           active: true,
         },
       }
-    ) as Partial<SubsidyCredit>;
+    )) as Partial<SubsidyCredit>;
 
     if (!subsidyCredit) {
       status = 400;
       throw Error("No Subsidy Credit Found");
     }
 
-  
     return {
       status: 200,
       employee_id: user.employee_id,
