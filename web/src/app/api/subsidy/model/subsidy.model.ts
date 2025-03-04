@@ -409,7 +409,8 @@ export async function GetFilteredTransactions(data: {
         cc.cost_center_code AS "cost_center_code",
         ec.employee_category_name AS "employee_category_name",
         st.credit_used AS "credit_used",
-        TO_CHAR(st.transaction_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kuala_Lumpur', 'YYYY-MM-DD HH24:MI:SS') AS "transaction_at",
+        TO_CHAR(st.transaction_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kuala_Lumpur', 'YYYY-MM-DD') AS "transaction_date",
+        TO_CHAR(st.transaction_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kuala_Lumpur', 'HH24:MI:SS') AS "transaction_time",
         UPPER(cud.name) AS "created_by_name"
     FROM
         "SubsidyTransaction" st

@@ -28,14 +28,14 @@ export const ConnectivityDetector: React.FC<ConnectivityDetectorProps> = ({ onSt
     useEffect(() => {
         // Function to check online status
         const handleOnline = () => {
-            console.log("You are online");
+            // console.log("You are online");
             setIsOnline(true);
             onStatusChange(true); // Pass online status to parent
             checkServerConnection(); // Check server connection when online
         };
 
         const handleOffline = () => {
-            console.log("You are offline");
+            // console.log("You are offline");
             setIsOnline(false);
             onStatusChange(false); // Pass offline status to parent
         };
@@ -44,7 +44,7 @@ export const ConnectivityDetector: React.FC<ConnectivityDetectorProps> = ({ onSt
         if (typeof navigator !== 'undefined') {
             setIsOnline(navigator.onLine);
             onStatusChange(navigator.onLine); // Pass initial status to parent
-            console.log("Initial online status:", navigator.onLine);
+            // console.log("Initial online status:", navigator.onLine);
             if (navigator.onLine) {
                 checkServerConnection(); // Check server connection if online
             }
@@ -101,10 +101,10 @@ export const InternetDetector: React.FC<InternetDetectorProps> = ({ onInternetSt
             const onlineStatus = response.ok;
             setIsOnline(onlineStatus); // Update isOnline state based on response
             onInternetStatusChange(onlineStatus); // Notify parent of status
-            console.log(onlineStatus ? "Internet access is available." : "No internet access.");
+            // console.log(onlineStatus ? "Internet access is available." : "No internet access.");
             return onlineStatus;
         } catch (error) {
-            console.log("No internet access.");
+            // console.log("No internet access.");
             setIsOnline(false); // Update isOnline state to false if there’s an error
             onInternetStatusChange(false); // Notify parent of offline status
             return false;
@@ -121,7 +121,7 @@ export const InternetDetector: React.FC<InternetDetectorProps> = ({ onInternetSt
         // Event listeners for online/offline changes
         const handleOnline = () => checkInternetAccess();
         const handleOffline = () => {
-            console.log("You are offline");
+            // console.log("You are offline");
             setIsOnline(false);
             onInternetStatusChange(false); // Notify parent of offline status
         };

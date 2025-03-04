@@ -729,7 +729,8 @@ export async function DownloadReportSubsidyTransaction(
         "Value Stream",
         "Employee Category Name",
         "Credit Used (RM)",
-        "Transaction At",
+        "Transaction Date",
+        "Transaction Time",
         "Cashier In Charged",
       ],
     ];

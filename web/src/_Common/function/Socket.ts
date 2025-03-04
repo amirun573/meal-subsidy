@@ -22,12 +22,12 @@ export const useSocket = () => {
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
-      console.log("Connected to Socket.IO server");
+      // console.log("Connected to Socket.IO server");
       setIsConnected(true); // Update connection status
     });
 
     newSocket.on("disconnect", (reason) => {
-      console.log("Disconnected:", reason);
+      // console.log("Disconnected:", reason);
       setIsConnected(false); // Update connection status
       if (reason === "io server disconnect") {
         newSocket.connect();
@@ -35,17 +35,17 @@ export const useSocket = () => {
     });
 
     newSocket.on("message", (newMessage: string) => {
-      console.log("New message received:", newMessage);
+      // console.log("New message received:", newMessage);
       setMessages((prevMessages) => [...prevMessages, newMessage]);
     });
 
     const handleOnline = () => {
-      console.log("Back online. Attempting to reconnect...");
+      // console.log("Back online. Attempting to reconnect...");
       newSocket.connect();
     };
 
     const handleOffline = () => {
-      console.log("You are offline. Please check your connection.");
+      // console.log("You are offline. Please check your connection.");
     };
 
     window.addEventListener("online", handleOnline);
@@ -61,14 +61,14 @@ export const useSocket = () => {
   const sendMessage = async (message: string): Promise<any> => {
     return new Promise((resolve, reject) => {
       if (message.trim() && socket) {
-        console.log("Sending message:", message);
+        // console.log("Sending message:", message);
         socket.emit("clientMessage", message, (response: any) => {
           try {
-            console.log("Server response:", response); // Log the raw response
+            // console.log("Server response:", response); // Log the raw response
 
             const parsedResponse = JSON.parse(response); // Parse the response
 
-            console.log("Server parsedResponse:", parsedResponse); // Log the raw response
+            // console.log("Server parsedResponse:", parsedResponse); // Log the raw response
 
             const { status, ...data } = parsedResponse;
 
@@ -83,7 +83,7 @@ export const useSocket = () => {
               }
             }
           } catch (error) {
-            console.error("Error parsing server response:", error);
+            // console.error("Error parsing server response:", error);
             reject(error); // Reject the promise on error
           }
         });

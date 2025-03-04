@@ -50,6 +50,9 @@ const ScanPage = () => {
     const cardReaderThreshold = 50;
     const inputRef = useRef<HTMLInputElement>(null);
     const [inputBuffer, setInputBuffer] = useState<string>('');
+
+    const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
+
     // Automatically focus the input field when the page loads
     useEffect(() => {
         if (inputRef.current) {
@@ -67,12 +70,10 @@ const ScanPage = () => {
         try {
             if (cardData) {
                 // Perform validation or processing of cardData here
-                console.log('Card Data:', cardData);
 
 
                 const decryptCard = ExtractCardNumber(cardData);
 
-                console.log("decryptCard==>", decryptCard);
                 setEmployeeId(decryptCard); // Update the password input field
                 setFinishPasting(true);
 
@@ -147,7 +148,6 @@ const ScanPage = () => {
         try {
             const employeeID = String(event?.target?.value || event); // Ensure value is string
 
-            console.log("employee ID", employeeID);
             if (employeeID) {
 
 
@@ -222,7 +222,6 @@ const ScanPage = () => {
             }
 
         } catch (error) {
-            console.error("Error occurred:", error);
             DisplayAlert(error); // Make sure this doesn't block code execution
         } finally {
             // This should always execute regardless of error
@@ -313,7 +312,6 @@ const ScanPage = () => {
             // Card reader input (debounced)
             if (e.key === 'Enter') {
                 e.preventDefault();
-                console.log("Card reader detected, processing buffer:", inputBuffer);
 
                 setEmployeeId(inputBuffer);
                 debouncedHandleCardInput(inputBuffer); // Debounced call
@@ -325,9 +323,7 @@ const ScanPage = () => {
             // Manual input (instant execution)
             if (e.key === 'Enter') {
                 e.preventDefault();
-                console.log("Manual input Enter pressed, processing buffer:", inputBuffer);
                 setEmployeeId(inputBuffer); // Schedules state update
-                console.log("Employee ID:", inputBuffer); // ✅ Use inputBuffer directly
                 setInputBuffer(''); // Clear buffer
                  await handleEmployeeID(inputBuffer as any)
             }
@@ -533,18 +529,17 @@ const ScanPage = () => {
 
     const HandlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
         try {
+
             e.preventDefault(); // Prevent default paste behavior
             isPasting.current = true;
 
             const pastedText = e.clipboardData.getData("text").trim();
             setPastedValue(pastedText); // Store in temporary state
 
-            console.log("Pasting detected, waiting 5 seconds before assigning...");
 
             // Delay assignment for 5 seconds
             setTimeout(() => {
                 setEmployeeId(ExtractCardNumber(pastedText)); // Assign after 5 seconds
-                console.log("Pasted value assigned to employeeId:", ExtractCardNumber(pastedText));
                 isPasting.current = false;
                 setFinishPasting(true);
             }, 5); // 5-second delay
@@ -555,8 +550,21 @@ const ScanPage = () => {
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        console.log("jererererer")
-        setEmployeeId(e.target.value);
+        const value = e.target.value;
+        setEmployeeId(value);
+
+        // Clear previous timeout
+        if (typingTimeout) clearTimeout(typingTimeout);
+
+        // Set a new timeout to trigger when pasting/input stops
+        const timeout = setTimeout(() => {
+            setEmployeeId(ExtractCardNumber(value)); // Assign after 5 seconds
+                isPasting.current = false;
+                setFinishPasting(true);
+            // You can process the card ID here (e.g., send request)
+        }, 300); // Adjust delay based on card reader speed
+
+        setTypingTimeout(timeout);
     };
 
     const handleInternetStatusChange = (status: boolean) => {

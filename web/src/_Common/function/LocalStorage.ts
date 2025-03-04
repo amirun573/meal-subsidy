@@ -16,7 +16,6 @@ export async function SetUserDetailsLocalStoage(data: UserDetailsLocalStorage) {
 
 export async function HandleUnAuthorized(error: any): Promise<boolean> {
   try {
-    console.log("Error==>", error);
     if (error?.response?.status === 401 || !error) {
       // Sign out the user
       localStorage.removeItem("userDetails");
@@ -47,7 +46,6 @@ export async function GetLocalStorageDetails(): Promise<
     ) as UserDetailsLocalStorage;
     return userDetailsLocalStorage;
   } catch (error: any) {
-    console.log(error);
     return false;
   }
 }
