@@ -62,7 +62,7 @@ const ScanPage = () => {
     }, []);
 
     useEffect(() => {
-        if (inputBuffer) {
+        if (inputBuffer || typeof(inputBuffer) === 'string') {
             setEmployeeId(inputBuffer); // Ensure `employeeId` updates when `inputBuffer` changes
         }
     }, [inputBuffer]);
