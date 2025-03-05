@@ -52,6 +52,7 @@ const ScanPage = () => {
     const [inputBuffer, setInputBuffer] = useState<string>('');
 
     const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
+    const waitingForEnter = useRef<boolean>(false);
 
     // Automatically focus the input field when the page loads
     useEffect(() => {
@@ -59,6 +60,12 @@ const ScanPage = () => {
             inputRef.current.focus();
         }
     }, []);
+
+    useEffect(() => {
+        if (inputBuffer) {
+            setEmployeeId(inputBuffer); // Ensure `employeeId` updates when `inputBuffer` changes
+        }
+    }, [inputBuffer]);
 
     const debouncedHandleCardInput = debounce((buffer: string) => {
         handleCardInput(buffer);
@@ -303,35 +310,7 @@ const ScanPage = () => {
     //     lastKeyPressTime.current = currentTime;
     // };
 
-    const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-        const currentTime = Date.now();
-        const timeDifference = lastKeyPressTime.current ? currentTime - lastKeyPressTime.current : null;
-        lastKeyPressTime.current = currentTime;
 
-        if (timeDifference !== null && timeDifference < cardReaderThreshold) {
-            // Card reader input (debounced)
-            if (e.key === 'Enter') {
-                e.preventDefault();
-
-                setEmployeeId(inputBuffer);
-                debouncedHandleCardInput(inputBuffer); // Debounced call
-                setInputBuffer(''); // Clear buffer
-            } else {
-                setInputBuffer(prevBuffer => prevBuffer + e.key);
-            }
-        } else {
-            // Manual input (instant execution)
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                setEmployeeId(inputBuffer); // Schedules state update
-                setInputBuffer(''); // Clear buffer
-                 await handleEmployeeID(inputBuffer as any)
-            }
-             else {
-                setInputBuffer(prevBuffer => prevBuffer + e.key);
-            }
-        }
-    };
 
 
 
@@ -549,7 +528,10 @@ const ScanPage = () => {
         }
     };
 
+    //This function is using for HID Card reader
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (waitingForEnter.current) return; // ❌ Ignore manual typing (handled in handleKeyDown)
+
         const value = e.target.value;
         setEmployeeId(value);
 
@@ -558,14 +540,56 @@ const ScanPage = () => {
 
         // Set a new timeout to trigger when pasting/input stops
         const timeout = setTimeout(() => {
-            setEmployeeId(ExtractCardNumber(value)); // Assign after 5 seconds
-                isPasting.current = false;
-                setFinishPasting(true);
-            // You can process the card ID here (e.g., send request)
-        }, 300); // Adjust delay based on card reader speed
+            setEmployeeId(ExtractCardNumber(value)); // Process pasted input
+            isPasting.current = false;
+            setFinishPasting(true);
+        }, 300);
 
         setTypingTimeout(timeout);
     };
+
+
+    const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+        const currentTime = Date.now();
+        const timeDifference = lastKeyPressTime.current ? currentTime - lastKeyPressTime.current : null;
+        lastKeyPressTime.current = currentTime;
+
+        if (timeDifference !== null && timeDifference < 100) {
+            // Card Reader Input (debounced)
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                setEmployeeId(inputBuffer);
+                debouncedHandleCardInput(inputBuffer);
+                setInputBuffer(""); // Clear buffer after processing
+            } else if (e.key === "Backspace") {
+                setInputBuffer((prevBuffer) => (prevBuffer.length > 1 ? prevBuffer.slice(0, -1) : ""));
+            } else {
+                setInputBuffer((prevBuffer) => prevBuffer + e.key);
+            }
+        } else {
+            // Manual Input Mode
+            if (!waitingForEnter.current) {
+                waitingForEnter.current = true; // Start tracking manual typing
+                setInputBuffer(""); // Reset buffer when user starts typing
+            }
+
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleEmployeeID(inputBuffer as any);
+                setInputBuffer(""); // Clear buffer after processing
+                waitingForEnter.current = false; // Reset after processing
+            } else if (e.key === "Backspace") {
+                setInputBuffer((prevBuffer) => (prevBuffer.length <= 1 ? "" : prevBuffer.slice(0, -1)));
+            } else if (e.key.length === 1) { // Prevent non-character keys from affecting input
+                setInputBuffer((prevBuffer) => prevBuffer + e.key);
+            }
+        }
+    };
+
+
+
+
+
 
     const handleInternetStatusChange = (status: boolean) => {
         setInternet(status); // Update the online status
