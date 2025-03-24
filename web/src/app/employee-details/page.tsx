@@ -83,7 +83,7 @@ const EmployeeDetailsPage = () => {
         cost_center_code: '',
         access_card_no: '',
         subsidy_meal_applicable: 'yes',
-        uuid: ''
+        uuid: '--'
     }
     const [initializeSubmitDetails, setInitializeSubmitDetails] = useState<CreateUpdateUser>(initial);
 
@@ -395,7 +395,6 @@ const EmployeeDetailsPage = () => {
 
             try {
 
-                console.log("Name==>", name, ".Value==>", value);
                 setSubmitDetails(prevState => ({
                     ...prevState,
                     [name]: value
@@ -438,12 +437,10 @@ const EmployeeDetailsPage = () => {
 
                 if (submitDetails.start_date) {
 
-                    console.log("Start Date==>", HandleDateTimeFormatClientToAPI(submitDetails.start_date));
                     submitDetails.start_date = HandleDateTimeFormatClientToAPI(submitDetails.start_date);
                 }
 
                 if (submitDetails.end_date) {
-                    console.log("End Date==>", HandleDateTimeFormatClientToAPI(submitDetails.end_date));
 
                     submitDetails.end_date = HandleDateTimeFormatClientToAPI(submitDetails.end_date);
                 }
@@ -1016,11 +1013,9 @@ const EmployeeDetailsPage = () => {
                     return;
                 }
 
-                console.log("event.target.files===>", file);
                 setSelectedFile(file);
 
                 // Proceed with handling the file
-                console.log('File is valid:', file);
                 // Add your file processing logic here
 
 
@@ -1053,7 +1048,6 @@ const EmployeeDetailsPage = () => {
                 });
 
                 // Handle the response
-                console.log('File uploaded successfully:', response.data);
                 alert(`File ${selectedFile.name} uploaded successfully!`);
 
                 // Close the modal and reset the file
@@ -1156,11 +1150,9 @@ const EmployeeDetailsPage = () => {
                     return;
                 }
 
-                console.log("event.target.files===>", file);
                 setSelectedFile(file);
 
                 // Proceed with handling the file
-                console.log('File is valid:', file);
                 // Add your file processing logic here
 
 
@@ -1193,7 +1185,6 @@ const EmployeeDetailsPage = () => {
                 });
 
                 // Handle the response
-                console.log('File uploaded successfully:', response.data);
                 alert(`File ${selectedFile.name} uploaded successfully!`);
 
                 // Close the modal and reset the file
@@ -1349,7 +1340,6 @@ const EmployeeDetailsPage = () => {
                         subsidy_uuid: employeeDetails.subsidy_uuid,
                     }
 
-                    console.log("data==>", data);
 
                     await UpdateSubsidyCreditRealTimeValidation(data);
 
@@ -1546,7 +1536,6 @@ const EmployeeDetailsPage = () => {
                 uuid: employee?.uuid
             }
 
-            console.log("updateEmployee===>", updateEmployee);
             setInitializeSubmitDetails(updateEmployee);
             setOpenModalAddBooking(true);
         } catch (error) {
@@ -1608,7 +1597,7 @@ const EmployeeDetailsPage = () => {
             setEmployeeDetails(updatedEmployees);
 
             // Optionally log or handle other logic
-            console.log(`Checkbox at index ${index} is now: ${isChecked}`);
+            // console.log(`Checkbox at index ${index} is now: ${isChecked}`);
 
             // Make an API call to update the value
 
@@ -1675,7 +1664,6 @@ const EmployeeDetailsPage = () => {
                     active_status: employee.user_active
                 };
 
-                console.log("Update User==>", updateUser);
 
                 await UpdateEmployeeStatusValidation(updateUser);
 
