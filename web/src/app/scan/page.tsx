@@ -543,7 +543,7 @@ const ScanPage = () => {
             setEmployeeId(ExtractCardNumber(value)); // Process pasted input
             isPasting.current = false;
             setFinishPasting(true);
-        }, 300);
+        }, 800);
 
         setTypingTimeout(timeout);
     };
