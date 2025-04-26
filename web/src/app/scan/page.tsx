@@ -530,7 +530,7 @@ const ScanPage = () => {
 
     //This function is using for HID Card reader
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (waitingForEnter.current) return; // ❌ Ignore manual typing (handled in handleKeyDown)
+        if (waitingForEnter.current || isPasting.current) return; // ❌ Ignore manual typing (handled in handleKeyDown)
 
         const value = e.target.value;
         setEmployeeId(value);
@@ -731,6 +731,8 @@ const ScanPage = () => {
                             display: 'block',
                             margin: '0 auto', // Center the input
                         }}
+                        ref={inputRef}
+
                         onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
                         onPaste={HandlePaste}
