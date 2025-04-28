@@ -62,7 +62,7 @@ const ScanPage = () => {
     }, []);
 
     useEffect(() => {
-        if (inputBuffer || typeof(inputBuffer) === 'string') {
+        if (inputBuffer || typeof (inputBuffer) === 'string') {
             setEmployeeId(inputBuffer); // Ensure `employeeId` updates when `inputBuffer` changes
         }
     }, [inputBuffer]);
@@ -522,39 +522,40 @@ const ScanPage = () => {
                 setEmployeeId(ExtractCardNumber(pastedText)); // Assign after 5 seconds
                 isPasting.current = false;
                 setFinishPasting(true);
-            }, 5); // 5-second delay
+            }, 300); // 5-second delay
 
         } catch (error) {
-            console.error("HandlePaste==>",error);
+            console.error("HandlePaste==>", error);
         }
     };
 
     //This function is using for HID Card reader
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         try {
-            if (waitingForEnter.current || isPasting.current) return; // ❌ Ignore manual typing (handled in handleKeyDown)
+            console.log("handleInputChange --> HID typing detected");
 
+            if (isPasting.current) return;
 
-            console.log("handleInputChange-->")
             const value = e.target.value;
             setEmployeeId(value);
-    
-            // Clear previous timeout
+
             if (typingTimeout) clearTimeout(typingTimeout);
-    
-            // Set a new timeout to trigger when pasting/input stops
+
             const timeout = setTimeout(() => {
-                setEmployeeId(ExtractCardNumber(value)); // Process pasted input
+                const extracted = ExtractCardNumber(value);
+                console.log("Extracted card number:", extracted);
+                setEmployeeId(extracted);
+                inputRef.current?.focus(); // 👈 re-focus after card processed
                 isPasting.current = false;
                 setFinishPasting(true);
-            }, 800);
-    
+            }, 300);
+
             setTypingTimeout(timeout);
         } catch (error) {
-            console.error("handleInputChange==>",error);
+            console.error("handleInputChange ==>", error);
         }
-       
     };
+
 
 
     const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
