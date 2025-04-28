@@ -22,8 +22,8 @@ import { debounce } from 'lodash';
 import { ExtractCardNumber } from '@/_Common/function/Card';
 const ScanPage = () => {
     const [employeeId, setEmployeeId] = useState<string>('');
-    const [showScannerModal, setShowScannerModal] = useState<boolean>(true);
-    const [showScannerCardReaderModal, setShowScannerCardReaderModal] = useState<boolean>(false);
+    const [showScannerModal, setShowScannerModal] = useState<boolean>(false);
+    const [showScannerCardReaderModal, setShowScannerCardReaderModal] = useState<boolean>(true);
 
 
     const totalPriceInputRef = useRef<any>(null); // Create a ref for the input
