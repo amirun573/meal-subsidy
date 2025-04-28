@@ -23,6 +23,7 @@ import { ExtractCardNumber } from '@/_Common/function/Card';
 const ScanPage = () => {
     const [employeeId, setEmployeeId] = useState<string>('');
     const [showScannerModal, setShowScannerModal] = useState<boolean>(true);
+    const [showScannerCardReaderModal, setShowScannerCardReaderModal] = useState<boolean>(false);
 
 
     const totalPriceInputRef = useRef<any>(null); // Create a ref for the input
@@ -112,8 +113,16 @@ const ScanPage = () => {
         setShowScannerModal(true); // Open modal
     };
 
+    const handleToggleScannerCardReaderModal = () => {
+        setShowScannerCardReaderModal(true); // Open modal
+    };
+
     const handleCloseModal = () => {
         setShowScannerModal(false); // Close modal manually if needed
+    };
+
+    const handleCloseCardReaderModal = () => {
+        setShowScannerCardReaderModal(false); // Close modal manually if needed
     };
 
     const handleTotalPriceChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -317,12 +326,6 @@ const ScanPage = () => {
     // };
 
 
-
-
-
-
-
-
     const HandleSubmitTotalPrice = async () => {
         setLoading(true);
         try {
@@ -481,6 +484,140 @@ const ScanPage = () => {
             console.error(error);
         }
     }
+
+    const ModalScannerCardReader = () => {
+        const inputRef = useRef<HTMLInputElement>(null); // <-- create a ref
+
+        useEffect(() => {
+            // When the modal opens, focus the input
+            if (inputRef.current) {
+                inputRef.current.focus();
+            }
+        }, []); // Only once on open
+
+        const handleInputCardReaderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            console.log("Input Changed:");
+
+            // if (waitingForEnter.current) return;
+
+            const value = e.target.value;
+            setEmployeeId(value);
+
+            if (typingTimeout) clearTimeout(typingTimeout);
+
+            const timeout = setTimeout(() => {
+                console.log("Processing pasted value:", value);
+                const processedValue = ExtractCardNumber(value);
+                setEmployeeId(processedValue);
+                isPasting.current = false;
+                setFinishPasting(true);
+                setShowScannerCardReaderModal(false);
+            }, 300);
+
+            setTypingTimeout(timeout);
+        };
+
+        return (
+            <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: 9999,
+            }}>
+                <div style={{
+                    backgroundColor: 'white',
+                    padding: '2rem',
+                    borderRadius: '10px',
+                    position: 'relative',
+                    width: '90%',
+                    maxWidth: '500px',
+                    textAlign: 'center',
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                    margin: '1rem',
+                    boxSizing: 'border-box',
+                }}>
+                    {/* Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h1 style={{ marginBottom: '5px', color: 'black', fontSize: '1.5rem' }}>Scan Card Reader</h1>
+                        <button
+                            onClick={handleCloseCardReaderModal}
+                            style={{
+                                backgroundColor: 'transparent',
+                                border: 'none',
+                                color: 'black',
+                                fontSize: '1.5rem',
+                                fontWeight: 'bold',
+                                cursor: 'pointer',
+                                position: 'absolute',
+                                top: '10px',
+                                right: '10px',
+                            }}
+                        >
+                            &times;
+                        </button>
+                    </div>
+
+                    {/* Input */}
+                    <div style={{ margin: '20px 0', textAlign: 'center' }}>
+                        <label
+                            htmlFor="employeeID"
+                            style={{
+                                display: 'block',
+                                fontSize: '18px',
+                                fontWeight: 'bold',
+                                marginBottom: '8px',
+                                color: 'black',
+                            }}
+                        >
+                            Employee ID:
+                        </label>
+                        <input
+                            ref={inputRef} // <-- attach the ref
+                            type="text"
+                            name="employeeID"
+                            id="employeeID"
+                            value={employeeId}
+                            onChange={handleInputCardReaderChange}
+                            style={{
+                                padding: '10px',
+                                width: '250px',
+                                fontSize: '16px',
+                                borderRadius: '5px',
+                                border: '1px solid #ccc',
+                                color: 'black',
+                                display: 'block',
+                                margin: '0 auto',
+                            }}
+                        />
+                    </div>
+
+                    {/* Footer */}
+                    <div style={{ marginTop: '20px' }}>
+                        <button
+                            onClick={handleCloseCardReaderModal}
+                            style={{
+                                backgroundColor: '#ff4d4d',
+                                border: 'none',
+                                color: 'white',
+                                padding: '0.5rem 1rem',
+                                borderRadius: '5px',
+                                cursor: 'pointer',
+                                fontSize: '1rem',
+                            }}
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     const HandleKeyDownTotalPriceInput = async (e: React.KeyboardEvent<HTMLInputElement>) => {
         setLoading(true);
@@ -768,7 +905,7 @@ const ScanPage = () => {
                             display: 'block',
                             margin: '0 auto', // Center the input
                         }}
-                        onChange={handleInputChange}
+                        // onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
                         onPaste={HandlePaste}
 
@@ -825,6 +962,20 @@ const ScanPage = () => {
                 </div>
 
                 <div style={{ marginTop: '20px', textAlign: 'center' }}>
+                    <button
+                        onClick={handleToggleScannerCardReaderModal}
+                        style={{
+                            padding: '10px 20px',
+                            fontSize: '16px',
+                            backgroundColor: '#0CD7AF',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '5px',
+                            cursor: 'pointer',
+                            marginRight: '10px', // Adjust margin between buttons
+                        }}>
+                        Open Card Scanner
+                    </button>
                     <button
                         onClick={handleToggleScannerModal}
                         style={{
@@ -894,6 +1045,11 @@ const ScanPage = () => {
                 {showScannerModal && (
                     <ModalScannerQRCode />
                 )}
+
+                {showScannerCardReaderModal && (
+                    <ModalScannerCardReader />
+                )}
+
             </div>
 
 
