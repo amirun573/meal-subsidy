@@ -508,6 +508,7 @@ const ScanPage = () => {
 
     const HandlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
         try {
+            console.log("HandlePaste-->")
 
             e.preventDefault(); // Prevent default paste behavior
             isPasting.current = true;
@@ -524,28 +525,35 @@ const ScanPage = () => {
             }, 5); // 5-second delay
 
         } catch (error) {
-            console.error(error);
+            console.error("HandlePaste==>",error);
         }
     };
 
     //This function is using for HID Card reader
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (waitingForEnter.current || isPasting.current) return; // ❌ Ignore manual typing (handled in handleKeyDown)
+        try {
+            if (waitingForEnter.current || isPasting.current) return; // ❌ Ignore manual typing (handled in handleKeyDown)
 
-        const value = e.target.value;
-        setEmployeeId(value);
 
-        // Clear previous timeout
-        if (typingTimeout) clearTimeout(typingTimeout);
-
-        // Set a new timeout to trigger when pasting/input stops
-        const timeout = setTimeout(() => {
-            setEmployeeId(ExtractCardNumber(value)); // Process pasted input
-            isPasting.current = false;
-            setFinishPasting(true);
-        }, 800);
-
-        setTypingTimeout(timeout);
+            console.log("handleInputChange-->")
+            const value = e.target.value;
+            setEmployeeId(value);
+    
+            // Clear previous timeout
+            if (typingTimeout) clearTimeout(typingTimeout);
+    
+            // Set a new timeout to trigger when pasting/input stops
+            const timeout = setTimeout(() => {
+                setEmployeeId(ExtractCardNumber(value)); // Process pasted input
+                isPasting.current = false;
+                setFinishPasting(true);
+            }, 800);
+    
+            setTypingTimeout(timeout);
+        } catch (error) {
+            console.error("handleInputChange==>",error);
+        }
+       
     };
 
 
