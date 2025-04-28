@@ -26,12 +26,17 @@ const PasswordHashing = () => {
     }, []);
 
     const debouncedHandleCardInput = debounce((buffer: string) => {
+        console.log("Debounced Handle Card Input: ", buffer);
+
         handleCardInput(buffer);
         setInputBuffer('');
     }, 500); // Adjust the timeout based on how fast your card reader inputs
 
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+        console.log("handleInputChange")
+
         const value = e.target.value;
         setPassword(value);
 
@@ -41,8 +46,8 @@ const PasswordHashing = () => {
         // Set a new timeout to trigger when pasting/input stops
         const timeout = setTimeout(() => {
             setHashingPassword(ExtractCardNumber(value)); // Assign after 5 seconds
-                isPasting.current = false;
-                setFinishPasting(true);
+            isPasting.current = false;
+            setFinishPasting(true);
             // You can process the card ID here (e.g., send request)
         }, 300); // Adjust delay based on card reader speed
 
@@ -53,6 +58,9 @@ const PasswordHashing = () => {
     // };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+
+        console.log("handleKeyDown")
+
         const currentTime = Date.now();
 
         if (lastKeyPressTime.current) {
@@ -76,7 +84,7 @@ const PasswordHashing = () => {
 
     const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
 
-        console.log("werererer")
+        console.log("handlePaste")
         e.preventDefault();
         const pastedText = e.clipboardData.getData('text').trim();
         console.log(pastedText)
@@ -183,7 +191,45 @@ const PasswordHashing = () => {
                         >
                             Convert
                         </button>
+                        <button
+                            className="bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-transform transform duration-300 hover:bg-blue-700 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
+                            style={{ marginTop: '20px', padding: '10px 20px' }}
+                            onClick={async () => {
+                                const fakeCardNumber = "5E179918FEFF12E0015F86D5"; // Fake HID data
+                                setPassword(''); // Clear input first
+                                inputRef.current?.focus(); // focus first
+
+                                let currentIndex = 0;
+
+                                const interval = setInterval(() => {
+                                    if (currentIndex < fakeCardNumber.length) {
+                                        // Only set string values (check against undefined)
+                                        const newPassword = fakeCardNumber[currentIndex] || '';
+                                        setPassword((prevPassword) => String(prevPassword + newPassword)); // Ensure it's always a string
+                                        currentIndex++;
+                                    } else {
+                                        clearInterval(interval);
+
+                                        // After finishing typing, check and process the value
+                                        setTimeout(() => {
+                                            const processedPassword = ExtractCardNumber(fakeCardNumber); // Extract card number
+                                            if (processedPassword) {
+                                                setPassword(processedPassword); // Only set password if valid string
+                                            }
+                                            setFinishPasting(true);
+                                        }, 100); // small delay after typing
+                                    }
+                                }, 50); // Speed of each character input (like HID speed)
+                            }}
+                        >
+                            Simulate Card Tap
+                        </button>
+
+
+
                     </div>
+
+
 
 
 

@@ -56,18 +56,24 @@ const ScanPage = () => {
 
     // Automatically focus the input field when the page loads
     useEffect(() => {
+
+        console.log("Use Effect Input Ref")
         if (inputRef.current) {
             inputRef.current.focus();
         }
     }, []);
 
     useEffect(() => {
+        console.log("Use Effect Check Input Buffer: ", inputBuffer);
+
         if (inputBuffer || typeof (inputBuffer) === 'string') {
             setEmployeeId(inputBuffer); // Ensure `employeeId` updates when `inputBuffer` changes
         }
     }, [inputBuffer]);
 
     const debouncedHandleCardInput = debounce((buffer: string) => {
+
+        console.log("Debounced Handle Card Input: ", buffer);
         handleCardInput(buffer);
         setInputBuffer('');
     }, 500); // Adjust the timeout based on how fast your card reader inputs
@@ -150,10 +156,10 @@ const ScanPage = () => {
 
 
 
-    const handleEmployeeID = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleEmployeeID = async (event: React.ChangeEvent<HTMLInputElement> | string) => {
         setLoading(true);
         try {
-            const employeeID = String(event?.target?.value || event); // Ensure value is string
+            const employeeID = typeof event === 'string' ? event : event.target.value;
 
             if (employeeID) {
 
@@ -530,23 +536,29 @@ const ScanPage = () => {
 
     //This function is using for HID Card reader
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (waitingForEnter.current) return; // ❌ Ignore manual typing (handled in handleKeyDown)
+        console.log("Input Changed:"); // Log input value for debugging
+
+        if (waitingForEnter.current) return; // Ignore manual typing while waiting for enter key
 
         const value = e.target.value;
-        setEmployeeId(value);
 
-        // Clear previous timeout
+        setEmployeeId(value); // Update the employeeId state
+
+        // Clear previous timeout if it exists
         if (typingTimeout) clearTimeout(typingTimeout);
 
         // Set a new timeout to trigger when pasting/input stops
         const timeout = setTimeout(() => {
-            setEmployeeId(ExtractCardNumber(value)); // Process pasted input
+            console.log("Processing pasted value:", value); // Log processed value for debugging
+            const processedValue = ExtractCardNumber(value); // Process pasted input
+            setEmployeeId(processedValue); // Update the employeeId with the processed value
             isPasting.current = false;
             setFinishPasting(true);
-        }, 300);
+        }, 300); // Adjust delay as needed for HID input speed
 
-        setTypingTimeout(timeout);
+        setTypingTimeout(timeout); // Set the new typing timeout
     };
+
 
 
     const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -555,36 +567,39 @@ const ScanPage = () => {
         lastKeyPressTime.current = currentTime;
 
         if (timeDifference !== null && timeDifference < 100) {
-            // Card Reader Input (debounced)
+            // Fast typing: Card Reader input
             if (e.key === 'Enter') {
                 e.preventDefault();
                 setEmployeeId(inputBuffer);
                 debouncedHandleCardInput(inputBuffer);
-                setInputBuffer(""); // Clear buffer after processing
+                setInputBuffer(""); // Clear after processing
             } else if (e.key === "Backspace") {
-                setInputBuffer((prevBuffer) => (prevBuffer.length > 1 ? prevBuffer.slice(0, -1) : ""));
-            } else {
-                setInputBuffer((prevBuffer) => prevBuffer + e.key);
+                setInputBuffer(prevBuffer => prevBuffer.length > 0 ? prevBuffer.slice(0, -1) : "");
+            } else if (e.key.length === 1) { // Only capture real keys
+                setInputBuffer(prevBuffer => prevBuffer + e.key);
             }
+
+            waitingForEnter.current = false; // 🚨 Very important: Fast typing = NOT manual
         } else {
-            // Manual Input Mode
+            // Slow typing: Manual Input Mode
             if (!waitingForEnter.current) {
-                waitingForEnter.current = true; // Start tracking manual typing
-                setInputBuffer(""); // Reset buffer when user starts typing
+                waitingForEnter.current = true; // Start manual mode
+                setInputBuffer(""); // Clear buffer when switching to manual
             }
 
             if (e.key === 'Enter') {
                 e.preventDefault();
-                handleEmployeeID(inputBuffer as any);
-                setInputBuffer(""); // Clear buffer after processing
-                waitingForEnter.current = false; // Reset after processing
+                handleEmployeeID(inputBuffer); // Manually process input
+                setInputBuffer("");
+                waitingForEnter.current = false; // Reset after manual entry
             } else if (e.key === "Backspace") {
-                setInputBuffer((prevBuffer) => (prevBuffer.length <= 1 ? "" : prevBuffer.slice(0, -1)));
-            } else if (e.key.length === 1) { // Prevent non-character keys from affecting input
-                setInputBuffer((prevBuffer) => prevBuffer + e.key);
+                setInputBuffer(prevBuffer => prevBuffer.length > 0 ? prevBuffer.slice(0, -1) : "");
+            } else if (e.key.length === 1) {
+                setInputBuffer(prevBuffer => prevBuffer + e.key);
             }
         }
     };
+
 
 
 
@@ -760,10 +775,33 @@ const ScanPage = () => {
                     />
                     {/* <button
                         style={{ marginTop: '20px', padding: '10px 20px' }}
-                        onClick={() => simulateHIDTyping("5E179918FEFF12E0015F86D5")}
+                        onClick={async () => {
+                            const fakeCardNumber = "5E179918FEFF12E0015F86D5"; // Fake HID data
+                            setEmployeeId(''); // Clear input first
+                            inputRef.current?.focus(); // focus first
+
+                            let currentIndex = 0;
+
+                            const interval = setInterval(() => {
+                                if (currentIndex < fakeCardNumber.length) {
+                                    setEmployeeId(prev => prev + fakeCardNumber[currentIndex]);
+                                    currentIndex++;
+                                } else {
+                                    clearInterval(interval);
+
+                                    // After finish "typing"
+                                    setTimeout(() => {
+                                        setEmployeeId(prev => ExtractCardNumber(prev)); // process
+                                        setFinishPasting(true);
+                                    }, 100); // small delay after typing
+                                }
+                            }, 50); // speed of each character input (like HID speed)
+                        }}
                     >
                         Simulate Card Tap
                     </button> */}
+
+
 
 
                 </div>
