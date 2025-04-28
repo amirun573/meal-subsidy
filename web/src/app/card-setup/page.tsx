@@ -76,8 +76,11 @@ const PasswordHashing = () => {
 
     const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
 
+        console.log("werererer")
         e.preventDefault();
         const pastedText = e.clipboardData.getData('text').trim();
+        console.log(pastedText)
+
         setPassword(pastedText); // Set the value directly from paste
         handleCardInput(pastedText); // Handle as if it's a card reader input
     };
