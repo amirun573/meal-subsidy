@@ -508,7 +508,6 @@ const ScanPage = () => {
 
     const HandlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
         try {
-            console.log("HandlePaste-->")
 
             e.preventDefault(); // Prevent default paste behavior
             isPasting.current = true;
@@ -522,40 +521,32 @@ const ScanPage = () => {
                 setEmployeeId(ExtractCardNumber(pastedText)); // Assign after 5 seconds
                 isPasting.current = false;
                 setFinishPasting(true);
-            }, 300); // 5-second delay
+            }, 5); // 5-second delay
 
         } catch (error) {
-            console.error("HandlePaste==>", error);
+            console.error(error);
         }
     };
 
     //This function is using for HID Card reader
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        try {
-            console.log("handleInputChange --> HID typing detected");
+        if (waitingForEnter.current) return; // ❌ Ignore manual typing (handled in handleKeyDown)
 
-            if (isPasting.current) return;
+        const value = e.target.value;
+        setEmployeeId(value);
 
-            const value = e.target.value;
-            setEmployeeId(value);
+        // Clear previous timeout
+        if (typingTimeout) clearTimeout(typingTimeout);
 
-            if (typingTimeout) clearTimeout(typingTimeout);
+        // Set a new timeout to trigger when pasting/input stops
+        const timeout = setTimeout(() => {
+            setEmployeeId(ExtractCardNumber(value)); // Process pasted input
+            isPasting.current = false;
+            setFinishPasting(true);
+        }, 300);
 
-            const timeout = setTimeout(() => {
-                const extracted = ExtractCardNumber(value);
-                console.log("Extracted card number:", extracted);
-                setEmployeeId(extracted);
-                inputRef.current?.focus(); // 👈 re-focus after card processed
-                isPasting.current = false;
-                setFinishPasting(true);
-            }, 300);
-
-            setTypingTimeout(timeout);
-        } catch (error) {
-            console.error("handleInputChange ==>", error);
-        }
+        setTypingTimeout(timeout);
     };
-
 
 
     const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -658,6 +649,28 @@ const ScanPage = () => {
             setFinishPasting(false);
         }
     }, [finishPasting]);
+
+    const simulateHIDTyping = (text: string) => {
+        if (!inputRef.current) return;
+
+        let i = 0;
+        const interval = setInterval(() => {
+            if (i < text.length) {
+                setEmployeeId(prev => prev + text[i]); // Add one character at a time
+                i++;
+            } else {
+                clearInterval(interval);
+                setTimeout(() => {
+                    setEmployeeId(ExtractCardNumber(text)); // After finish typing
+                    setFinishPasting(true);
+                    inputRef.current?.focus();
+                }, 300);
+            }
+        }, 30); // 30ms delay between "typed" characters (simulate fast typing)
+    };
+
+
+
     return (
         <>
             <Navbar />
@@ -740,13 +753,18 @@ const ScanPage = () => {
                             display: 'block',
                             margin: '0 auto', // Center the input
                         }}
-                        ref={inputRef}
-
                         onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
                         onPaste={HandlePaste}
 
                     />
+                    {/* <button
+                        style={{ marginTop: '20px', padding: '10px 20px' }}
+                        onClick={() => simulateHIDTyping("5E179918FEFF12E0015F86D5")}
+                    >
+                        Simulate Card Tap
+                    </button> */}
+
 
                 </div>
 
