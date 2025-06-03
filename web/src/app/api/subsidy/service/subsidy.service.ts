@@ -1103,23 +1103,32 @@ export async function CreateSubsidyTransactionServiceAuth(
         employee_id,
         subsidies: {
           some: {
-            subsidy_type: {
-              subsidy_type_code: SubsidyTypeCode.meal,
-            },
-            subsidy_credits: {
-              some: {
-                active: true,
-                uuid: {
-                  in: [subsidyCreditUUID],
+            AND: [
+              {
+                subsidy_type: {
+                  subsidy_type_code: SubsidyTypeCode.meal,
                 },
               },
-            },
-            OR: [
-              { end_date: null }, // Include subsidies where end_date is not set
-              { end_date: { gt: new Date() } }, // Include subsidies where end_date is greater than the current time
+              {
+                subsidy_credits: {
+                  some: {
+                    active: true,
+                    uuid: {
+                      in: [subsidyCreditUUID],
+                    },
+                  },
+                },
+              },
+              {
+                OR: [
+                  { end_date: null },
+                  { end_date: { gt: new Date() } },
+                ],
+              },
             ],
           },
-        },
+        }
+        
       },
 
       select: {
