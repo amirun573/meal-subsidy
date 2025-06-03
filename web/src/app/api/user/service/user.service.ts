@@ -1668,8 +1668,12 @@ export async function ScanCheckEmployeeIDAuthService(
         );
       }
 
+      console.log("currentDate -->", currentDate);
+      console.log("subsidy?.start_date -->", subsidy?.start_date)
+
+
       if (subsidy?.end_date) {
-        if (currentDate > subsidy?.start_date) {
+        if (currentDate > subsidy?.end_date) {
           status = 400;
           throw Error(
             "User not applicable to Meal Subsidy Due to Date been set to End"
