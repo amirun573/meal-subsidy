@@ -253,7 +253,12 @@ export async function GET(req: any, res: NextApiResponse) {
       }
 
       case StatusAPICode.GET_SUBSIDY_SCHEDULE_LOGS: {
-        return GetSubsidyScheduleLogsService();
+        const page: string | null = url.searchParams.get("page");
+        const pageSize: string | null = url.searchParams.get("pageSize");
+        return GetSubsidyScheduleLogsService({
+          page: page ? parseInt(page) : 1,
+          pageSize: pageSize ? parseInt(pageSize) : 10,
+        });
       }
 
       default: {

@@ -1623,10 +1623,10 @@ export async function DeleteSubsidyScheduleService(uuid: string) {
   }
 }
 
-export async function GetSubsidyScheduleLogsService() {
+export async function GetSubsidyScheduleLogsService(params?: { page?: number; pageSize?: number }) {
   try {
-    const logs = await GetSubsidyScheduleLogs();
-    return NextResponse.json({ logs });
+    const result = await GetSubsidyScheduleLogs(params);
+    return NextResponse.json(result);
   } catch (error: any) {
     return NextResponse.json({ message: error.message || "Error fetching schedule logs" }, { status: 500 });
   }

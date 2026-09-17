@@ -838,24 +838,39 @@ export async function DeleteSubsidySchedule(uuid: string) {
   }
 }
 
-export async function GetSubsidyScheduleLogs(params?: any) {
+export async function GetSubsidyScheduleLogs(params?: { page?: number; pageSize?: number }) {
   try {
-    return await prisma.subsidyScheduleLog.findMany({
-      where: params?.where || {},
-      include: {
-        subsidy_schedule: {
-          select: {
-            title: true,
-            schedule_type: true,
-          }
-        }
-      },
-      orderBy: { created_at: 'desc' },
-      take: params?.take || 50,
-    });
+    const page = params?.page && params.page > 0 ? params.page : 1;
+    const pageSize = params?.pageSize && params.pageSize > 0 ? params.pageSize : 10;
+    const skip = (page - 1) * pageSize;
+
+    const [logs, total] = await Promise.all([
+      prisma.subsidyScheduleLog.findMany({
+        include: {
+          subsidy_schedule: {
+            select: {
+              title: true,
+              schedule_type: true,
+            },
+          },
+        },
+        orderBy: { created_at: 'desc' },
+        skip,
+        take: pageSize,
+      }),
+      prisma.subsidyScheduleLog.count(),
+    ]);
+
+    return {
+      logs,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
   } catch (error) {
-    console.error(error);
-    return [];
+    console.error("GetSubsidyScheduleLogs error:", error);
+    return { logs: [], total: 0, page: 1, pageSize: 10, totalPages: 0 };
   }
 }
 
