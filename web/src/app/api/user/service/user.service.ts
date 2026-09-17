@@ -109,7 +109,7 @@ export async function UserPaginationService(data: UserPaginationRequest) {
   try {
     await UserPaginationValidation(data);
 
-    const { page, filter } = data;
+    const { page, filter, activeFilter } = data;
 
     let employees: any = [];
     let totalItems: number = 0;
@@ -168,6 +168,16 @@ export async function UserPaginationService(data: UserPaginationRequest) {
     } else {
       // If conditionFilter is empty, just use filterSubsidyTypeCodeMeal
       conditionFilter = filterSubsidyTypeCodeMeal;
+    }
+
+    // Apply activeFilter for Active / Inactive tab split
+    if (activeFilter !== null && activeFilter !== undefined) {
+      conditionFilter = {
+        AND: [
+          conditionFilter,
+          { active: activeFilter },
+        ],
+      };
     }
 
     console.log("conditionFilter===>", conditionFilter);

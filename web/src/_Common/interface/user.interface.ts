@@ -4,6 +4,7 @@ import { StatusAPICode } from "../enum/status-api-code.enum";
 export interface UserPaginationRequest {
   page: number;
   filter: string | null;
+  activeFilter?: boolean | null;
 }
 
 export interface ScanCheckEmployeeID {
