@@ -26,6 +26,13 @@ import {
   UpdateSubsidyCreditRealTimeService,
   UpdateSubsidyTypeService,
   UpdateUserApplicableSubsidy,
+  GetSubsidySchedulesService,
+  CreateSubsidyScheduleService,
+  UpdateSubsidyScheduleService,
+  DeleteSubsidyScheduleService,
+  GetSubsidyScheduleLogsService,
+  ManualTriggerScheduleService,
+  ToggleSubsidyScheduleActiveService,
 } from "./service/subsidy.service";
 import { decrypt } from "@/_Common/function/Hashing";
 import {
@@ -43,6 +50,13 @@ const APIAuth: StatusAPICode[] = [
   StatusAPICode.UPDATE_SUBSIDY_CREDIT_REAL_TIME,
   StatusAPICode.CREATE_SUBMIT_SUBSIDY_TRANSACTION_AUTH,
   StatusAPICode.UPDATE_APPLICABLE_SUBSIDY,
+  StatusAPICode.GET_SUBSIDY_SCHEDULES,
+  StatusAPICode.CREATE_SUBSIDY_SCHEDULE,
+  StatusAPICode.UPDATE_SUBSIDY_SCHEDULE,
+  StatusAPICode.DELETE_SUBSIDY_SCHEDULE,
+  StatusAPICode.GET_SUBSIDY_SCHEDULE_LOGS,
+  StatusAPICode.MANUAL_TRIGGER_SUBSIDY_SCHEDULE,
+  StatusAPICode.TOGGLE_SUBSIDY_SCHEDULE_ACTIVE,
 ];
 
 const feature_code_employee_details: FeaturesCodeLists =
@@ -233,6 +247,15 @@ export async function GET(req: any, res: NextApiResponse) {
           filter,
         });
       }
+
+      case StatusAPICode.GET_SUBSIDY_SCHEDULES: {
+        return GetSubsidySchedulesService();
+      }
+
+      case StatusAPICode.GET_SUBSIDY_SCHEDULE_LOGS: {
+        return GetSubsidyScheduleLogsService();
+      }
+
       default: {
         statusCode = 400;
         throw Error("Code not Found");
@@ -278,6 +301,20 @@ export async function POST(req: any, res: any) {
 
     if (code && typeof parseInt(code) === "number") {
       switch (parseInt(code) as StatusAPICode) {
+        case StatusAPICode.CREATE_SUBSIDY_SCHEDULE: {
+          const { code: _, ...scheduleData } = body;
+          return CreateSubsidyScheduleService(scheduleData);
+        }
+
+        case StatusAPICode.MANUAL_TRIGGER_SUBSIDY_SCHEDULE: {
+          const { schedule_uuid } = body;
+          if (!schedule_uuid) {
+            statusCode = 400;
+            throw Error("schedule_uuid is required");
+          }
+          return ManualTriggerScheduleService(schedule_uuid, user || undefined);
+        }
+
         case StatusAPICode.CREATE_TRIGGER_SUBSIDY_CREDIT: {
           const data: any = body as any;
 
@@ -398,6 +435,11 @@ export async function PUT(req: any, res: any) {
 
     if (code && typeof parseInt(code) === "number") {
       switch (parseInt(code) as StatusAPICode) {
+        case StatusAPICode.UPDATE_SUBSIDY_SCHEDULE: {
+          const { code: _, ...scheduleData } = body;
+          return UpdateSubsidyScheduleService(scheduleData);
+        }
+
         case StatusAPICode.UPDATE_APPLICABLE_SUBSIDY: {
           const data: SubsidyEmployeeUpdate = body as SubsidyEmployeeUpdate;
 
@@ -486,6 +528,16 @@ export async function PUT(req: any, res: any) {
 
           return UpdateSubsidyCreditRealTimeService(data);
         }
+
+        case StatusAPICode.TOGGLE_SUBSIDY_SCHEDULE_ACTIVE: {
+          const { schedule_uuid, active } = body;
+          if (!schedule_uuid) {
+            statusCode = 400;
+            throw Error("schedule_uuid is required");
+          }
+          return ToggleSubsidyScheduleActiveService(schedule_uuid, !!active);
+        }
+
         default: {
           throw Error("No Code Found");
         }
@@ -498,6 +550,30 @@ export async function PUT(req: any, res: any) {
       },
       {
         status: statusCode || error.statusCode,
+      }
+    );
+  }
+}
+
+export async function DELETE(req: any) {
+  let statusCode: number = 500;
+  try {
+    const url = new URL(req.url);
+    const uuid: string | null = url.searchParams.get("uuid");
+
+    if (!uuid) {
+      statusCode = 400;
+      throw Error("UUID Not Found");
+    }
+
+    return DeleteSubsidyScheduleService(uuid);
+  } catch (error: any) {
+    return NextResponse.json(
+      {
+        message: error.message,
+      },
+      {
+        status: statusCode,
       }
     );
   }

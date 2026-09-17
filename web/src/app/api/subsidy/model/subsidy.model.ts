@@ -789,3 +789,81 @@ export async function UpdateSubsidyCascade(data: { subsidy: Subsidy }) {
     return null;
   }
 }
+
+export async function GetSubsidySchedules(data: PrismaCondtionFetch) {
+  try {
+    const { where, select } = data;
+    return await prisma.subsidySchedule.findMany({
+      where: { ...where, active: true },
+      select,
+      orderBy: { created_at: "desc" },
+    });
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+export async function CreateSubsidySchedule(data: any) {
+  try {
+    return await prisma.subsidySchedule.create({ data });
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+export async function UpdateSubsidySchedule(data: { uuid: string; [key: string]: any }) {
+  try {
+    const { uuid, ...updateData } = data;
+    return await prisma.subsidySchedule.updateMany({
+      where: { uuid },
+      data: updateData,
+    });
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+export async function DeleteSubsidySchedule(uuid: string) {
+  try {
+    return await prisma.subsidySchedule.updateMany({
+      where: { uuid },
+      data: { active: false, deleted_at: new Date() },
+    });
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+export async function GetSubsidyScheduleLogs(params?: any) {
+  try {
+    return await prisma.subsidyScheduleLog.findMany({
+      where: params?.where || {},
+      include: {
+        subsidy_schedule: {
+          select: {
+            title: true,
+            schedule_type: true,
+          }
+        }
+      },
+      orderBy: { created_at: 'desc' },
+      take: params?.take || 50,
+    });
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+export async function CreateSubsidyScheduleLog(data: any) {
+  try {
+    return await prisma.subsidyScheduleLog.create({ data });
+  } catch (error) {
+    console.error("CreateSubsidyScheduleLog error:", error);
+    return null;
+  }
+}

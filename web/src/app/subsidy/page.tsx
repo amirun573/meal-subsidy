@@ -413,143 +413,519 @@ const ChartComponent = () => {
     //         updateChartData(chartData); // Update chart when data is fetched
     //     }
     // }, [chartData]);
+    const [schedules, setSchedules] = useState<any[]>([]);
+    const [scheduleLogs, setScheduleLogs] = useState<any[]>([]);
+    const [isTriggering, setIsTriggering] = useState<string | null>(null);
+    const [isOpenModalSchedule, setIsOpenModalSchedule] = useState<boolean>(false);
+    const [scheduleForm, setScheduleForm] = useState<any>({
+        title: '',
+        schedule_type: 'ROUTINE',
+        routine_frequency: 'DAILY',
+        trigger_time: '08:00',
+        day_of_week: 1,
+        day_of_month: 1,
+        start_datetime: '',
+        end_datetime: '',
+        amount: 0,
+    });
+
+    const FetchSchedules = async () => {
+        try {
+            const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+            if (!userDetailsLocalStorage?.accessToken) return;
+            const res = await axios.get(`/api/subsidy?${StatusAPICode.code}=${StatusAPICode.GET_SUBSIDY_SCHEDULES}`, {
+                headers: { Authorization: `Bearer ${userDetailsLocalStorage.accessToken}` }
+            });
+            if (res.data?.schedules) {
+                setSchedules(res.data.schedules);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const FetchScheduleLogs = async () => {
+        try {
+            const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+            if (!userDetailsLocalStorage?.accessToken) return;
+            const res = await axios.get(`/api/subsidy?${StatusAPICode.code}=${StatusAPICode.GET_SUBSIDY_SCHEDULE_LOGS}`, {
+                headers: { Authorization: `Bearer ${userDetailsLocalStorage.accessToken}` }
+            });
+            if (res.data?.logs) {
+                setScheduleLogs(res.data.logs);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    useEffect(() => {
+        FetchSchedules();
+        FetchScheduleLogs();
+    }, []);
+
+    const HandleTriggerSchedule = async (uuid: string) => {
+        if (!confirm("Are you sure you want to manually trigger this credit schedule now?")) return;
+        setIsTriggering(uuid);
+        try {
+            const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+            if (!userDetailsLocalStorage?.accessToken) {
+                await HandleUnAuthorized(null);
+                return;
+            }
+            const res = await axios.post('/api/subsidy', {
+                code: StatusAPICode.MANUAL_TRIGGER_SUBSIDY_SCHEDULE,
+                schedule_uuid: uuid,
+            }, {
+                headers: { Authorization: `Bearer ${userDetailsLocalStorage.accessToken}` }
+            });
+            alert(res.data?.message || "Trigger action executed!");
+            FetchScheduleLogs();
+        } catch (error: any) {
+            alert(error.response?.data?.message || "Trigger action failed");
+        } finally {
+            setIsTriggering(null);
+        }
+    };
+
+    const HandleToggleActiveSchedule = async (uuid: string, currentActive: boolean) => {
+        const nextActive = !currentActive;
+        const confirmMsg = nextActive 
+            ? "Activating this routine schedule will automatically deactivate any other active routine schedules. Continue?"
+            : "Deactivate this schedule?";
+        if (!confirm(confirmMsg)) return;
+
+        try {
+            const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+            if (!userDetailsLocalStorage?.accessToken) {
+                await HandleUnAuthorized(null);
+                return;
+            }
+            const res = await axios.put('/api/subsidy', {
+                code: StatusAPICode.TOGGLE_SUBSIDY_SCHEDULE_ACTIVE,
+                schedule_uuid: uuid,
+                active: nextActive,
+            }, {
+                headers: { Authorization: `Bearer ${userDetailsLocalStorage.accessToken}` }
+            });
+            alert(res.data?.message || "Schedule status updated");
+            FetchSchedules();
+        } catch (error: any) {
+            alert(error.response?.data?.message || "Failed to update schedule status");
+        }
+    };
+
+    const HandleSaveSchedule = async () => {
+        setLoading(true);
+        try {
+            const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+            if (!userDetailsLocalStorage?.accessToken) {
+                await HandleUnAuthorized(null);
+            }
+
+            const isEdit = !!scheduleForm.uuid;
+            const code = isEdit ? StatusAPICode.UPDATE_SUBSIDY_SCHEDULE : StatusAPICode.CREATE_SUBSIDY_SCHEDULE;
+            const method = isEdit ? 'put' : 'post';
+
+            const payload: any = {
+                code,
+                ...scheduleForm,
+                amount: parseFloat(scheduleForm.amount) || 0,
+                day_of_week: parseInt(scheduleForm.day_of_week) || 1,
+                day_of_month: parseInt(scheduleForm.day_of_month) || 1,
+            };
+
+            if (scheduleForm.schedule_type === 'RANGE') {
+                if (scheduleForm.start_datetime) payload.start_datetime = new Date(scheduleForm.start_datetime).toISOString();
+                if (scheduleForm.end_datetime) payload.end_datetime = new Date(scheduleForm.end_datetime).toISOString();
+            }
+
+            const response = await axios({
+                method,
+                url: '/api/subsidy',
+                data: payload,
+                headers: { Authorization: `Bearer ${userDetailsLocalStorage?.accessToken}` }
+            });
+
+            alert(response.data?.message || "Saved successfully");
+            setIsOpenModalSchedule(false);
+            setScheduleForm({
+                title: '',
+                schedule_type: 'ROUTINE',
+                routine_frequency: 'DAILY',
+                trigger_time: '08:00',
+                day_of_week: 1,
+                day_of_month: 1,
+                start_datetime: '',
+                end_datetime: '',
+                amount: 0,
+            });
+            await FetchSchedules();
+        } catch (error) {
+            console.error(error);
+            DisplayAlert(error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const HandleDeleteSchedule = async (uuid: string) => {
+        if (!confirm("Are you sure you want to delete this schedule?")) return;
+        setLoading(true);
+        try {
+            const userDetailsLocalStorage = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+            await axios.delete(`/api/subsidy?uuid=${uuid}`, {
+                headers: { Authorization: `Bearer ${userDetailsLocalStorage?.accessToken}` }
+            });
+            await FetchSchedules();
+        } catch (error) {
+            console.error(error);
+            DisplayAlert(error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
-        <>
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
             <Navbar />
 
             {loading && <Spinner />}
 
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: 'white', padding: '20px' }}>
-                <div style={{ width: '100%', maxWidth: '1200px', height: 'auto', position: 'relative', padding: '20px', boxSizing: 'border-box' }}>
-                    {/* Dropdown Menu */}
-                    {/* <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                        <select value={selectedRange} onChange={handleRangeChange} style={{ padding: '10px', backgroundColor: 'gray', color: 'black', border: 'none', borderRadius: '5px' }}>
-                            <option value="yearly">Yearly</option>
-                            <option value="monthly">Monthly</option>
-                            <option value="weekly">Weekly</option>
-                            <option value="daily">Daily</option>
-                        </select>
-                    </div> */}
-
-                    {/* Bar Chart */}
-                    {/* <div style={{ width: '100%', height: 'auto', flexGrow: '1', position: 'relative', aspectRatio: '2 / 1' }}>
-                        {chartData && chartData[selectedRange] ? (
-                            <Bar
-                                ref={chartRef}
-                                data={chartData[selectedRange]} // Dynamically use the selected range (monthly, yearly, etc.)
-                                options={{ responsive: true, maintainAspectRatio: false }}
-                            />
-                        ) : (
-                            <p className='text-black'>Loading chart data...</p> // Or show a placeholder when there's no data
-                        )}
-                    </div> */}
-
-
-
-                    {/* Table */}
-                    <div className="mt-10">
-                        <p className='text-black mb-2'><strong>Subsidy Type</strong></p>
-
-                        <div className="flex justify-end items-center space-x-4">
-                            <label
-                                htmlFor="filter"
-                                className="text-gray-900 text-sm dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
+                {/* Subsidy Schedule Section */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Subsidy Trigger Schedules</h2>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Configure automated cronjob routines (daily/weekly/monthly) or date & time range credit triggers.</p>
+                            </div>
+                            <button
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition shadow-sm self-start sm:self-auto flex items-center gap-2"
+                                onClick={() => {
+                                    setScheduleForm({
+                                        title: '',
+                                        schedule_type: 'ROUTINE',
+                                        routine_frequency: 'DAILY',
+                                        trigger_time: '08:00',
+                                        day_of_week: 1,
+                                        day_of_month: 1,
+                                        start_datetime: '',
+                                        end_datetime: '',
+                                        amount: 0,
+                                    });
+                                    setIsOpenModalSchedule(true);
+                                }}
                             >
-                                Search:
-                            </label>
-                            <input
-                                id="filter"
-                                name="filter"
-                                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                                onChange={(e) => setFilter(e.target.value)}
-                            />
+                                + Add Schedule
+                            </button>
                         </div>
 
-                        <div className="relative overflow-x-auto shadow-md sm:rounded-lg mt-10">
-                            <table className="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
-                                <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                        <div className="relative overflow-x-auto shadow-sm sm:rounded-lg border border-gray-200">
+                            <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                                <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700 dark:text-gray-300">
                                     <tr>
-                                        <th scope="col" className="px-6 py-3">
-                                            No.
-                                        </th>
-                                        <th scope="col" className="px-6 py-3">
-                                            Subsidy Name
-                                        </th>
-                                        <th scope="col" className="px-6 py-3">
-                                            Price (RM)
-                                        </th>
-                                        <th scope="col" className="px-6 py-3">
-                                            Edit
-                                        </th>
+                                        <th scope="col" className="px-6 py-3">Schedule Title</th>
+                                        <th scope="col" className="px-6 py-3">Type</th>
+                                        <th scope="col" className="px-6 py-3">Details / Routine</th>
+                                        <th scope="col" className="px-6 py-3">Credit Amount (RM)</th>
+                                        <th scope="col" className="px-6 py-3">Status</th>
+                                        <th scope="col" className="px-6 py-3 text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {subsidyTypes && subsidyTypes.length > 0 ?
-                                        subsidyTypes.map((item, index) => (
-                                            <tr key={index} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                                                <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                                                    {index + 1 + (currentPage - 1) * 10}                                                </th>
-                                                <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                                                    {item?.subsidy_type_name}
-                                                </th>
-                                                <td className="px-6 py-4">
-                                                    {item.price}
+                                    {schedules && schedules.length > 0 ? (
+                                        schedules.map((item: any) => (
+                                            <tr key={item.uuid} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50">
+                                                <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
+                                                    {item.title}
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <button>
-                                                        <button
-                                                            className="bg-blue-500 text-white px-4 py-2 rounded"
-                                                            onClick={() => HandleEditSubsidyType(item?.uuid as string || '')}
-                                                        >
-                                                            Edit
-                                                        </button>
+                                                    <span className={`px-2 py-1 text-xs font-semibold rounded ${item.schedule_type === 'ROUTINE' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
+                                                        {item.schedule_type}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
+                                                    {item.schedule_type === 'ROUTINE' ? (
+                                                        <span>
+                                                            {item.routine_frequency} at {item.trigger_time || '00:00'}
+                                                            {item.routine_frequency === 'WEEKLY' && ` (Day ${item.day_of_week})`}
+                                                            {item.routine_frequency === 'MONTHLY' && ` (Day ${item.day_of_month})`}
+                                                        </span>
+                                                    ) : (
+                                                        <span>
+                                                            From {item.start_datetime ? new Date(item.start_datetime).toLocaleString() : 'N/A'}<br/>
+                                                            To {item.end_datetime ? new Date(item.end_datetime).toLocaleString() : 'N/A'}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 font-semibold text-green-600">
+                                                    RM {parseFloat(item.amount).toFixed(2)}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <button
+                                                        onClick={() => HandleToggleActiveSchedule(item.uuid, item.active)}
+                                                        className={`px-3 py-1 text-xs font-bold rounded-full transition-colors ${item.active ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                                        title="Click to toggle active status"
+                                                    >
+                                                        {item.active ? '● Active' : '○ Inactive'}
+                                                    </button>
+                                                </td>
+                                                <td className="px-6 py-4 text-right space-x-2">
+                                                    <button
+                                                        className="bg-green-600 hover:bg-green-700 text-white text-xs px-2.5 py-1 rounded font-medium disabled:opacity-50"
+                                                        disabled={isTriggering === item.uuid}
+                                                        onClick={() => HandleTriggerSchedule(item.uuid)}
+                                                    >
+                                                        {isTriggering === item.uuid ? 'Triggering...' : 'Trigger Now'}
+                                                    </button>
+                                                    <button
+                                                        className="text-blue-600 hover:underline text-xs font-medium ml-2"
+                                                        onClick={() => {
+                                                            setScheduleForm({
+                                                                uuid: item.uuid,
+                                                                title: item.title,
+                                                                schedule_type: item.schedule_type,
+                                                                routine_frequency: item.routine_frequency || 'DAILY',
+                                                                trigger_time: item.trigger_time || '08:00',
+                                                                day_of_week: item.day_of_week || 1,
+                                                                day_of_month: item.day_of_month || 1,
+                                                                start_datetime: item.start_datetime ? new Date(item.start_datetime).toISOString().slice(0,16) : '',
+                                                                end_datetime: item.end_datetime ? new Date(item.end_datetime).toISOString().slice(0,16) : '',
+                                                                amount: item.amount,
+                                                            });
+                                                            setIsOpenModalSchedule(true);
+                                                        }}
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        className="text-red-600 hover:underline text-xs font-medium ml-2"
+                                                        onClick={() => HandleDeleteSchedule(item.uuid)}
+                                                    >
+                                                        Delete
                                                     </button>
                                                 </td>
                                             </tr>
-                                        )) : <tr></tr>}
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                                                No schedules configured yet. Click &quot;+ Add Schedule&quot; above to set up credit triggers.
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
-
                             </table>
-                            <nav className="flex items-center flex-column flex-wrap md:flex-row justify-between pt-4" aria-label="Table navigation">
-                                <span className="text-sm font-normal text-gray-500 dark:text-gray-400 mb-4 md:mb-0 block w-full md:inline md:w-auto">
-                                    Showing <span className="font-semibold text-gray-900 dark:text-white">{currentPage * 10 - 9}-{Math.min(currentPage * 10, totalItems)}</span> of <span className="font-semibold text-gray-900 dark:text-white">{totalItems}</span>
-                                </span>
-                                <ul className="inline-flex -space-x-px rtl:space-x-reverse text-sm h-8">
-                                    <li>
-                                        <a
-                                            onClick={() => handlePageChange(currentPage - 1 <= 0 ? 1 : currentPage - 1)}
-                                            className="flex items-center justify-center px-3 h-8 ms-0 leading-tight text-gray-500 bg-white border border-gray-300 rounded-s-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
-                                        >Previous
-                                        </a>
-                                    </li>
-                                    {/* Render pagination buttons based on totalItems and currentPage */}
-                                    {Array.from({ length: Math.ceil(totalItems / 10) }, (_, index) => (
-                                        <li key={index}>
-                                            <a className={`flex items-center justify-center px-3 h-8 leading-tight ${currentPage === index + 1 ? 'text-blue-600 bg-blue-50' : 'text-gray-500 bg-white'} border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white`} onClick={() => handlePageChange(index + 1)}>
-                                                {index + 1}
-                                            </a>
-                                        </li>
-                                    ))}
-                                    <li>
-                                        <a
-                                            className="flex items-center justify-center px-3 h-8 leading-tight text-gray-500 bg-white border border-gray-300 rounded-e-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
-                                            onClick={() => handlePageChange(currentPage + 1)}
-
-                                        >Next</a>
-                                    </li>
-                                </ul>
-                            </nav>
                         </div>
 
+                        {/* Execution History Log Table */}
+                        <div className="mt-8">
+                            <h4 className="text-md font-semibold text-gray-800 dark:text-white mb-3">Schedule Execution History Logs</h4>
+                            <div className="relative overflow-x-auto shadow-sm sm:rounded-lg border border-gray-200">
+                                <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                                    <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                                        <tr>
+                                            <th scope="col" className="px-6 py-3">Schedule</th>
+                                            <th scope="col" className="px-6 py-3">Trigger Source</th>
+                                            <th scope="col" className="px-6 py-3">Credit Amount</th>
+                                            <th scope="col" className="px-6 py-3">Status</th>
+                                            <th scope="col" className="px-6 py-3">Triggered Time (KL Time)</th>
+                                            <th scope="col" className="px-6 py-3">Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {scheduleLogs && scheduleLogs.length > 0 ? (
+                                            scheduleLogs.map((log: any) => (
+                                                <tr key={log.uuid || log.subsidy_schedule_log_id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                                                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
+                                                        {log.subsidy_schedule?.title || 'System Cron / All'}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`px-2 py-0.5 text-xs font-semibold rounded ${log.triggered_by_source === 'MANUAL' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}`}>
+                                                            {log.triggered_by_source}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 font-semibold text-green-600">
+                                                        RM {parseFloat(log.amount).toFixed(2)}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`px-2 py-0.5 text-xs font-semibold rounded ${log.status === 'SUCCESS' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                            {log.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
+                                                        {new Date(log.created_at || log.triggered_at).toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' })}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-xs text-gray-500 max-w-xs truncate">
+                                                        {log.notes || '-'}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                                                    No schedule execution history recorded yet.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div>
-                    <ModalUpdateSubsidyType />
-                </div>
-            </div>
 
+                    {/* Modal Schedule Setup */}
+                    {isOpenModalSchedule && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                            <div className="bg-white rounded-lg w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+                                <div className="flex justify-between items-center border-b pb-3 mb-4">
+                                    <h3 className="text-lg font-bold text-gray-900">
+                                        {scheduleForm.uuid ? 'Edit Subsidy Schedule' : 'Setup Subsidy Trigger Schedule'}
+                                    </h3>
+                                    <button
+                                        className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                                        onClick={() => setIsOpenModalSchedule(false)}
+                                    >
+                                        &times;
+                                    </button>
+                                </div>
 
-        </>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Schedule Title</label>
+                                        <input
+                                            type="text"
+                                            className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-black"
+                                            placeholder="e.g. Daily Morning Credit Routine"
+                                            value={scheduleForm.title}
+                                            onChange={(e) => setScheduleForm({ ...scheduleForm, title: e.target.value })}
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Trigger Schedule Type</label>
+                                        <select
+                                            className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-black"
+                                            value={scheduleForm.schedule_type}
+                                            onChange={(e) => setScheduleForm({ ...scheduleForm, schedule_type: e.target.value })}
+                                        >
+                                            <option value="ROUTINE">Routine Cronjob (Daily / Weekly / Monthly)</option>
+                                            <option value="RANGE">Date & Time Range Trigger</option>
+                                        </select>
+                                    </div>
+
+                                    {scheduleForm.schedule_type === 'ROUTINE' ? (
+                                        <>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
+                                                    <select
+                                                        className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-black"
+                                                        value={scheduleForm.routine_frequency}
+                                                        onChange={(e) => setScheduleForm({ ...scheduleForm, routine_frequency: e.target.value })}
+                                                    >
+                                                        <option value="DAILY">Daily</option>
+                                                        <option value="WEEKLY">Weekly</option>
+                                                        <option value="MONTHLY">Monthly</option>
+                                                    </select>
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Trigger Time</label>
+                                                    <input
+                                                        type="time"
+                                                        className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-black"
+                                                        value={scheduleForm.trigger_time}
+                                                        onChange={(e) => setScheduleForm({ ...scheduleForm, trigger_time: e.target.value })}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {scheduleForm.routine_frequency === 'WEEKLY' && (
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Day of Week (1=Monday ... 7=Sunday)</label>
+                                                    <input
+                                                        type="number"
+                                                        min={1}
+                                                        max={7}
+                                                        className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-black"
+                                                        value={scheduleForm.day_of_week}
+                                                        onChange={(e) => setScheduleForm({ ...scheduleForm, day_of_week: e.target.value })}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {scheduleForm.routine_frequency === 'MONTHLY' && (
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Day of Month (1 - 31)</label>
+                                                    <input
+                                                        type="number"
+                                                        min={1}
+                                                        max={31}
+                                                        className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-black"
+                                                        value={scheduleForm.day_of_month}
+                                                        onChange={(e) => setScheduleForm({ ...scheduleForm, day_of_month: e.target.value })}
+                                                    />
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date & Time</label>
+                                                <input
+                                                    type="datetime-local"
+                                                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-black"
+                                                    value={scheduleForm.start_datetime}
+                                                    onChange={(e) => setScheduleForm({ ...scheduleForm, start_datetime: e.target.value })}
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">End Date & Time</label>
+                                                <input
+                                                    type="datetime-local"
+                                                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-black"
+                                                    value={scheduleForm.end_datetime}
+                                                    onChange={(e) => setScheduleForm({ ...scheduleForm, end_datetime: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Subsidy Credit Amount (RM)</label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            className="w-full border border-gray-300 rounded-lg p-2.5 text-sm text-black"
+                                            placeholder="e.g. 10.00"
+                                            value={scheduleForm.amount}
+                                            onChange={(e) => setScheduleForm({ ...scheduleForm, amount: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end space-x-3 mt-6 border-t pt-4">
+                                    <button
+                                        className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+                                        onClick={() => setIsOpenModalSchedule(false)}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg text-sm"
+                                        onClick={HandleSaveSchedule}
+                                    >
+                                        Save Schedule
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+            </main>
+        </div>
     );
 };
 

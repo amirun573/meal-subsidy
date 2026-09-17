@@ -26,6 +26,7 @@ import {
   User,
 } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { prisma } from "../../../../../libs/prisma";
 import {
   GetCountTotalSubsidyTransaction,
   GetSubsidySingle,
@@ -42,6 +43,12 @@ import {
   UpdateSubsidyTypeSingle,
   GetSubsidyCreditSingle,
   SubsidyCreditCascade,
+  GetSubsidySchedules,
+  CreateSubsidySchedule,
+  UpdateSubsidySchedule,
+  DeleteSubsidySchedule,
+  GetSubsidyScheduleLogs,
+  CreateSubsidyScheduleLog,
 } from "../model/subsidy.model";
 import { GetUserSingle } from "../../user/model/user.model";
 import { SubsidyTypeCode } from "@/_Common/enum/subsidy-type.enum";
@@ -759,7 +766,7 @@ export async function DownloadReportSubsidyTransaction(
   }
 }
 
-export async function TriggerCreditService() {
+export async function TriggerCreditService(overrideAmount?: number) {
   let message: string = "";
   let status: number = 500;
   try {
@@ -799,11 +806,17 @@ export async function TriggerCreditService() {
     }
 
     const updateSubsidies: Partial<Subsidy>[] = subsidies.map((subsidy) => {
+      let creditVal = 0;
+      if (subsidy.applicable) {
+        creditVal = (overrideAmount !== undefined && overrideAmount !== null && overrideAmount > 0)
+          ? overrideAmount
+          : ((subsidy as any)?.subsidy_type?.price || 0);
+      }
       return {
         subsidy_id: subsidy.subsidy_id,
         subsidy_type_id: subsidy.subsidy_type_id,
         user_id: subsidy.user_id,
-        amount: subsidy.applicable ? (subsidy as any)?.subsidy_type?.price : 0,
+        amount: creditVal,
       };
     });
 
@@ -831,6 +844,15 @@ export async function TriggerCreditService() {
       status = 400;
       throw Error("Failed TO Generate Subsidy Credit");
     }
+
+    const klTime = new Date().toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" });
+    await CreateSubsidyScheduleLog({
+      triggered_by_source: "CRON",
+      amount: updateSubsidies.reduce((sum, s) => sum + (s.amount || 0), 0),
+      users_affected_count: createSubsidiesCredit.length,
+      status: "SUCCESS",
+      notes: `Automated credit trigger executed successfully at ${klTime} (KL Time) for ${createSubsidiesCredit.length} users.`,
+    });
 
     return NextResponse.json({
       message: true,
@@ -1452,5 +1474,211 @@ export async function CreateSubsidyTransactionServiceSocketAuth(
       message: error.message || message,
       status: error.statusCode || status,
     };
+  }
+}
+
+export async function GetSubsidySchedulesService() {
+  try {
+    const schedules = await GetSubsidySchedules({
+      where: {},
+      select: {
+        subsidy_schedule_id: true,
+        uuid: true,
+        title: true,
+        schedule_type: true,
+        routine_frequency: true,
+        cron_expression: true,
+        trigger_time: true,
+        day_of_week: true,
+        day_of_month: true,
+        start_datetime: true,
+        end_datetime: true,
+        amount: true,
+        active: true,
+        created_at: true,
+        subsidy_type: {
+          select: {
+            subsidy_type_id: true,
+            subsidy_type_name: true,
+            subsidy_type_code: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json({ schedules });
+  } catch (error: any) {
+    return NextResponse.json({ message: error.message || "Failed to fetch schedules" }, { status: 500 });
+  }
+}
+
+export async function CreateSubsidyScheduleService(data: any) {
+  try {
+    const { code, uuid, start_datetime, end_datetime, ...rest } = data;
+    const cleanedData: any = {
+      ...rest,
+      amount: parseFloat(data.amount) || 0,
+      day_of_week: data.day_of_week ? parseInt(data.day_of_week) : null,
+      day_of_month: data.day_of_month ? parseInt(data.day_of_month) : null,
+      start_datetime: start_datetime ? new Date(start_datetime) : null,
+      end_datetime: end_datetime ? new Date(end_datetime) : null,
+      active: data.active !== undefined ? data.active : true,
+    };
+    
+    if (cleanedData.schedule_type === 'ROUTINE') {
+      cleanedData.start_datetime = null;
+      cleanedData.end_datetime = null;
+      
+      // Enforce single active routine rule: if this new routine is active, deactivate all existing ROUTINE schedules
+      if (cleanedData.active) {
+        await prisma.subsidySchedule.updateMany({
+          where: { schedule_type: 'ROUTINE', active: true },
+          data: { active: false },
+        });
+      }
+    }
+
+    const schedule = await CreateSubsidySchedule(cleanedData);
+    if (!schedule) {
+      return NextResponse.json({ message: "Failed to create schedule" }, { status: 400 });
+    }
+    return NextResponse.json({ message: "Schedule created successfully", schedule });
+  } catch (error: any) {
+    console.error("CreateSubsidySchedule error:", error);
+    return NextResponse.json({ message: error.message || "Error creating schedule" }, { status: 500 });
+  }
+}
+
+export async function UpdateSubsidyScheduleService(data: any) {
+  try {
+    const { code, start_datetime, end_datetime, ...rest } = data;
+    const cleanedData: any = {
+      ...rest,
+      amount: parseFloat(data.amount) || 0,
+      day_of_week: data.day_of_week ? parseInt(data.day_of_week) : null,
+      day_of_month: data.day_of_month ? parseInt(data.day_of_month) : null,
+      start_datetime: start_datetime ? new Date(start_datetime) : null,
+      end_datetime: end_datetime ? new Date(end_datetime) : null,
+    };
+
+    if (cleanedData.schedule_type === 'ROUTINE') {
+      cleanedData.start_datetime = null;
+      cleanedData.end_datetime = null;
+
+      // Enforce single active routine rule
+      if (cleanedData.active) {
+        await prisma.subsidySchedule.updateMany({
+          where: { schedule_type: 'ROUTINE', active: true, uuid: { not: cleanedData.uuid } },
+          data: { active: false },
+        });
+      }
+    }
+
+    const schedule = await UpdateSubsidySchedule(cleanedData);
+    return NextResponse.json({ message: "Schedule updated successfully" });
+  } catch (error: any) {
+    console.error("UpdateSubsidySchedule error:", error);
+    return NextResponse.json({ message: error.message || "Error updating schedule" }, { status: 500 });
+  }
+}
+
+export async function ToggleSubsidyScheduleActiveService(scheduleUuid: string, active: boolean) {
+  try {
+    const targetSchedule = await prisma.subsidySchedule.findFirst({
+      where: { uuid: scheduleUuid },
+    });
+
+    if (!targetSchedule) {
+      return NextResponse.json({ message: "Schedule not found" }, { status: 404 });
+    }
+
+    if (active && targetSchedule.schedule_type === 'ROUTINE') {
+      // If activating a routine schedule, deactivate all other routine schedules
+      await prisma.subsidySchedule.updateMany({
+        where: { schedule_type: 'ROUTINE', active: true, uuid: { not: scheduleUuid } },
+        data: { active: false },
+      });
+    }
+
+    await prisma.subsidySchedule.updateMany({
+      where: { uuid: scheduleUuid },
+      data: { active },
+    });
+
+    return NextResponse.json({
+      message: `Schedule "${targetSchedule.title}" ${active ? 'activated' : 'deactivated'} successfully`,
+    });
+  } catch (error: any) {
+    console.error("ToggleSubsidyScheduleActive error:", error);
+    return NextResponse.json({ message: error.message || "Error toggling schedule active state" }, { status: 500 });
+  }
+}
+
+export async function DeleteSubsidyScheduleService(uuid: string) {
+  try {
+    await DeleteSubsidySchedule(uuid);
+    return NextResponse.json({ message: "Schedule deleted successfully" });
+  } catch (error: any) {
+    return NextResponse.json({ message: error.message || "Error deleting schedule" }, { status: 500 });
+  }
+}
+
+export async function GetSubsidyScheduleLogsService() {
+  try {
+    const logs = await GetSubsidyScheduleLogs();
+    return NextResponse.json({ logs });
+  } catch (error: any) {
+    return NextResponse.json({ message: error.message || "Error fetching schedule logs" }, { status: 500 });
+  }
+}
+
+export async function ManualTriggerScheduleService(scheduleUuid: string, user?: User) {
+  try {
+    const schedule = await prisma.subsidySchedule.findFirst({
+      where: { uuid: scheduleUuid, active: true },
+    });
+
+    if (!schedule) {
+      return NextResponse.json({ message: "Schedule not found" }, { status: 404 });
+    }
+
+    // Trigger credit for applicable users
+    let isSuccess = false;
+    let noteMsg = "";
+
+    try {
+      const triggerRes = await TriggerCreditService(parseFloat(schedule.amount as any) || undefined);
+      isSuccess = triggerRes.status === 200;
+      noteMsg = `Trigger status ${triggerRes.status}`;
+    } catch (err: any) {
+      console.error("TriggerCreditService error during manual trigger:", err);
+      noteMsg = err?.message || "Failed to trigger credit";
+    }
+
+    const klTime = new Date().toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" });
+
+    // Create execution log entry
+    await CreateSubsidyScheduleLog({
+      subsidy_schedule_id: schedule.subsidy_schedule_id,
+      triggered_by_source: "MANUAL",
+      triggered_by_user_id: user?.user_id || null,
+      amount: schedule.amount,
+      status: isSuccess ? "SUCCESS" : "FAILED",
+      notes: `Manual trigger executed at ${klTime} (KL Time). ${noteMsg}`,
+    });
+
+    if (!isSuccess) {
+      return NextResponse.json(
+        { message: `Manual trigger finished with issue: ${noteMsg}` },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({
+      message: `Manual trigger executed successfully for "${schedule.title}" at ${klTime} (KL Time).`,
+    });
+  } catch (error: any) {
+    console.error("ManualTriggerSchedule error:", error);
+    return NextResponse.json({ message: error.message || "Error triggering schedule" }, { status: 500 });
   }
 }
