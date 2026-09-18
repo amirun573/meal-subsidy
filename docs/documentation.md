@@ -1,0 +1,134 @@
+# Meal Subsidy System - Architecture & Technical Documentation
+
+This document provides a comprehensive overview of the **Meal Subsidy System**, including its architecture, technical implementation, Prisma database management, credit distribution mechanics, and deployment workflow.
+
+---
+
+## 1. Overall Project Overview
+
+The **Meal Subsidy System** is a Next.js (App Router) full-stack web application designed to manage employee meal subsidies, digital QR redemptions, automated schedule distributions, and administrative reporting.
+
+### Core Capabilities
+- **Subsidy Schedule Management (`/subsidy`)**: Configure automated cron routines (Daily, Weekly, Monthly) and manual credit triggers with single-active-routine rules.
+- **Execution History & Audit Logs**: Detailed logs for every credit distribution (Cron vs Manual) timestamped in `Asia/Kuala_Lumpur` timezone.
+- **Employee Credit & Cards (`/card-setup`, `/employee-details`)**: Manage employee profiles, card assignments, and real-time balance updates.
+- **QR Redemption Scanner (`/scan`)**: Real-time scanner interface for redeeming meal credits.
+- **Reporting & Analytics (`/report`)**: Exportable reports on subsidy distributions and card redemptions.
+
+---
+
+## 2. Technical Stack & Architecture
+
+### Backend & Framework
+- **Framework**: Next.js 14 (App Router) + TypeScript
+- **Database & ORM**: PostgreSQL managed via **Prisma ORM**
+- **Cron Server**: `node-cron` integrated in `cron.ts` running in `Asia/Kuala_Lumpur` (UTC+8)
+- **API Architecture**: Custom action-code routing pattern using `StatusAPICode` enums over REST endpoints (`/api/subsidy`, `/api/user`, `/api/department`).
+
+### Code Structure
+```
+web/
+├── cron.ts                         # Automated scheduler routine for subsidy distribution
+├── prisma/
+│   ├── schema.prisma               # Prisma models and DB schemas
+│   └── migrations/                 # Migration files
+└── src/
+    ├── _Common/
+    │   └── enum/
+    │       └── status-api-code.enum.ts  # API action codes enum
+    ├── app/
+    │   ├── api/
+    │   │   └── subsidy/            # API routes, models, and service layer
+    │   │       ├── route.ts
+    │   │       ├── model/
+    │   │       └── service/
+    │   └── subsidy/                # Subsidy schedule management page
+    │       └── page.tsx
+    └── components/                 # Shared UI components & layout
+```
+
+---
+
+## 3. Subsidy Schedule Mechanics & Financial Guardrails
+
+1. **Single Active Routine Rule**:
+   - To prevent duplicate money distribution, **only 1 `ROUTINE` schedule can be active at a time**.
+   - Activating a routine schedule automatically deactivates any existing active routine schedules on the backend.
+2. **Custom Credit Amount**:
+   - When a schedule triggers (automatically via cron or manually via **"Trigger Now"**), the exact credit amount (`schedule.amount`) configured in the schedule is granted to active eligible employees.
+3. **Execution Logging**:
+   - Every execution is recorded in the `SubsidyScheduleLog` table with the source (`CRON` vs `MANUAL`), amount distributed, number of affected users, and timestamp in `Asia/Kuala_Lumpur`.
+
+---
+
+## 4. Prisma Database & Workflows
+
+### Database Schema Models
+- **`SubsidySchedule`**: Manages schedules (`uuid`, `title`, `schedule_type`, `routine_frequency`, `trigger_time`, `day_of_week`, `day_of_month`, `amount`, `active`).
+- **`SubsidyScheduleLog`**: Stores execution history (`uuid`, `triggered_by_source`, `amount`, `status`, `notes`, `created_at`).
+- **`Subsidy` & `SubsidyCredit`**: Manages user subsidy status and balance balances.
+
+### Standard Prisma Commands
+
+```bash
+# 1. Generate Prisma Client after schema changes
+npx prisma generate
+
+# 2. Run Database Migrations (Development)
+npx prisma migrate dev --name <migration_name>
+
+# 3. Apply Migrations to Production DB
+npx prisma migrate deploy
+
+# 4. Open Prisma Studio to inspect DB UI
+npx prisma studio
+```
+
+---
+
+## 5. How to Deploy
+
+### Prerequisites
+- Node.js (v18 or v20 recommended)
+- PostgreSQL Database
+- Environment file `.env` configured in `/web/.env`:
+  ```env
+  DATABASE_URL="postgresql://user:password@host:5432/dbname?schema=public"
+  NEXTAUTH_SECRET="your-secret-key"
+  PORT=3000
+  ```
+
+### Build & Deployment Steps
+
+1. **Install Dependencies**:
+   ```bash
+   cd web
+   npm install
+   ```
+
+2. **Run Prisma Migrations & Generate Client**:
+   ```bash
+   npx prisma migrate deploy
+   npx prisma generate
+   ```
+
+3. **Build the Production Application**:
+   ```bash
+   npm run build
+   ```
+
+4. **Start Production Application Server & Cron Routine**:
+   ```bash
+   # Option A: Built-in production start script
+   npm run start-prod
+
+   # Option B: Managed via PM2 Process Manager
+   pm2 start npm --name "meal-subsidy-web" -- run start-prod
+   ```
+
+---
+
+## 6. Maintenance & Troubleshooting
+
+- **Check Logs**: Inspect Winston logs in the app log directory or via PM2: `pm2 logs meal-subsidy-web`.
+- **Cronjob Verification**: Ensure server system clock or process timezone handles `Asia/Kuala_Lumpur` correctly for cron execution.

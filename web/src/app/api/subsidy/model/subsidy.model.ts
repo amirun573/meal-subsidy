@@ -789,3 +789,96 @@ export async function UpdateSubsidyCascade(data: { subsidy: Subsidy }) {
     return null;
   }
 }
+
+export async function GetSubsidySchedules(data: PrismaCondtionFetch) {
+  try {
+    const { where, select } = data;
+    return await prisma.subsidySchedule.findMany({
+      where: { ...where, active: true },
+      select,
+      orderBy: { created_at: "desc" },
+    });
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
+
+export async function CreateSubsidySchedule(data: any) {
+  try {
+    return await prisma.subsidySchedule.create({ data });
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+export async function UpdateSubsidySchedule(data: { uuid: string; [key: string]: any }) {
+  try {
+    const { uuid, ...updateData } = data;
+    return await prisma.subsidySchedule.updateMany({
+      where: { uuid },
+      data: updateData,
+    });
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+export async function DeleteSubsidySchedule(uuid: string) {
+  try {
+    return await prisma.subsidySchedule.updateMany({
+      where: { uuid },
+      data: { active: false, deleted_at: new Date() },
+    });
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+export async function GetSubsidyScheduleLogs(params?: { page?: number; pageSize?: number }) {
+  try {
+    const page = params?.page && params.page > 0 ? params.page : 1;
+    const pageSize = params?.pageSize && params.pageSize > 0 ? params.pageSize : 10;
+    const skip = (page - 1) * pageSize;
+
+    const [logs, total] = await Promise.all([
+      prisma.subsidyScheduleLog.findMany({
+        include: {
+          subsidy_schedule: {
+            select: {
+              title: true,
+              schedule_type: true,
+            },
+          },
+        },
+        orderBy: { created_at: 'desc' },
+        skip,
+        take: pageSize,
+      }),
+      prisma.subsidyScheduleLog.count(),
+    ]);
+
+    return {
+      logs,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  } catch (error) {
+    console.error("GetSubsidyScheduleLogs error:", error);
+    return { logs: [], total: 0, page: 1, pageSize: 10, totalPages: 0 };
+  }
+}
+
+export async function CreateSubsidyScheduleLog(data: any) {
+  try {
+    return await prisma.subsidyScheduleLog.create({ data });
+  } catch (error) {
+    console.error("CreateSubsidyScheduleLog error:", error);
+    return null;
+  }
+}

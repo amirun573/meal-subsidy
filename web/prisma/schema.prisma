@@ -28,7 +28,7 @@ model Role {
 
 model User {
   user_id                   Int               @id @default(autoincrement())
-  employee_id               String            @unique
+  employee_id               String
   email                     String?           @unique
   password_hash             String?
   active                    Boolean           @default(false)
@@ -135,6 +135,65 @@ model SubsidyType {
   deleted_at DateTime?
 
   subsidies        Subsidy[]  // One-to-many relationship with Subsidy
+  subsidy_schedules SubsidySchedule[]
+}
+
+enum ScheduleType {
+  ROUTINE
+  RANGE
+}
+
+enum RoutineFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+model SubsidySchedule {
+  subsidy_schedule_id Int              @id @default(autoincrement())
+  uuid                String?          @default(uuid())
+  title               String
+  schedule_type       ScheduleType
+  
+  routine_frequency   RoutineFrequency?
+  cron_expression     String?
+  trigger_time        String?          // e.g. "08:00"
+  day_of_week         Int?             // 1-7 for Weekly
+  day_of_month        Int?             // 1-31 for Monthly
+  
+  start_datetime      DateTime?
+  end_datetime        DateTime?
+  
+  amount              Float            @default(0)
+  subsidy_type_id     Int?
+  subsidy_type        SubsidyType?     @relation(fields: [subsidy_type_id], references: [subsidy_type_id])
+  
+  active              Boolean          @default(true)
+  created_at          DateTime         @default(now())
+  updated_at          DateTime         @updatedAt
+  deleted_at          DateTime?
+
+  schedule_logs       SubsidyScheduleLog[]
+}
+
+enum ScheduleTriggerSource {
+  CRON
+  MANUAL
+}
+
+model SubsidyScheduleLog {
+  subsidy_schedule_log_id Int                   @id @default(autoincrement())
+  uuid                    String?               @default(uuid())
+  subsidy_schedule_id     Int?
+  subsidy_schedule        SubsidySchedule?      @relation(fields: [subsidy_schedule_id], references: [subsidy_schedule_id], onDelete: SetNull)
+  triggered_by_source     ScheduleTriggerSource @default(CRON)
+  triggered_by_user_id    Int?
+  triggered_at            DateTime              @default(now())
+  amount                  Float
+  users_affected_count    Int                   @default(0)
+  status                  String                @default("SUCCESS") // SUCCESS, FAILED
+  notes                   String?
+  created_at              DateTime              @default(now())
 }
 
 

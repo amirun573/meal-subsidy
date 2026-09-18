@@ -116,6 +116,7 @@ export async function GET(req: any, res: any) {
         return UserPaginationService({
           page: parseInt(page),
           filter,
+          activeFilter: url.searchParams.has("activeFilter") ? url.searchParams.get("activeFilter") === "true" : null,
         });
 
         // return HashingPasswordService({ password: hashingPasswordRequest });

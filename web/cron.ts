@@ -1,39 +1,30 @@
 import cron from 'node-cron';
 import axios from 'axios';
-import {StatusAPICode} from './src/_Common/enum/status-api-code.enum';
-import {encrypt} from './src/_Common/function/Hashing';
+import { StatusAPICode } from './src/_Common/enum/status-api-code.enum';
+import { encrypt } from './src/_Common/function/Hashing';
 
-const triggerCredit = async () => {
+const triggerCreditCron = async () => {
   try {
-    console.log('Executing triggerCredit...');
-    const baseURL = process.env.API_BASE_URL || 'http://localhost:3000'; // Use environment variable or default
+    const baseURL = process.env.API_BASE_URL || 'http://localhost:3000';
+    const nowKL = new Date().toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' });
+
+    console.log(`[${nowKL}] Running subsidy trigger cronjob...`);
 
     const response = await axios.post(`${baseURL}/api/subsidy`, {
       [StatusAPICode.code]: StatusAPICode.CREATE_TRIGGER_SUBSIDY_CREDIT_CRON,
       key: encrypt('TRIGGER_CREDIT'),
     });
 
-    console.log('Successfully Triggered Credit:', response.data);
-
-    const nowInMalaysia = new Date().toLocaleString('en-US', {
-      timeZone: 'Asia/Kuala_Lumpur',
-    });
-    console.log('Done at ===>', nowInMalaysia);
-
-  } catch (error) {
-    console.error('Error in triggerCredit:', error);
+    console.log(`[${nowKL}] Trigger Result:`, response.data);
+  } catch (error: any) {
+    console.error('Error in triggerCreditCron:', error?.response?.data || error.message);
   }
 };
 
-cron.schedule('50 05 * * *', triggerCredit, {
+// Scheduled every day at 05:50 AM Asia/Kuala_Lumpur time
+cron.schedule('50 05 * * *', triggerCreditCron, {
   scheduled: true,
   timezone: 'Asia/Kuala_Lumpur',
 });
 
-// Schedule the cron job to run every 15 seconds (adjust for production use)
-// cron.schedule("*/15 * * * * *", triggerCredit, {
-//   scheduled: true,
-//   timezone: "Asia/Kuala_Lumpur",
-// });
-
-console.log('Cron job scheduled');
+console.log('Cron job scheduled (Timezone: Asia/Kuala_Lumpur)');

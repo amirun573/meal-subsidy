@@ -1735,62 +1735,63 @@ const EmployeeDetailsPage = () => {
 
 
     return (<>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: 'white', padding: '20px' }}>
-            <div style={{ width: '100%', maxWidth: '1200px', height: 'auto', position: 'relative', padding: '20px', boxSizing: 'border-box' }}>
-                <div>
-                    {loading && <Spinner />}
+        <div className="min-h-screen bg-gray-50">
+            {loading && <Spinner />}
 
-                    <h1 className="text-black">Employee Details</h1>
-                    <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 p-4">
-                        <label
-                            htmlFor="filter"
-                            className="text-gray-900 text-sm dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                        >
-                            Search:
-                        </label>
-                        <input
-                            id="filter"
-                            name="filter"
-                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 p-2.5 dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500 w-full sm:w-auto"
-                            onChange={(e) => setFilter(e.target.value)}
-                        />
-                        <div className="flex space-x-2 sm:space-x-4">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
+                {/* Header */}
+                <div className="mb-6">
+                    <h1 className="text-2xl font-bold text-gray-900">Employee Details</h1>
+                    <p className="text-sm text-gray-500 mt-1">Manage active and inactive employees with meal subsidy eligibility.</p>
+                </div>
+
+                {/* Toolbar */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div className="flex-1 relative">
+                            <input
+                                id="filter"
+                                name="filter"
+                                className="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 pl-9 p-2.5"
+                                placeholder="Search by name, employee ID, department..."
+                                onChange={(e) => { setFilter(e.target.value); setCurrentPage(1); }}
+                            />
+                            <span className="absolute left-3 top-2.5 text-gray-400 text-sm">🔍</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
                             <button
                                 onClick={HandleAddUser}
-                                className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded w-full sm:w-auto"
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg text-sm transition"
                             >
-                                +
+                                + Add Employee
                             </button>
                             <button
                                 onClick={HandleUserUploadFileAction}
-                                className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded flex items-center justify-center w-full sm:w-auto"
+                                className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-3 rounded-lg text-sm transition flex items-center gap-1"
+                                title="Bulk Upload via Excel"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 64 64" fill="none">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 64 64" fill="none">
                                     <rect x="4" y="14" width="56" height="36" rx="4" fill="#f5c38c" />
                                     <path d="M4 14h20l4-4h32v36H4V14z" fill="#f5c38c" />
                                     <rect x="8" y="22" width="48" height="24" rx="2" fill="#fff" />
                                 </svg>
+                                Upload
                             </button>
-                            {/* <button
-                                onClick={HandleUserUpdateUploadFileAction}
-                                className="bg-blue-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded flex items-center justify-center w-full sm:w-auto"
-                            >
-                                Update User Bulk
-                            </button> */}
                             <button
                                 onClick={DownloadEmployeeDetails}
-                                className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded flex items-center justify-center w-full sm:w-auto"
+                                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg text-sm transition"
                             >
-                                Download Employee Details
+                                ⬇ Download
                             </button>
-                            <button
+                            {/* <button
                                 onClick={HandleTriggerCredit}
-                                className="bg-red-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded flex items-center w-full sm:w-auto"
+                                className="bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2 px-4 rounded-lg text-sm transition"
                             >
-                                Trigger Credit
-                            </button>
+                                ⚡ Trigger Credit
+                            </button> */}
                         </div>
                     </div>
+                </div>
 
 
 
@@ -1798,139 +1799,139 @@ const EmployeeDetailsPage = () => {
 
 
 
-                    <div className="mt-7">
-                        <div className="relative overflow-x-auto shadow-md sm:rounded-lg">
-                            <table className="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
-                                <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-                                    <tr>
-                                        <th scope="col" className="px-6 py-3">
-                                            No.
-                                        </th>
-                                        <th scope="col" className="px-6 py-3">
-                                            Name
-                                        </th>
-                                        <th scope="col" className="px-6 py-3">
-                                            Employee ID
-                                        </th>
-                                        <th scope="col" className="px-6 py-3">
-                                            Department
-                                        </th>
-                                        <th scope="col" className="px-6 py-3">
-                                            Value Stream
-                                        </th>
-                                        <th scope="col" className="px-6 py-3">
-                                            Employee Category
-                                        </th>
-                                        <th scope="col" className="px-6 py-3">
-                                            Meal Subsidiry Applicable
-                                        </th>
-                                        <th scope="col" className="px-6 py-3">Current Subsidy Credit (RM)</th>
-                                        <th scope="col" className="px-6 py-3">Active</th>
-                                        <th scope="col" className="px-6 py-3">Edit</th>
-
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {employeesDetails && employeesDetails.length > 0 ?
-                                        employeesDetails.map((item, index) => (
-                                            <tr key={index} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                                                <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                                                    {index + 1 + (currentPage - 1) * 10}                                                </th>
-                                                <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                                                    {item?.name}
-                                                </th>
-                                                <td className="px-6 py-4">
-                                                    {item.employee_id}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    {item.department_name}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    {item.cost_center_code}
-                                                </td>
-                                                <td className="px-6 py-4">
+                <div className="mt-7">
+                    <div className="relative overflow-x-auto shadow-md sm:rounded-lg">
+                        <table className="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
+                            <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                                <tr>
+                                    <th className="px-4 py-3">No.</th>
+                                    <th className="px-4 py-3">Name</th>
+                                    <th className="px-4 py-3">Employee ID</th>
+                                    <th className="px-4 py-3">Department</th>
+                                    <th className="px-4 py-3">Value Stream</th>
+                                    <th className="px-4 py-3">Category</th>
+                                    <th className="px-4 py-3">Subsidy</th>
+                                    <th className="px-4 py-3">Credit (RM)</th>
+                                    <th className="px-4 py-3">End Date</th>
+                                    <th className="px-4 py-3">Status</th>
+                                    <th className="px-4 py-3 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {employeesDetails && employeesDetails.length > 0 ?
+                                    employeesDetails.map((item, index) => (
+                                        <tr key={index} className="bg-white hover:bg-gray-50 transition">
+                                            <td className="px-4 py-3 text-gray-400 text-xs">
+                                                {index + 1 + (currentPage - 1) * 10}
+                                            </td>
+                                            <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">
+                                                {item?.name}
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-600">
+                                                {item.employee_id}
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-600 max-w-[120px] truncate" title={item.department_name}>
+                                                {item.department_name}
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-600">
+                                                {item.cost_center_code}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-100 text-indigo-700">
                                                     {item.employee_category_code.toUpperCase()}
-                                                </td>
-                                                <td className="px-6 py-4 flex justify-center items-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={item.is_meal_subsidiry_active}
-                                                        onChange={(e) => HandleCheckboxChange(e, index)}
-                                                    />
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    {item.current_subsidy_value}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {item.is_meal_subsidiry_active ? (
+                                                    <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-700">Active</span>
+                                                ) : (
+                                                    <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-500">Inactive</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-1">
+                                                    <span className="font-semibold text-green-600">{item.current_subsidy_value}</span>
                                                     <button
                                                         onClick={() => HandleEditSubsidyCredit(item.uuid || '')}
-                                                        className="ml-2 bg-blue-500 text-white px-2 py-1 text-sm rounded"
+                                                        className="ml-1 text-blue-500 hover:text-blue-700 text-xs underline"
                                                     >
                                                         Edit
                                                     </button>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <ToggleSwitch status={item.user_active} index={index} HandleToggleStatus={HandleToggleEmployeeStatus} uuid={item.uuid} />
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <button
-                                                        className="bg-blue-500 text-white px-4 py-2 rounded"
-                                                        onClick={() => HandleEditUser(item?.uuid as string || '')}
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                </td>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                                                {item.end_date
+                                                    ? new Date(item.end_date).toLocaleDateString('en-MY', { timeZone: 'Asia/Kuala_Lumpur' })
+                                                    : <span className="text-gray-300">—</span>}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <ToggleSwitch status={item.user_active} index={index} HandleToggleStatus={HandleToggleEmployeeStatus} uuid={item.uuid} />
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <button
+                                                    className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-medium transition"
+                                                    onClick={() => HandleEditUser(item?.uuid as string || '')}
+                                                >
+                                                    Edit
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    )) : <tr></tr>}
+                            </tbody>
+                        </table>
+                    </div>
 
-
-                                            </tr>
-                                        )) : <tr></tr>}
-                                </tbody>
-
-                            </table>
-                            <nav className="flex items-center flex-column flex-wrap md:flex-row justify-between pt-4" aria-label="Table navigation">
-                                <span className="text-sm font-normal text-gray-500 dark:text-gray-400 mb-4 md:mb-0 block w-full md:inline md:w-auto">
-                                    Showing <span className="font-semibold text-gray-900 dark:text-white">{currentPage * 10 - 9}-{Math.min(currentPage * 10, totalItems)}</span> of <span className="font-semibold text-gray-900 dark:text-white">{totalItems}</span>
-                                </span>
-                                <ul className="inline-flex -space-x-px rtl:space-x-reverse text-sm h-8">
-                                    <li>
-                                        <a
-                                            onClick={() => handlePageChange(currentPage - 1 <= 0 ? 1 : currentPage - 1)}
-                                            className="flex items-center justify-center px-3 h-8 ms-0 leading-tight text-gray-500 bg-white border border-gray-300 rounded-s-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
-                                        >Previous
-                                        </a>
-                                    </li>
-                                    {/* Render pagination buttons based on totalItems and currentPage */}
-                                    {Array.from({ length: Math.ceil(totalItems / 10) }, (_, index) => (
-                                        <li key={index}>
-                                            <a className={`flex items-center justify-center px-3 h-8 leading-tight ${currentPage === index + 1 ? 'text-blue-600 bg-blue-50' : 'text-gray-500 bg-white'} border border-gray-300 hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white`} onClick={() => handlePageChange(index + 1)}>
-                                                {index + 1}
-                                            </a>
-                                        </li>
-                                    ))}
-                                    <li>
-                                        <a
-                                            className="flex items-center justify-center px-3 h-8 leading-tight text-gray-500 bg-white border border-gray-300 rounded-e-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
-                                            onClick={() => handlePageChange(currentPage + 1)}
-
-                                        >Next</a>
-                                    </li>
-                                </ul>
-                            </nav>
+                    {/* Pagination */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-4 gap-3 border-t border-gray-100 text-sm text-gray-500">
+                        <span>
+                            Showing <span className="font-semibold text-gray-900">{Math.min((currentPage - 1) * 10 + 1, totalItems)}–{Math.min(currentPage * 10, totalItems)}</span> of <span className="font-semibold text-gray-900">{totalItems}</span> employees
+                        </span>
+                        <div className="inline-flex gap-1">
+                            <button
+                                disabled={currentPage <= 1}
+                                onClick={() => handlePageChange(currentPage - 1)}
+                                className="px-3 py-1.5 bg-white border border-gray-300 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                ← Previous
+                            </button>
+                            {Array.from({ length: Math.min(Math.ceil(totalItems / 10), 7) }, (_, i) => {
+                                const totalPages = Math.ceil(totalItems / 10);
+                                let page: number;
+                                if (totalPages <= 7) {
+                                    page = i + 1;
+                                } else if (currentPage <= 4) {
+                                    page = i + 1;
+                                } else if (currentPage >= totalPages - 3) {
+                                    page = totalPages - 6 + i;
+                                } else {
+                                    page = currentPage - 3 + i;
+                                }
+                                return (
+                                    <button
+                                        key={page}
+                                        onClick={() => handlePageChange(page)}
+                                        className={`px-3 py-1.5 border rounded-md text-xs font-medium transition ${currentPage === page ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                                    >
+                                        {page}
+                                    </button>
+                                );
+                            })}
+                            <button
+                                disabled={currentPage >= Math.ceil(totalItems / 10)}
+                                onClick={() => handlePageChange(currentPage + 1)}
+                                className="px-3 py-1.5 bg-white border border-gray-300 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Next →
+                            </button>
                         </div>
-
                     </div>
                 </div>
-                <div>
-                    <ModalUser />
-                </div>
-                <div>
-                    <ModalUploadUser />
-                </div>
-                <div>
-                    <ModalEditSubsidyCredit />
-                </div>
-                <div>
-                    <ModalUpdateUploadUser />
-                </div>
-            </div>
+            </main>
+
+            <div><ModalUser /></div>
+            <div><ModalUploadUser /></div>
+            <div><ModalEditSubsidyCredit /></div>
+            <div><ModalUpdateUploadUser /></div>
         </div>
     </>);
 }
