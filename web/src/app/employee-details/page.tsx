@@ -1783,12 +1783,12 @@ const EmployeeDetailsPage = () => {
                             >
                                 ⬇ Download
                             </button>
-                            <button
+                            {/* <button
                                 onClick={HandleTriggerCredit}
                                 className="bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2 px-4 rounded-lg text-sm transition"
                             >
                                 ⚡ Trigger Credit
-                            </button>
+                            </button> */}
                         </div>
                     </div>
                 </div>
