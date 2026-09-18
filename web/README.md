@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Meal Subsidy web app
 
-## Getting Started
+This is the Next.js app and Prisma project. Run all commands below from `web/`.
 
-First, run the development server:
+## Local development
+
+Configure `DATABASE_URL` in `.env`, then run:
 
 ```bash
+npm ci
+npx prisma migrate dev
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Use `migrate dev` only with a development database. Commit each new directory it creates under `prisma/migrations/` together with the schema change.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Production deployment
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+First deploy the latest committed code. Confirm that the checkout contains the schema models and migrations you expect; reinstalling dependencies cannot add models to an old `schema.prisma`.
 
-## Learn More
+```bash
+git status --short
+git rev-parse --short HEAD
+grep -n '^model SubsidySchedule' prisma/schema.prisma
+ls prisma/migrations/20260918093042_mig/migration.sql
+```
 
-To learn more about Next.js, take a look at the following resources:
+If the checkout is correct, configure `.env`, then install build dependencies, apply committed migrations, and build:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm ci --include=dev
+npm run deploy:build
+npm run start-prod
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+`deploy:build` runs `prisma migrate deploy` and then `npm run build`. The build regenerates Prisma Client from `prisma/schema.prisma` before compiling Next.js and TypeScript. Do not run `migrate dev` against production.
 
-## Deploy on Vercel
+If TypeScript says `prisma.subsidySchedule` does not exist, check the source schema first, then the generated client:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+grep -n '^model SubsidySchedule' prisma/schema.prisma
+grep -n 'get subsidySchedule' node_modules/.prisma/client/index.d.ts
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+If the first check is empty, deploy the correct checkout. If only the second is empty, run `npx prisma generate --schema=prisma/schema.prisma` and inspect its output.
+
+See [the project documentation](../docs/documentation.md) for the architecture and database workflow.

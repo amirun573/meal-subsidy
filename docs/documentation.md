@@ -77,7 +77,7 @@ npx prisma generate
 # 2. Run Database Migrations (Development)
 npx prisma migrate dev --name <migration_name>
 
-# 3. Apply Migrations to Production DB
+# 3. Apply committed migrations to Production DB
 npx prisma migrate deploy
 
 # 4. Open Prisma Studio to inspect DB UI
@@ -94,28 +94,32 @@ npx prisma studio
 - Environment file `.env` configured in `/web/.env`:
   ```env
   DATABASE_URL="postgresql://user:password@host:5432/dbname?schema=public"
-  NEXTAUTH_SECRET="your-secret-key"
-  PORT=3000
+  NEXT_PUBLIC_SERVER_URL="https://your-app.example.com"
+  API_BASE_URL="https://your-app.example.com"
+  JWT_SECRET_KEY="generate-a-unique-random-secret"
+  HASHING_SECRET_KEY="generate-another-unique-random-secret"
+  Initialization_Vector="generate-another-unique-random-value"
+  ENCRYPTION_METHOD="aes-256-cbc"
   ```
+
+  Keep `.env` private. The server currently listens on port 3000; setting `PORT` does not change it.
 
 ### Build & Deployment Steps
 
-1. **Install Dependencies**:
+1. **Deploy the current source**: Confirm the checkout has the expected `prisma/schema.prisma` models and their committed migration files. If a model is missing from the schema on the server, update the checkout before reinstalling packages or generating Prisma Client.
+
+2. **Install build dependencies**:
    ```bash
    cd web
-   npm install
+   npm ci --include=dev
    ```
 
-2. **Run Prisma Migrations & Generate Client**:
+3. **Apply committed migrations and build**:
    ```bash
-   npx prisma migrate deploy
-   npx prisma generate
+   npm run deploy:build
    ```
 
-3. **Build the Production Application**:
-   ```bash
-   npm run build
-   ```
+   This runs `prisma migrate deploy`, then the production build. The build runs `prisma generate` against `prisma/schema.prisma` before compiling. Run `migrate dev` only against a development database, and commit its new migration files before deploying.
 
 4. **Start Production Application Server & Cron Routine**:
    ```bash
