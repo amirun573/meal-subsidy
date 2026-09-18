@@ -89,6 +89,7 @@ export async function SignInService(data: SignInRequest) {
       throw Error("No Email Been Found.");
     }
 
+    console.log("user===>", user);
     if (
       !user?.role_id ||
       !user?.uuid ||
