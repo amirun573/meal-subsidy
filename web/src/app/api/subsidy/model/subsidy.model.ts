@@ -794,7 +794,7 @@ export async function GetSubsidySchedules(data: PrismaCondtionFetch) {
   try {
     const { where, select } = data;
     return await prisma.subsidySchedule.findMany({
-      where: { ...where, active: true },
+      where: { ...where, deleted_at: null },
       select,
       orderBy: { created_at: "desc" },
     });

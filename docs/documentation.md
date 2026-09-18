@@ -57,7 +57,11 @@ web/
 2. **Custom Credit Amount**:
    - When a schedule triggers (automatically via cron or manually via **"Trigger Now"**), the exact credit amount (`schedule.amount`) configured in the schedule is granted to active eligible employees.
 3. **Execution Logging**:
-   - Every execution is recorded in the `SubsidyScheduleLog` table with the source (`CRON` vs `MANUAL`), amount distributed, number of affected users, and timestamp in `Asia/Kuala_Lumpur`.
+   - Successful executions are recorded in the `SubsidyScheduleLog` table with the source (`CRON` vs `MANUAL`), amount distributed, number of affected users, and timestamp. Failed transactions roll back without a success log and are reported in the server logs.
+4. **Cron fallback**:
+   - The custom server checks once per minute. An active `ROUTINE` controls the daily, weekly, or monthly trigger time and credit amount. When there is no active routine, the original daily 05:50 `Asia/Kuala_Lumpur` credit trigger remains in effect.
+   - Each Kuala Lumpur calendar day has one unique automated run key, so concurrent workers or a same-day routine change cannot distribute credits twice automatically. Manual triggers remain separate. A missed trigger while the server is down is not automatically replayed.
+   - `RANGE` schedules are stored but are not run automatically by this routine checker.
 
 ---
 
@@ -95,7 +99,6 @@ npx prisma studio
   ```env
   DATABASE_URL="postgresql://user:password@host:5432/dbname?schema=public"
   NEXT_PUBLIC_SERVER_URL="https://your-app.example.com"
-  API_BASE_URL="https://your-app.example.com"
   JWT_SECRET_KEY="generate-a-unique-random-secret"
   HASHING_SECRET_KEY="generate-another-unique-random-secret"
   Initialization_Vector="generate-another-unique-random-value"

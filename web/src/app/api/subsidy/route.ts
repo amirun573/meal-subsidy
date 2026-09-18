@@ -23,6 +23,7 @@ import {
   GetSubsidyTransactionReportChart,
   GetSubsidyTypePaginationService,
   TriggerCreditService,
+  RunDueCreditScheduleService,
   UpdateSubsidyCreditRealTimeService,
   UpdateSubsidyTypeService,
   UpdateUserApplicableSubsidy,
@@ -65,6 +66,15 @@ const feature_code_employee_details: FeaturesCodeLists =
 const feature_code_report: FeaturesCodeLists = FeaturesCodeLists.report;
 
 const feature_code_subsidy: FeaturesCodeLists = FeaturesCodeLists.subsidy;
+
+async function HasSubsidyPermission(user: User | null, action: ActionEnableFeature) {
+  if (!user) return false;
+  return CheckFeatureAllowed({
+    user_features: ((user as any).user_features || []) as UserFeatures[],
+    action,
+    feature_code: feature_code_subsidy,
+  });
+}
 
 export async function GET(req: any, res: NextApiResponse) {
   let statusCode: number = 500;
@@ -249,10 +259,16 @@ export async function GET(req: any, res: NextApiResponse) {
       }
 
       case StatusAPICode.GET_SUBSIDY_SCHEDULES: {
+        if (!(await HasSubsidyPermission(user, ActionEnableFeature.READ))) {
+          return NextResponse.json({ message: "Not allowed to view subsidy schedules" }, { status: 403 });
+        }
         return GetSubsidySchedulesService();
       }
 
       case StatusAPICode.GET_SUBSIDY_SCHEDULE_LOGS: {
+        if (!(await HasSubsidyPermission(user, ActionEnableFeature.READ))) {
+          return NextResponse.json({ message: "Not allowed to view subsidy schedule logs" }, { status: 403 });
+        }
         const page: string | null = url.searchParams.get("page");
         const pageSize: string | null = url.searchParams.get("pageSize");
         return GetSubsidyScheduleLogsService({
@@ -307,11 +323,17 @@ export async function POST(req: any, res: any) {
     if (code && typeof parseInt(code) === "number") {
       switch (parseInt(code) as StatusAPICode) {
         case StatusAPICode.CREATE_SUBSIDY_SCHEDULE: {
+          if (!(await HasSubsidyPermission(user, ActionEnableFeature.WRITE))) {
+            return NextResponse.json({ message: "Not allowed to create subsidy schedules" }, { status: 403 });
+          }
           const { code: _, ...scheduleData } = body;
           return CreateSubsidyScheduleService(scheduleData);
         }
 
         case StatusAPICode.MANUAL_TRIGGER_SUBSIDY_SCHEDULE: {
+          if (!(await HasSubsidyPermission(user, ActionEnableFeature.WRITE))) {
+            return NextResponse.json({ message: "Not allowed to trigger subsidy schedules" }, { status: 403 });
+          }
           const { schedule_uuid } = body;
           if (!schedule_uuid) {
             statusCode = 400;
@@ -364,11 +386,11 @@ export async function POST(req: any, res: any) {
 
           const decryptData: string = decrypt(data?.key) || "";
 
-          if (!decryptData) {
+          if (decryptData !== "TRIGGER_CREDIT") {
             throw Error("Not Authorized To Proceed");
           }
 
-          return TriggerCreditService();
+          return NextResponse.json(await RunDueCreditScheduleService());
           // return CreateSubsidyTransactionService(decryptData);
         }
 
@@ -441,6 +463,9 @@ export async function PUT(req: any, res: any) {
     if (code && typeof parseInt(code) === "number") {
       switch (parseInt(code) as StatusAPICode) {
         case StatusAPICode.UPDATE_SUBSIDY_SCHEDULE: {
+          if (!(await HasSubsidyPermission(user, ActionEnableFeature.WRITE))) {
+            return NextResponse.json({ message: "Not allowed to update subsidy schedules" }, { status: 403 });
+          }
           const { code: _, ...scheduleData } = body;
           return UpdateSubsidyScheduleService(scheduleData);
         }
@@ -535,6 +560,9 @@ export async function PUT(req: any, res: any) {
         }
 
         case StatusAPICode.TOGGLE_SUBSIDY_SCHEDULE_ACTIVE: {
+          if (!(await HasSubsidyPermission(user, ActionEnableFeature.WRITE))) {
+            return NextResponse.json({ message: "Not allowed to activate subsidy schedules" }, { status: 403 });
+          }
           const { schedule_uuid, active } = body;
           if (!schedule_uuid) {
             statusCode = 400;
@@ -563,6 +591,11 @@ export async function PUT(req: any, res: any) {
 export async function DELETE(req: any) {
   let statusCode: number = 500;
   try {
+    const token = await JWTDecode(req);
+    const user = token ? (token as JWTDecodeInterface).user : null;
+    if (!(await HasSubsidyPermission(user, ActionEnableFeature.WRITE))) {
+      return NextResponse.json({ message: "Not allowed to delete subsidy schedules" }, { status: 403 });
+    }
     const url = new URL(req.url);
     const uuid: string | null = url.searchParams.get("uuid");
 

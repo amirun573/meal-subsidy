@@ -184,6 +184,7 @@ enum ScheduleTriggerSource {
 model SubsidyScheduleLog {
   subsidy_schedule_log_id Int                   @id @default(autoincrement())
   uuid                    String?               @default(uuid())
+  run_key                 String?               @unique
   subsidy_schedule_id     Int?
   subsidy_schedule        SubsidySchedule?      @relation(fields: [subsidy_schedule_id], references: [subsidy_schedule_id], onDelete: SetNull)
   triggered_by_source     ScheduleTriggerSource @default(CRON)
@@ -375,7 +376,6 @@ model EmployeeCategory {
   // Relation to Users (one category can have many users)
   users                   User[]              // One-to-many relation to User
 }
-
 
 
 

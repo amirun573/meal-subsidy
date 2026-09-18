@@ -35,8 +35,7 @@ import {
   UpdateSubsidyCredit,
   GetSubsidyTransactionPagination,
   GetFilteredTransactions,
-  GetSubsidyLists,
-  TriggerSubsidyCreditCascade,
+  UpdateSubsidiesInBulk,
   GetSubsidyTypePagination,
   GetCountTotalSubsidyType,
   GetSubsidyTypeSingle,
@@ -44,11 +43,8 @@ import {
   GetSubsidyCreditSingle,
   SubsidyCreditCascade,
   GetSubsidySchedules,
-  CreateSubsidySchedule,
-  UpdateSubsidySchedule,
   DeleteSubsidySchedule,
   GetSubsidyScheduleLogs,
-  CreateSubsidyScheduleLog,
 } from "../model/subsidy.model";
 import { GetUserSingle } from "../../user/model/user.model";
 import { SubsidyTypeCode } from "@/_Common/enum/subsidy-type.enum";
@@ -59,6 +55,7 @@ import {
   GetUserFeaturesSingle,
 } from "../../feature/model/feature.model";
 import { GetDepartmentSingle } from "../../department/model/department.model";
+import { assertValidRoutine, getDueCreditRun } from "@/_Common/function/credit-schedule";
 
 export async function UpdateUserApplicableSubsidy(data: SubsidyEmployeeUpdate) {
   let message: string = "";
@@ -766,107 +763,179 @@ export async function DownloadReportSubsidyTransaction(
   }
 }
 
-export async function TriggerCreditService(overrideAmount?: number) {
-  let message: string = "";
-  let status: number = 500;
-  try {
-    const today = new Date();
+type CreditRunOptions = {
+  overrideAmount?: number;
+  source: "CRON" | "MANUAL";
+  scheduleId?: number | null;
+  triggeredByUserId?: number | null;
+  runKey?: string;
+  now?: Date;
+};
 
-    const subsidies: Partial<Subsidy>[] = await GetSubsidyLists({
+// Keep the credit replacement, subsidy amount updates, and run log atomic.
+// The unique run key is inserted first, so concurrent cron workers cannot
+// distribute the same scheduled occurrence twice.
+async function distributeCredits(options: CreditRunOptions) {
+  const { overrideAmount, source, scheduleId, triggeredByUserId, runKey } = options;
+  const now = options.now || new Date();
+
+  if (overrideAmount !== undefined && (!Number.isFinite(overrideAmount) || overrideAmount <= 0)) {
+    throw new Error("Credit amount must be greater than zero");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // Serialize automatic and manual balance replacement across server processes.
+    // This PostgreSQL advisory lock is released on commit or rollback.
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(604, 8668) IS NULL AS locked`;
+
+    if (runKey) {
+      // Recheck after acquiring the lock: an operator may have changed the
+      // active routine while this worker was waiting to distribute credits.
+      const currentRoutines = await tx.subsidySchedule.findMany({
+        where: { schedule_type: "ROUTINE", active: true, deleted_at: null },
+        select: {
+          subsidy_schedule_id: true,
+          routine_frequency: true,
+          trigger_time: true,
+          day_of_week: true,
+          day_of_month: true,
+          amount: true,
+        },
+        take: 2,
+      });
+      if (currentRoutines.length > 1) throw new Error("Multiple active routines found");
+      const stillDue = getDueCreditRun(currentRoutines[0] || null, now);
+      if (!stillDue || stillDue.runKey !== runKey || stillDue.scheduleId !== (scheduleId ?? null) || stillDue.amount !== overrideAmount) {
+        throw new Error("The active routine changed before the credit run began");
+      }
+
+      await tx.subsidyScheduleLog.create({
+        data: {
+          run_key: runKey,
+          subsidy_schedule_id: scheduleId ?? null,
+          triggered_by_source: source,
+          amount: 0,
+          status: "PENDING",
+        },
+      });
+    }
+
+    const subsidies = await tx.subsidy.findMany({
       where: {
         active: true,
-        OR: [
-          {
-            end_date: {
-              gte: today, // End date is in the future or today
-            },
-          },
-          {
-            end_date: null, // End date is not set
-          },
-        ],
+        OR: [{ end_date: { gte: now } }, { end_date: null }],
       },
       select: {
         user_id: true,
         subsidy_id: true,
         applicable: true,
-        amount: true,
-        subsidy_type: {
-          select: {
-            subsidy_type_id: true,
-            price: true,
-          },
-        },
+        subsidy_type: { select: { price: true } },
       },
     });
 
-    if (subsidies.length < 1) {
-      status = 400;
-      throw Error("No One is in Subsidy");
-    }
+    if (subsidies.length === 0) throw new Error("No one is in subsidy");
 
-    const updateSubsidies: Partial<Subsidy>[] = subsidies.map((subsidy) => {
-      let creditVal = 0;
-      if (subsidy.applicable) {
-        creditVal = (overrideAmount !== undefined && overrideAmount !== null && overrideAmount > 0)
-          ? overrideAmount
-          : ((subsidy as any)?.subsidy_type?.price || 0);
-      }
-      return {
-        subsidy_id: subsidy.subsidy_id,
-        subsidy_type_id: subsidy.subsidy_type_id,
+    const updates = subsidies.map((subsidy) => ({
+      subsidy_id: subsidy.subsidy_id,
+      user_id: subsidy.user_id,
+      amount: subsidy.applicable
+        ? (overrideAmount ?? subsidy.subsidy_type?.price ?? 0)
+        : 0,
+    }));
+    const totalAmount = updates.reduce((sum, subsidy) => sum + subsidy.amount, 0);
+
+    // Preserve the old job's balance-replacement behavior, but do it inside
+    // the same transaction as the new credits and audit log.
+    await tx.subsidyCredit.updateMany({ data: { active: false } });
+    const updated = await UpdateSubsidiesInBulk({
+      subsidies: updates as Subsidy[],
+      prismaTransaction: tx,
+    });
+    if (updated !== updates.length) throw new Error("Failed to update all subsidies");
+
+    const created = await tx.subsidyCredit.createMany({
+      data: updates.map((subsidy) => ({
         user_id: subsidy.user_id,
-        amount: creditVal,
-      };
+        subsidy_id: subsidy.subsidy_id,
+        credit_amount: subsidy.amount,
+      })),
     });
+    if (created.count !== updates.length) throw new Error("Failed to create all subsidy credits");
 
-    const subsidiesCredit: Partial<SubsidyCredit>[] = updateSubsidies.map(
-      (subsidy) => {
-        return {
-          user_id: subsidy.user_id,
-          subsidy_id: subsidy.subsidy_id,
-          credit_amount: subsidy.amount || 0,
-        };
-      }
-    );
-
-    if (!subsidiesCredit || subsidiesCredit.length !== subsidies.length) {
-      status = 400;
-      throw Error("No One in Subsidy");
-    }
-
-    const createSubsidiesCredit = await TriggerSubsidyCreditCascade({
-      subsidies: updateSubsidies as Subsidy[],
-      subsidiesCredit: subsidiesCredit as SubsidyCredit[],
-    });
-
-    if (!createSubsidiesCredit || createSubsidiesCredit.length < 1) {
-      status = 400;
-      throw Error("Failed TO Generate Subsidy Credit");
-    }
-
-    const klTime = new Date().toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" });
-    await CreateSubsidyScheduleLog({
-      triggered_by_source: "CRON",
-      amount: updateSubsidies.reduce((sum, s) => sum + (s.amount || 0), 0),
-      users_affected_count: createSubsidiesCredit.length,
+    const logData = {
+      subsidy_schedule_id: scheduleId ?? null,
+      triggered_by_source: source,
+      triggered_by_user_id: triggeredByUserId ?? null,
+      amount: totalAmount,
+      users_affected_count: created.count,
       status: "SUCCESS",
-      notes: `Automated credit trigger executed successfully at ${klTime} (KL Time) for ${createSubsidiesCredit.length} users.`,
-    });
+      notes: `${source === "CRON" ? "Automated" : "Manual"} credit trigger completed for ${created.count} users.`,
+    } as const;
 
-    return NextResponse.json({
-      message: true,
-    });
+    if (runKey) {
+      await tx.subsidyScheduleLog.update({ where: { run_key: runKey }, data: logData });
+    } else {
+      await tx.subsidyScheduleLog.create({ data: logData });
+    }
+
+    return { usersAffected: created.count, totalAmount };
+  }, { timeout: 30000, maxWait: 30000 });
+}
+
+export async function TriggerCreditService(overrideAmount?: number) {
+  try {
+    const result = await distributeCredits({ overrideAmount, source: "MANUAL" });
+    return NextResponse.json({ message: true, ...result });
   } catch (error: any) {
-    console.error(error);
-    return NextResponse.json(
-      {
-        message: error.message || message,
-      },
-      {
-        status: error.statusCode || status,
-      }
-    );
+    console.error("TriggerCreditService error:", error);
+    return NextResponse.json({ message: error.message || "Credit trigger failed" }, { status: 500 });
+  }
+}
+
+export async function RunDueCreditScheduleService(now = new Date()) {
+  const activeRoutines = await prisma.subsidySchedule.findMany({
+    where: { schedule_type: "ROUTINE", active: true, deleted_at: null },
+    select: {
+      subsidy_schedule_id: true,
+      routine_frequency: true,
+      trigger_time: true,
+      day_of_week: true,
+      day_of_month: true,
+      amount: true,
+    },
+    take: 2,
+  });
+
+  if (activeRoutines.length > 1) {
+    throw new Error("Multiple active routines found; credit distribution skipped");
+  }
+
+  const dueRun = getDueCreditRun(activeRoutines[0] || null, now);
+  if (!dueRun) return { status: "NOT_DUE" as const };
+
+  try {
+    const result = await distributeCredits({
+      overrideAmount: dueRun.amount,
+      source: "CRON",
+      scheduleId: dueRun.scheduleId,
+      runKey: dueRun.runKey,
+      now,
+    });
+    return { status: "COMPLETED" as const, runKey: dueRun.runKey, ...result };
+  } catch (error) {
+    const uniqueTarget = error instanceof Prisma.PrismaClientKnownRequestError
+      ? error.meta?.target
+      : undefined;
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002" &&
+      (Array.isArray(uniqueTarget)
+        ? uniqueTarget.includes("run_key")
+        : typeof uniqueTarget === "string" && uniqueTarget.includes("run_key"))
+    ) {
+      return { status: "ALREADY_COMPLETED" as const, runKey: dueRun.runKey };
+    }
+    throw error;
   }
 }
 
@@ -1528,20 +1597,18 @@ export async function CreateSubsidyScheduleService(data: any) {
     if (cleanedData.schedule_type === 'ROUTINE') {
       cleanedData.start_datetime = null;
       cleanedData.end_datetime = null;
-      
-      // Enforce single active routine rule: if this new routine is active, deactivate all existing ROUTINE schedules
-      if (cleanedData.active) {
-        await prisma.subsidySchedule.updateMany({
-          where: { schedule_type: 'ROUTINE', active: true },
+      if (cleanedData.active) assertValidRoutine({ subsidy_schedule_id: 0, ...cleanedData });
+    }
+
+    const schedule = await prisma.$transaction(async (tx) => {
+      if (cleanedData.schedule_type === 'ROUTINE' && cleanedData.active) {
+        await tx.subsidySchedule.updateMany({
+          where: { schedule_type: 'ROUTINE', active: true, deleted_at: null },
           data: { active: false },
         });
       }
-    }
-
-    const schedule = await CreateSubsidySchedule(cleanedData);
-    if (!schedule) {
-      return NextResponse.json({ message: "Failed to create schedule" }, { status: 400 });
-    }
+      return tx.subsidySchedule.create({ data: cleanedData });
+    });
     return NextResponse.json({ message: "Schedule created successfully", schedule });
   } catch (error: any) {
     console.error("CreateSubsidySchedule error:", error);
@@ -1561,20 +1628,31 @@ export async function UpdateSubsidyScheduleService(data: any) {
       end_datetime: end_datetime ? new Date(end_datetime) : null,
     };
 
-    if (cleanedData.schedule_type === 'ROUTINE') {
-      cleanedData.start_datetime = null;
-      cleanedData.end_datetime = null;
+    const { uuid, ...updateData } = cleanedData;
+    if (!uuid) return NextResponse.json({ message: "Schedule UUID is required" }, { status: 400 });
 
-      // Enforce single active routine rule
-      if (cleanedData.active) {
-        await prisma.subsidySchedule.updateMany({
-          where: { schedule_type: 'ROUTINE', active: true, uuid: { not: cleanedData.uuid } },
-          data: { active: false },
-        });
+    await prisma.$transaction(async (tx) => {
+      const existing = await tx.subsidySchedule.findFirst({ where: { uuid, deleted_at: null } });
+      if (!existing) throw new Error("Schedule not found");
+
+      const next = { ...existing, ...updateData };
+      if (next.schedule_type === 'ROUTINE') {
+        updateData.start_datetime = null;
+        updateData.end_datetime = null;
+        if (next.active) {
+          assertValidRoutine(next);
+          await tx.subsidySchedule.updateMany({
+            where: { schedule_type: 'ROUTINE', active: true, deleted_at: null, subsidy_schedule_id: { not: existing.subsidy_schedule_id } },
+            data: { active: false },
+          });
+        }
       }
-    }
 
-    const schedule = await UpdateSubsidySchedule(cleanedData);
+      await tx.subsidySchedule.update({
+        where: { subsidy_schedule_id: existing.subsidy_schedule_id },
+        data: updateData,
+      });
+    });
     return NextResponse.json({ message: "Schedule updated successfully" });
   } catch (error: any) {
     console.error("UpdateSubsidySchedule error:", error);
@@ -1584,26 +1662,27 @@ export async function UpdateSubsidyScheduleService(data: any) {
 
 export async function ToggleSubsidyScheduleActiveService(scheduleUuid: string, active: boolean) {
   try {
-    const targetSchedule = await prisma.subsidySchedule.findFirst({
-      where: { uuid: scheduleUuid },
-    });
-
-    if (!targetSchedule) {
-      return NextResponse.json({ message: "Schedule not found" }, { status: 404 });
-    }
-
-    if (active && targetSchedule.schedule_type === 'ROUTINE') {
-      // If activating a routine schedule, deactivate all other routine schedules
-      await prisma.subsidySchedule.updateMany({
-        where: { schedule_type: 'ROUTINE', active: true, uuid: { not: scheduleUuid } },
-        data: { active: false },
+    const targetSchedule = await prisma.$transaction(async (tx) => {
+      const target = await tx.subsidySchedule.findFirst({
+        where: { uuid: scheduleUuid, deleted_at: null },
       });
-    }
+      if (!target) return null;
 
-    await prisma.subsidySchedule.updateMany({
-      where: { uuid: scheduleUuid },
-      data: { active },
+      if (active && target.schedule_type === 'ROUTINE') {
+        assertValidRoutine(target);
+        await tx.subsidySchedule.updateMany({
+          where: { schedule_type: 'ROUTINE', active: true, deleted_at: null, subsidy_schedule_id: { not: target.subsidy_schedule_id } },
+          data: { active: false },
+        });
+      }
+
+      return tx.subsidySchedule.update({
+        where: { subsidy_schedule_id: target.subsidy_schedule_id },
+        data: { active },
+      });
     });
+
+    if (!targetSchedule) return NextResponse.json({ message: "Schedule not found" }, { status: 404 });
 
     return NextResponse.json({
       message: `Schedule "${targetSchedule.title}" ${active ? 'activated' : 'deactivated'} successfully`,
@@ -1635,47 +1714,23 @@ export async function GetSubsidyScheduleLogsService(params?: { page?: number; pa
 export async function ManualTriggerScheduleService(scheduleUuid: string, user?: User) {
   try {
     const schedule = await prisma.subsidySchedule.findFirst({
-      where: { uuid: scheduleUuid, active: true },
+      where: { uuid: scheduleUuid, active: true, deleted_at: null },
     });
 
     if (!schedule) {
       return NextResponse.json({ message: "Schedule not found" }, { status: 404 });
     }
 
-    // Trigger credit for applicable users
-    let isSuccess = false;
-    let noteMsg = "";
-
-    try {
-      const triggerRes = await TriggerCreditService(parseFloat(schedule.amount as any) || undefined);
-      isSuccess = triggerRes.status === 200;
-      noteMsg = `Trigger status ${triggerRes.status}`;
-    } catch (err: any) {
-      console.error("TriggerCreditService error during manual trigger:", err);
-      noteMsg = err?.message || "Failed to trigger credit";
-    }
-
-    const klTime = new Date().toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" });
-
-    // Create execution log entry
-    await CreateSubsidyScheduleLog({
-      subsidy_schedule_id: schedule.subsidy_schedule_id,
-      triggered_by_source: "MANUAL",
-      triggered_by_user_id: user?.user_id || null,
-      amount: schedule.amount,
-      status: isSuccess ? "SUCCESS" : "FAILED",
-      notes: `Manual trigger executed at ${klTime} (KL Time). ${noteMsg}`,
+    const result = await distributeCredits({
+      overrideAmount: schedule.amount,
+      source: "MANUAL",
+      scheduleId: schedule.subsidy_schedule_id,
+      triggeredByUserId: user?.user_id,
     });
-
-    if (!isSuccess) {
-      return NextResponse.json(
-        { message: `Manual trigger finished with issue: ${noteMsg}` },
-        { status: 400 }
-      );
-    }
-
+    const klTime = new Date().toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" });
     return NextResponse.json({
       message: `Manual trigger executed successfully for "${schedule.title}" at ${klTime} (KL Time).`,
+      ...result,
     });
   } catch (error: any) {
     console.error("ManualTriggerSchedule error:", error);

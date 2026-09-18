@@ -23,6 +23,7 @@ git status --short
 git rev-parse --short HEAD
 grep -n '^model SubsidySchedule' prisma/schema.prisma
 ls prisma/migrations/20260918093042_mig/migration.sql
+ls prisma/migrations/20260918180000_schedule_run_key/migration.sql
 ```
 
 If the checkout is correct, configure `.env`, then install build dependencies, apply committed migrations, and build:
@@ -34,6 +35,8 @@ npm run start-prod
 ```
 
 `deploy:build` runs `prisma migrate deploy` and then `npm run build`. The build regenerates Prisma Client from `prisma/schema.prisma` before compiling Next.js and TypeScript. Do not run `migrate dev` against production.
+
+The custom server checks for an active routine every minute. If none exists, it retains the original daily 05:50 KL-time credit trigger. Run `npm run test:schedule` to verify the daily, weekly, monthly, and fallback timing rules. Automated runs use a unique database key, so the latest migration must be deployed before starting this scheduler.
 
 If TypeScript says `prisma.subsidySchedule` does not exist, check the source schema first, then the generated client:
 
