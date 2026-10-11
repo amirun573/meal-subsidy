@@ -395,3 +395,14 @@ model EmployeeUploadLog {
 
   @@index([created_at, id])
 }
+
+model ApplicationLog {
+  id         Int      @id @default(autoincrement())
+  level      String
+  source     String
+  message    String
+  detail     String?
+  created_at DateTime @default(now())
+
+  @@index([created_at, id])
+}

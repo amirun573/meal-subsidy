@@ -192,6 +192,9 @@ const Navbar = () => {
                   </Link>
                 </li>
               ))}
+              {(role === RoleList.ADMIN || role === RoleList.SUPER_ADMIN) && (
+                <li><Link href="/logs" className="block py-2 px-3 text-gray-900 rounded hover:text-blue-700 md:p-0 dark:text-white">Logs</Link></li>
+              )}
               {/* <li className="mb-4 ml-3">
                 <a onClick={ClearSiteData}>Clear Cache</a>
               </li> */}

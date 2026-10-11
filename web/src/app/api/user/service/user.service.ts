@@ -13,7 +13,7 @@ import {
   UserPaginationValidation,
 } from "@/_Common/validation/user.validation";
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../../libs/prisma";
+import { LogApplicationError } from "@/_Common/server/application-log";
 import {
   CreateUserNUserDetailsCascade,
   CreateUserNUserDetailsManyCascade,
@@ -278,6 +278,7 @@ export async function UserPaginationService(data: UserPaginationRequest) {
       totalItems,
     });
   } catch (error: any) {
+    await LogApplicationError("user/UserPaginationService", error);
     // logger.error("Failed at UserPaginationService function ===>", { error });
 
     console.error(error);
@@ -382,6 +383,7 @@ export async function ScanCheckEmployeeIDService(data: ScanCheckEmployeeID) {
       subsidyCreditUUID: subsidyCredit.uuid,
     });
   } catch (error: any) {
+    await LogApplicationError("user/ScanCheckEmployeeIDService", error);
     // logger.error("Failed at ScanCheckEmployeeIDService function ===>", { error });
 
     console.error(error);
@@ -554,6 +556,7 @@ export async function CreateEmployee(data: CreateUpdateUser) {
       message: "Successfully Create New Employee",
     });
   } catch (error: any) {
+    await LogApplicationError("user/CreateEmployee", error);
     // logger.error("Failed at CreateEmployee function ===>", { error });
 
     console.error(error);
@@ -586,7 +589,6 @@ export async function CreateEmployeeBulkUpload(
   let message: string = "";
   let status: number = 500;
   const fileName = data.file?.name || "Unknown file";
-  const uploadedBy = user.employee_id || "Unknown user";
   try {
     const { file } = data;
 
@@ -944,20 +946,6 @@ export async function CreateEmployeeBulkUpload(
       throw Error("No User Being Created");
     }
 
-    try {
-      await prisma.employeeUploadLog.create({ data: {
-        file_name: fileName,
-        uploaded_by: uploadedBy,
-        status: "SUCCESS",
-        created: createUsers.length,
-        updated: updateUsers.length,
-        active: [...createUsers, ...updateUsers].filter(item => item.user.active).length,
-        inactive: [...createUsers, ...updateUsers].filter(item => !item.user.active).length,
-      } });
-    } catch (logError) {
-      console.error("Failed to record employee upload", logError);
-    }
-
     return NextResponse.json({
       message: "Employee upload completed",
       created: createUsers.length,
@@ -966,16 +954,7 @@ export async function CreateEmployeeBulkUpload(
       inactive: [...createUsers, ...updateUsers].filter(item => !item.user.active).length,
     });
   } catch (error: any) {
-    try {
-      await prisma.employeeUploadLog.create({ data: {
-        file_name: fileName,
-        uploaded_by: uploadedBy,
-        status: "FAILED",
-        issue: error?.message || "Unknown upload error",
-      } });
-    } catch (logError) {
-      console.error("Failed to record employee upload error", logError);
-    }
+    await LogApplicationError(`employee bulk upload: ${fileName}`, error);
 
     console.error(error);
     return NextResponse.json(
@@ -1572,6 +1551,7 @@ export async function UpdateEmployee(data: CreateUpdateUser) {
       message: "Successfully Update Employee",
     });
   } catch (error: any) {
+    await LogApplicationError("user/UpdateEmployee", error);
     // logger.error("Failed at UpdateEmployee function ===>", { error });
 
     console.error(error);
@@ -1622,6 +1602,7 @@ export async function UpdateStatusEmployeeService(data: UpdateStatusRequest) {
       message: "Successfully Update Employee Status",
     });
   } catch (error: any) {
+    await LogApplicationError("user/UpdateStatusEmployeeService", error);
     console.error(error);
     return NextResponse.json(
       {
@@ -1795,6 +1776,7 @@ export async function ScanCheckEmployeeIDAuthService(
     //   subsidyCreditUUID: subsidyCredit.uuid,
     // });
   } catch (error: any) {
+    await LogApplicationError("user/ScanCheckEmployeeIDAuthService", error);
     // logger.error("Failed at ScanCheckEmployeeIDService function ===>", { error });
 
     console.error(error);
@@ -1965,6 +1947,7 @@ export async function ScanCheckEmployeeIDAuthSocketService(
       subsidyCreditUUID: subsidyCredit.uuid,
     };
   } catch (error: any) {
+    await LogApplicationError("user/ScanCheckEmployeeIDAuthSocketService", error);
     // logger.error("Failed at ScanCheckEmployeeIDService function ===>", { error });
 
     console.error(error);
@@ -1994,6 +1977,7 @@ export async function GetDownloadExcelEmployeeDetails(activeOnly: boolean = fals
       },
     });
   } catch (error: any) {
+    await LogApplicationError("user/GetDownloadExcelEmployeeDetails", error);
     console.error(error);
     return {
       message: error.message || message,

@@ -1,3 +1,4 @@
+import { LogApplicationError } from "@/_Common/server/application-log";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../libs/prisma";
@@ -35,7 +36,6 @@ import {
 const APIAuth: StatusAPICode[] = [
   StatusAPICode.GET_EMPLOYEE_DETAILS,
   StatusAPICode.GET_INACTIVE_EMPLOYEE_DETAILS,
-  StatusAPICode.GET_EMPLOYEE_UPLOAD_LOGS,
   StatusAPICode.CREATE_EMPLOYEE,
   StatusAPICode.UPLOAD_EXCEL_EMPLOYEE_CREATE,
   StatusAPICode.UPDATE_USER_ACTIVE_STATUS,
@@ -124,36 +124,6 @@ export async function GET(req: any, res: any) {
 
         // return HashingPasswordService({ password: hashingPasswordRequest });
       }
-      case StatusAPICode.GET_EMPLOYEE_UPLOAD_LOGS: {
-        if (!user) {
-          statusCode = 401;
-          throw Error("Unauthorized");
-        }
-        const checkFeature = await CheckFeatureAllowed({
-          user_features: (user as any)?.user_features as UserFeatures[],
-          action: ActionEnableFeature.READ,
-          feature_code: feature_code_employee_details,
-        });
-        if (!checkFeature) {
-          statusCode = 403;
-          throw Error("Not allowed to view employee upload logs");
-        }
-        const pageValue = Number(url.searchParams.get("page"));
-        if (!Number.isSafeInteger(pageValue) || pageValue < 1) {
-          statusCode = 400;
-          throw Error("Page must be a positive integer");
-        }
-        const limit = 10;
-        const [logs, totalItems] = await Promise.all([
-          prisma.employeeUploadLog.findMany({
-            orderBy: [{ created_at: "desc" }, { id: "desc" }],
-            skip: (pageValue - 1) * limit,
-            take: limit,
-          }),
-          prisma.employeeUploadLog.count(),
-        ]);
-        return NextResponse.json({ logs, totalItems, page: pageValue });
-      }
       //TODO: For Scanning at Page Scan. Will Deprecite Later
       case StatusAPICode.GET_CHECK_EMPLOYEE_ID: {
         const employeeID: string | null = url.searchParams.get("employeeID");
@@ -196,6 +166,7 @@ export async function GET(req: any, res: any) {
       }
     }
   } catch (error: any) {
+    await LogApplicationError("api/user GET", error);
     // logger.error("Failed at Route GET User ===>", { error });
 
     console.error(error);
@@ -347,6 +318,7 @@ export async function POST(req: any, res: any): Promise<any> {
       }
     }
   } catch (error: any) {
+    await LogApplicationError("api/user POST", error);
     // logger.error("Failed at Route POST User ===>", { error });
 
     console.error(error);
@@ -452,6 +424,7 @@ export async function PUT(req: any, res: any) {
       }
     }
   } catch (error: any) {
+    await LogApplicationError("api/user PUT", error);
     // logger.error("Failed at Route PUT User ===>", { error });
 
     console.error(error);

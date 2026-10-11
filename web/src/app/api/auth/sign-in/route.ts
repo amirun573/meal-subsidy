@@ -1,3 +1,4 @@
+import { LogApplicationError } from "@/_Common/server/application-log";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../../libs/prisma";
@@ -69,6 +70,7 @@ export async function GET(req: any, res: any) {
       }
     }
   } catch (error: any) {
+    await LogApplicationError("api/auth/sign-in", error);
     // logger.error("Failed at Route GET Auth ===>", { error });
 
     return NextResponse.json(
@@ -125,6 +127,7 @@ export async function POST(req: any, res: any) {
       }
     }
   } catch (error: any) {
+    await LogApplicationError("api/auth/sign-in", error);
     // logger.error("Failed at Route POST Auth ===>", { error });
 
     console.error(error);

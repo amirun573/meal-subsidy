@@ -10,7 +10,6 @@ import { EmployeeUpdateSubsidyValidation, UpdateSubsidyCreditRealTimeValidation 
 import { CreateUpdateEmployeeValidation, UpdateEmployeeStatusValidation, UserPaginationValidation } from "@/_Common/validation/user.validation";
 import { CostCenter, Department, EmployeeCategory, Subsidy, User } from "@prisma/client";
 import axios from "axios";
-import Link from "next/link";
 import { Modal } from "flowbite-react";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Spinner from '../../Components/Spinner/index';
@@ -1797,12 +1796,11 @@ const EmployeeDetailsPage = () => {
                                 </svg>
                                 Upload
                             </button>
-                            <Link href="/employee-upload-logs" className="bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg text-sm transition">Upload Logs</Link>
                             <button
                                 onClick={() => setDownloadChoiceOpen(true)}
                                 className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg text-sm transition"
                             >
-                                ⬇ Download
+                                Download
                             </button>
                             {/* <button
                                 onClick={HandleTriggerCredit}

@@ -1,3 +1,4 @@
+import { LogApplicationError } from "@/_Common/server/application-log";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../libs/prisma";
@@ -283,6 +284,7 @@ export async function GET(req: any, res: NextApiResponse) {
       }
     }
   } catch (error: any) {
+    await LogApplicationError("api/subsidy GET", error);
     return NextResponse.json(
       {
         message: error.message,
@@ -424,6 +426,7 @@ export async function POST(req: any, res: any) {
       }
     }
   } catch (error: any) {
+    await LogApplicationError("api/subsidy POST", error);
     return NextResponse.json(
       {
         message: error.message,
@@ -577,6 +580,7 @@ export async function PUT(req: any, res: any) {
       }
     }
   } catch (error: any) {
+    await LogApplicationError("api/subsidy PUT", error);
     return NextResponse.json(
       {
         message: error.message,
@@ -606,6 +610,7 @@ export async function DELETE(req: any) {
 
     return DeleteSubsidyScheduleService(uuid);
   } catch (error: any) {
+    await LogApplicationError("api/subsidy DELETE", error);
     return NextResponse.json(
       {
         message: error.message,

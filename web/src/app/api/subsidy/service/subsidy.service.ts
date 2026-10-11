@@ -1,3 +1,4 @@
+import { LogApplicationError } from "@/_Common/server/application-log";
 import {
   SubsidyEmployeeUpdate,
   SubsidySubmitPrice,
@@ -97,6 +98,7 @@ export async function UpdateUserApplicableSubsidy(data: SubsidyEmployeeUpdate) {
       updateSubsidy: true,
     });
   } catch (error: any) {
+    await LogApplicationError("subsidy/UpdateUserApplicableSubsidy", error);
     return NextResponse.json(
       {
         message: error.message || message,
@@ -277,6 +279,7 @@ export async function CreateSubsidyTransactionService(
       updateSubsidy: true,
     });
   } catch (error: any) {
+    await LogApplicationError("subsidy/CreateSubsidyTransactionService", error);
     return NextResponse.json(
       {
         message: error.message || message,
@@ -487,6 +490,7 @@ export async function GetSubsidyTransactionPaginationService(
       totalItems,
     });
   } catch (error: any) {
+    await LogApplicationError("subsidy/GetSubsidyTransactionPaginationService", error);
     return NextResponse.json(
       {
         message: error.message || message,
@@ -692,6 +696,7 @@ export async function GetSubsidyTransactionReportChart(data: {
       data: dataValue,
     });
   } catch (error: any) {
+    await LogApplicationError("subsidy/GetSubsidyTransactionReportChart", error);
     return NextResponse.json(
       {
         message: error.message || message,
@@ -752,6 +757,7 @@ export async function DownloadReportSubsidyTransaction(
       subsidyTransaction,
     });
   } catch (error: any) {
+    await LogApplicationError("subsidy/DownloadReportSubsidyTransaction", error);
     return NextResponse.json(
       {
         message: error.message || message,
@@ -887,6 +893,7 @@ export async function TriggerCreditService(overrideAmount?: number) {
     const result = await distributeCredits({ overrideAmount, source: "MANUAL" });
     return NextResponse.json({ message: true, ...result });
   } catch (error: any) {
+    await LogApplicationError("subsidy/TriggerCreditService", error);
     console.error("TriggerCreditService error:", error);
     return NextResponse.json({ message: error.message || "Credit trigger failed" }, { status: 500 });
   }
@@ -923,6 +930,7 @@ export async function RunDueCreditScheduleService(now = new Date()) {
     });
     return { status: "COMPLETED" as const, runKey: dueRun.runKey, ...result };
   } catch (error) {
+    await LogApplicationError("subsidy/RunDueCreditScheduleService", error);
     const uniqueTarget = error instanceof Prisma.PrismaClientKnownRequestError
       ? error.meta?.target
       : undefined;
@@ -1020,6 +1028,7 @@ export async function GetSubsidyTypePaginationService(
       totalItems,
     });
   } catch (error: any) {
+    await LogApplicationError("subsidy/GetSubsidyTypePaginationService", error);
     return NextResponse.json(
       {
         message: error.message || message,
@@ -1070,6 +1079,7 @@ export async function UpdateSubsidyTypeService(data: Partial<SubsidyType>) {
       message: "Successfully Update Subsidy",
     });
   } catch (error: any) {
+    await LogApplicationError("subsidy/UpdateSubsidyTypeService", error);
     console.error(error);
     return NextResponse.json(
       {
@@ -1145,6 +1155,7 @@ export async function UpdateSubsidyCreditRealTimeService(
       message: "Successfully Update",
     });
   } catch (error: any) {
+    await LogApplicationError("subsidy/UpdateSubsidyCreditRealTimeService", error);
     return NextResponse.json(
       {
         message: error.message || message,
@@ -1346,6 +1357,7 @@ export async function CreateSubsidyTransactionServiceAuth(
       updateSubsidy: true,
     });
   } catch (error: any) {
+    await LogApplicationError("subsidy/CreateSubsidyTransactionServiceAuth", error);
     return NextResponse.json(
       {
         message: error.message || message,
@@ -1539,6 +1551,7 @@ export async function CreateSubsidyTransactionServiceSocketAuth(
       updateSubsidy: true,
     };
   } catch (error: any) {
+    await LogApplicationError("subsidy/CreateSubsidyTransactionServiceSocketAuth", error);
     return {
       message: error.message || message,
       status: error.statusCode || status,
@@ -1577,6 +1590,7 @@ export async function GetSubsidySchedulesService() {
 
     return NextResponse.json({ schedules });
   } catch (error: any) {
+    await LogApplicationError("subsidy/GetSubsidySchedulesService", error);
     return NextResponse.json({ message: error.message || "Failed to fetch schedules" }, { status: 500 });
   }
 }
@@ -1611,6 +1625,7 @@ export async function CreateSubsidyScheduleService(data: any) {
     });
     return NextResponse.json({ message: "Schedule created successfully", schedule });
   } catch (error: any) {
+    await LogApplicationError("subsidy/CreateSubsidyScheduleService", error);
     console.error("CreateSubsidySchedule error:", error);
     return NextResponse.json({ message: error.message || "Error creating schedule" }, { status: 500 });
   }
@@ -1655,6 +1670,7 @@ export async function UpdateSubsidyScheduleService(data: any) {
     });
     return NextResponse.json({ message: "Schedule updated successfully" });
   } catch (error: any) {
+    await LogApplicationError("subsidy/UpdateSubsidyScheduleService", error);
     console.error("UpdateSubsidySchedule error:", error);
     return NextResponse.json({ message: error.message || "Error updating schedule" }, { status: 500 });
   }
@@ -1688,6 +1704,7 @@ export async function ToggleSubsidyScheduleActiveService(scheduleUuid: string, a
       message: `Schedule "${targetSchedule.title}" ${active ? 'activated' : 'deactivated'} successfully`,
     });
   } catch (error: any) {
+    await LogApplicationError("subsidy/ToggleSubsidyScheduleActiveService", error);
     console.error("ToggleSubsidyScheduleActive error:", error);
     return NextResponse.json({ message: error.message || "Error toggling schedule active state" }, { status: 500 });
   }
@@ -1698,6 +1715,7 @@ export async function DeleteSubsidyScheduleService(uuid: string) {
     await DeleteSubsidySchedule(uuid);
     return NextResponse.json({ message: "Schedule deleted successfully" });
   } catch (error: any) {
+    await LogApplicationError("subsidy/DeleteSubsidyScheduleService", error);
     return NextResponse.json({ message: error.message || "Error deleting schedule" }, { status: 500 });
   }
 }
@@ -1707,6 +1725,7 @@ export async function GetSubsidyScheduleLogsService(params?: { page?: number; pa
     const result = await GetSubsidyScheduleLogs(params);
     return NextResponse.json(result);
   } catch (error: any) {
+    await LogApplicationError("subsidy/GetSubsidyScheduleLogsService", error);
     return NextResponse.json({ message: error.message || "Error fetching schedule logs" }, { status: 500 });
   }
 }
@@ -1733,6 +1752,7 @@ export async function ManualTriggerScheduleService(scheduleUuid: string, user?: 
       ...result,
     });
   } catch (error: any) {
+    await LogApplicationError("subsidy/ManualTriggerScheduleService", error);
     console.error("ManualTriggerSchedule error:", error);
     return NextResponse.json({ message: error.message || "Error triggering schedule" }, { status: 500 });
   }

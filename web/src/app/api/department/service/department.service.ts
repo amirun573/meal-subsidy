@@ -1,3 +1,4 @@
+import { LogApplicationError } from "@/_Common/server/application-log";
 import { NextResponse } from "next/server";
 import {
   GetCostCenterLists,
@@ -23,6 +24,7 @@ export async function DepartmentLists() {
       departments,
     });
   } catch (error: any) {
+    await LogApplicationError("department/DepartmentLists", error);
     return NextResponse.json(
       {
         message: error.message || message,
@@ -51,6 +53,7 @@ export async function EmployeeCategoryListsService() {
       employeeCategories,
     });
   } catch (error: any) {
+    await LogApplicationError("department/EmployeeCategoryListsService", error);
     return NextResponse.json(
       {
         message: error.message || message,
@@ -80,6 +83,7 @@ export async function CostCenterLists() {
       costCenterLists,
     });
   } catch (error: any) {
+    await LogApplicationError("department/CostCenterLists", error);
     return NextResponse.json(
       {
         message: error.message || message,

@@ -1,3 +1,4 @@
+import { LogApplicationError } from "@/_Common/server/application-log";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../libs/prisma";
@@ -138,6 +139,7 @@ export async function GET(req: any, res: any) {
       }
     }
   } catch (error: any) {
+    await LogApplicationError("api/department GET", error);
     // logger.error("Failed at Route GET Department ===>", { error });
 
     console.error(error);
@@ -184,6 +186,7 @@ export async function POST(req: any, res: any) {
       }
     }
   } catch (error: any) {
+    await LogApplicationError("api/department POST", error);
     // logger.error("Failed at Route POST Department ===>", { error });
 
     console.error(error);
@@ -230,6 +233,7 @@ export async function PUT(req: any, res: any) {
       }
     }
   } catch (error: any) {
+    await LogApplicationError("api/department PUT", error);
     // logger.error("Failed at Route PUT Department ===>", { error });
 
     console.error(error);

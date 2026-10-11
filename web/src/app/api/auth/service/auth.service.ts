@@ -1,3 +1,4 @@
+import { LogApplicationError } from "@/_Common/server/application-log";
 import { NextResponse } from "next/server";
 import * as yup from "yup";
 import { comparePassword, hashPassword } from "../model/auth.model";
@@ -34,6 +35,7 @@ export async function HashingPasswordService(data: { password: string }) {
       passwordHashing: hashingPassword_4Save,
     });
   } catch (error: any) {
+    await LogApplicationError("auth/HashingPasswordService", error);
     // logger.error("Failed at HashingPasswordService function ===>", { error });
 
     console.error(error);
@@ -171,6 +173,7 @@ export async function SignInService(data: SignInRequest) {
       userDetails,
     });
   } catch (error: any) {
+    await LogApplicationError("auth/SignInService", error);
     // logger.error("Failed at SignInService function ===>", { error });
 
     console.error(error);
@@ -304,6 +307,7 @@ export async function SignInSocketService(data: SignInRequest) {
       currency_code: (user as any)?.UserDetails?.country?.currency_code || "", // Provide default value to avoid `undefined`
     };
   } catch (error: any) {
+    await LogApplicationError("auth/SignInSocketService", error);
     // logger.error("Failed at SignInService function ===>", { error });
 
     console.error(error);
