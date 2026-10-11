@@ -11,7 +11,7 @@ import { CreateUpdateEmployeeValidation, UpdateEmployeeStatusValidation, UserPag
 import { CostCenter, Department, EmployeeCategory, Subsidy, User } from "@prisma/client";
 import axios from "axios";
 import { Modal } from "flowbite-react";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Spinner from '../../Components/Spinner/index';
 import { CreateUpdateUser } from "@/_Common/interface/user.interface";
 import { DepartmentLists } from "@/_Common/interface/department.interface";
@@ -59,6 +59,11 @@ interface CostCenterLists {
 const EmployeeDetailsPage = () => {
 
     const [currentPage, setCurrentPage] = useState<number>(1); // State variable to store current page
+    const employeeRequestIds = useRef({ active: 0, inactive: 0 });
+    const [downloadChoiceOpen, setDownloadChoiceOpen] = useState(false);
+    const [inactivePage, setInactivePage] = useState(1);
+    const [inactiveTotal, setInactiveTotal] = useState(0);
+    const [inactiveEmployees, setInactiveEmployees] = useState<EmployeeDetails[]>([]);
     const [filter, setFilter] = useState<string>('');
     const [totalItems, setTotalItems] = useState<number>(0); // State variable to store total number of items
     const [userDetailLocal, setUserDetailLocal] = useState<UserDetailsLocalStorage>();
@@ -99,7 +104,9 @@ const EmployeeDetailsPage = () => {
     const [currentEditEmployeeDetails, setCurrentEditEmployeeDetails] = useState<EmployeeDetails>();
 
 
-    const GetEmployee = async () => {
+    const GetEmployee = useCallback(async (inactive: boolean, page: number) => {
+        const scope = inactive ? 'inactive' : 'active';
+        const requestId = ++employeeRequestIds.current[scope];
         setLoading(true);
         try {
 
@@ -110,12 +117,12 @@ const EmployeeDetailsPage = () => {
             }
 
             await UserPaginationValidation({
-                page: currentPage,
+                page,
                 filter,
             });
 
             setUserDetailLocal(userDetailsLocalStorage as UserDetailsLocalStorage);
-            const requestBooking = await axios.get(`/api/user?${StatusAPICode.code}=${StatusAPICode.GET_EMPLOYEE_DETAILS}&page=${currentPage}&filter=${filter}`, {
+            const requestBooking = await axios.get(`/api/user?${StatusAPICode.code}=${inactive ? StatusAPICode.GET_INACTIVE_EMPLOYEE_DETAILS : StatusAPICode.GET_EMPLOYEE_DETAILS}&page=${page}&filter=${encodeURIComponent(filter)}`, {
                 headers: {
                     Authorization: `Bearer ${userDetailsLocalStorage?.accessToken}`
                 }
@@ -158,9 +165,15 @@ const EmployeeDetailsPage = () => {
 
             }
 
-            setEmployeeDetails(employeeDetailsResponse.length > 0 ? employeeDetailsResponse : []);
+            if (requestId !== employeeRequestIds.current[scope]) return;
 
-            setTotalItems(requestBooking.data?.totalItems as number);
+            if (inactive) {
+                setInactiveEmployees(employeeDetailsResponse);
+                setInactiveTotal(requestBooking.data?.totalItems ?? 0);
+            } else {
+                setEmployeeDetails(employeeDetailsResponse);
+                setTotalItems(requestBooking.data?.totalItems ?? 0);
+            }
 
 
             // setBooking(requestBooking.data?.booking as Partial<Booking[]>);
@@ -171,7 +184,7 @@ const EmployeeDetailsPage = () => {
         } finally {
             setLoading(false);
         }
-    }
+    }, [filter]);
 
     const GetDepartment = async () => {
 
@@ -304,7 +317,6 @@ const EmployeeDetailsPage = () => {
         setCurrentPage(page);
 
         // Fetch data for the new page using the page number and other parameters as needed
-        GetEmployee();
     };
 
 
@@ -1048,7 +1060,7 @@ const EmployeeDetailsPage = () => {
                 });
 
                 // Handle the response
-                alert(`File ${selectedFile.name} uploaded successfully!`);
+                alert(`File ${selectedFile.name} uploaded successfully. Created: ${response.data.created}, updated: ${response.data.updated}. Active: ${response.data.active}, inactive: ${response.data.inactive}. Employees not in the file were left unchanged.`);
 
                 // Close the modal and reset the file
                 setOpenModalAddBooking(false);
@@ -1105,6 +1117,7 @@ const EmployeeDetailsPage = () => {
                                         accept=".xlsx"
                                     />
 
+                                    <p className="text-xs text-gray-600">Columns: Department Desc, Value Stream, Employee Id, Employee Name, Employee  Category, Eligible Subsidy (Yes/No), Access Card Number, UUID, Status. Status accepts Active or Inactive. Omit Status in older templates to keep existing employees’ status. Employees absent from the file are unchanged.</p>
                                     {selectedFile && (
                                         <p className="text-sm text-green-500 mt-2">
                                             Selected file: {selectedFile.name}
@@ -1454,7 +1467,6 @@ const EmployeeDetailsPage = () => {
             setLoading(true);
             try {
                 // Fetch data sequentially
-                await GetEmployee();
                 await GetDepartment();
                 await GetEmployeeCategory();
                 await GetCostCenter();
@@ -1478,7 +1490,7 @@ const EmployeeDetailsPage = () => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                await GetEmployee(); // Fetch employee data
+                await GetEmployee(false, currentPage); // Fetch employee data
             } catch (error) {
                 console.error(error);
                 DisplayAlert(error);
@@ -1490,7 +1502,11 @@ const EmployeeDetailsPage = () => {
 
         fetchData();
 
-    }, [filter]); // Runs when `filter` changes
+    }, [GetEmployee, currentPage]);
+
+    useEffect(() => {
+        GetEmployee(true, inactivePage);
+    }, [GetEmployee, inactivePage]);
 
     const HandleAddUser = () => {
         const updatedDetails = {
@@ -1703,9 +1719,10 @@ const EmployeeDetailsPage = () => {
     }
 
 
-    const DownloadEmployeeDetails = async () => {
+    const DownloadEmployeeDetails = async (activeOnly: boolean) => {
         try {
-            const response = await axios.post(`/api/user`, { code: StatusAPICode.GET_DOWNLOAD_EXCEL_EMPLOYEE }, {
+            setDownloadChoiceOpen(false);
+            const response = await axios.post(`/api/user`, { code: StatusAPICode.GET_DOWNLOAD_EXCEL_EMPLOYEE, activeOnly }, {
                 headers: {
                     Authorization: `Bearer ${userDetailLocal?.accessToken}`,
                 },
@@ -1721,7 +1738,7 @@ const EmployeeDetailsPage = () => {
             // Create a link element
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = 'employee_details.xlsx'; // Set the default file name for the download
+            link.download = activeOnly ? 'active_employee_details.xlsx' : 'all_employee_details.xlsx'; // Set the default file name for the download
             document.body.appendChild(link);
             link.click();
 
@@ -1729,7 +1746,9 @@ const EmployeeDetailsPage = () => {
             document.body.removeChild(link);
             URL.revokeObjectURL(link.href);
         } catch (error) {
-
+            console.error(error);
+            DisplayAlert(error);
+            await HandleUnAuthorized(error);
         }
     }
 
@@ -1754,7 +1773,7 @@ const EmployeeDetailsPage = () => {
                                 name="filter"
                                 className="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 pl-9 p-2.5"
                                 placeholder="Search by name, employee ID, department..."
-                                onChange={(e) => { setFilter(e.target.value); setCurrentPage(1); }}
+                                onChange={(e) => { setFilter(e.target.value); setCurrentPage(1); setInactivePage(1); }}
                             />
                             <span className="absolute left-3 top-2.5 text-gray-400 text-sm">🔍</span>
                         </div>
@@ -1778,7 +1797,7 @@ const EmployeeDetailsPage = () => {
                                 Upload
                             </button>
                             <button
-                                onClick={DownloadEmployeeDetails}
+                                onClick={() => setDownloadChoiceOpen(true)}
                                 className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg text-sm transition"
                             >
                                 ⬇ Download
@@ -1800,6 +1819,7 @@ const EmployeeDetailsPage = () => {
 
 
                 <div className="mt-7">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-3">Active employees or no end date</h2>
                     <div className="relative overflow-x-auto shadow-md sm:rounded-lg">
                         <table className="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
                             <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
@@ -1876,7 +1896,7 @@ const EmployeeDetailsPage = () => {
                                                 </button>
                                             </td>
                                         </tr>
-                                    )) : <tr></tr>}
+                                    )) : <tr><td colSpan={11} className="px-4 py-6 text-center">No employees found.</td></tr>}
                             </tbody>
                         </table>
                     </div>
@@ -1926,8 +1946,54 @@ const EmployeeDetailsPage = () => {
                         </div>
                     </div>
                 </div>
+                <section className="mt-10">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-3">Inactive employees or end date set</h2>
+                    <div className="overflow-x-auto rounded-lg border border-gray-200">
+                        <table className="w-full text-sm text-left text-gray-600">
+                            <thead className="bg-gray-100 text-xs uppercase text-gray-700">
+                                <tr>{['No.', 'Name', 'Employee ID', 'Department', 'Value Stream', 'Category', 'Credit (RM)', 'End Date', 'Status'].map(label => <th key={label} className="px-4 py-3">{label}</th>)}</tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {inactiveEmployees.length ? inactiveEmployees.map((employee, index) => (
+                                    <tr key={employee.uuid} className="bg-white">
+                                        <td className="px-4 py-3">{(inactivePage - 1) * 10 + index + 1}</td>
+                                        <td className="px-4 py-3 font-semibold">{employee.name}</td>
+                                        <td className="px-4 py-3">{employee.employee_id}</td>
+                                        <td className="px-4 py-3">{employee.department_name}</td>
+                                        <td className="px-4 py-3">{employee.cost_center_code}</td>
+                                        <td className="px-4 py-3">{employee.employee_category_code.toUpperCase()}</td>
+                                        <td className="px-4 py-3">{employee.current_subsidy_value}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap">{employee.end_date ? new Date(employee.end_date).toLocaleDateString('en-MY', { timeZone: 'Asia/Kuala_Lumpur' }) : '—'}</td>
+                                        <td className="px-4 py-3">{employee.user_active ? 'Active' : 'Inactive'}</td>
+                                    </tr>
+                                )) : <tr><td colSpan={9} className="px-4 py-6 text-center">No employees found.</td></tr>}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 px-5 py-4 text-sm text-gray-500">
+                        <span>Showing {Math.min((inactivePage - 1) * 10 + 1, inactiveTotal)}–{Math.min(inactivePage * 10, inactiveTotal)} of {inactiveTotal} employees</span>
+                        <div className="flex items-center gap-3">
+                            <button className="px-3 py-1.5 border rounded-md disabled:opacity-50" disabled={inactivePage <= 1} onClick={() => setInactivePage(inactivePage - 1)}>← Previous</button>
+                            <span>Page {inactivePage} of {Math.max(1, Math.ceil(inactiveTotal / 10))}</span>
+                            <button className="px-3 py-1.5 border rounded-md disabled:opacity-50" disabled={inactivePage >= Math.ceil(inactiveTotal / 10)} onClick={() => setInactivePage(inactivePage + 1)}>Next →</button>
+                        </div>
+                    </div>
+                </section>
             </main>
 
+            {downloadChoiceOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" role="dialog" aria-modal="true" aria-label="Download employee details">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-sm shadow-lg">
+                        <h2 className="text-lg font-semibold text-gray-900">Download employee details</h2>
+                        <p className="text-sm text-gray-600 mt-2">Choose which employees to include in the Excel file.</p>
+                        <div className="flex flex-col gap-2 mt-5">
+                            <button className="bg-blue-600 text-white rounded px-4 py-2" onClick={() => DownloadEmployeeDetails(true)}>Active employees only</button>
+                            <button className="bg-purple-600 text-white rounded px-4 py-2" onClick={() => DownloadEmployeeDetails(false)}>All employees</button>
+                            <button className="border rounded px-4 py-2" onClick={() => setDownloadChoiceOpen(false)}>Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div><ModalUser /></div>
             <div><ModalUploadUser /></div>
             <div><ModalEditSubsidyCredit /></div>

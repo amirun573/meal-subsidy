@@ -380,3 +380,18 @@ model EmployeeCategory {
 
 
 
+
+model EmployeeUploadLog {
+  id          Int      @id @default(autoincrement())
+  file_name   String
+  uploaded_by String
+  status      String
+  created     Int      @default(0)
+  updated     Int      @default(0)
+  active      Int      @default(0)
+  inactive    Int      @default(0)
+  issue       String?
+  created_at  DateTime @default(now())
+
+  @@index([created_at, id])
+}

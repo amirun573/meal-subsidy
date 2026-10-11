@@ -34,6 +34,8 @@ import {
 
 const APIAuth: StatusAPICode[] = [
   StatusAPICode.GET_EMPLOYEE_DETAILS,
+  StatusAPICode.GET_INACTIVE_EMPLOYEE_DETAILS,
+  StatusAPICode.GET_EMPLOYEE_UPLOAD_LOGS,
   StatusAPICode.CREATE_EMPLOYEE,
   StatusAPICode.UPLOAD_EXCEL_EMPLOYEE_CREATE,
   StatusAPICode.UPDATE_USER_ACTIVE_STATUS,
@@ -84,7 +86,8 @@ export async function GET(req: any, res: any) {
     }
 
     switch (parseInt(code) as StatusAPICode) {
-      case StatusAPICode.GET_EMPLOYEE_DETAILS: {
+      case StatusAPICode.GET_EMPLOYEE_DETAILS:
+      case StatusAPICode.GET_INACTIVE_EMPLOYEE_DETAILS: {
         const page: string | null = url.searchParams.get("page");
 
         const filter: string | null = url.searchParams.get("filter");
@@ -116,10 +119,40 @@ export async function GET(req: any, res: any) {
         return UserPaginationService({
           page: parseInt(page),
           filter,
-          activeFilter: url.searchParams.has("activeFilter") ? url.searchParams.get("activeFilter") === "true" : null,
+          activeFilter: parseInt(code) === StatusAPICode.GET_EMPLOYEE_DETAILS,
         });
 
         // return HashingPasswordService({ password: hashingPasswordRequest });
+      }
+      case StatusAPICode.GET_EMPLOYEE_UPLOAD_LOGS: {
+        if (!user) {
+          statusCode = 401;
+          throw Error("Unauthorized");
+        }
+        const checkFeature = await CheckFeatureAllowed({
+          user_features: (user as any)?.user_features as UserFeatures[],
+          action: ActionEnableFeature.READ,
+          feature_code: feature_code_employee_details,
+        });
+        if (!checkFeature) {
+          statusCode = 403;
+          throw Error("Not allowed to view employee upload logs");
+        }
+        const pageValue = Number(url.searchParams.get("page"));
+        if (!Number.isSafeInteger(pageValue) || pageValue < 1) {
+          statusCode = 400;
+          throw Error("Page must be a positive integer");
+        }
+        const limit = 10;
+        const [logs, totalItems] = await Promise.all([
+          prisma.employeeUploadLog.findMany({
+            orderBy: [{ created_at: "desc" }, { id: "desc" }],
+            skip: (pageValue - 1) * limit,
+            take: limit,
+          }),
+          prisma.employeeUploadLog.count(),
+        ]);
+        return NextResponse.json({ logs, totalItems, page: pageValue });
       }
       //TODO: For Scanning at Page Scan. Will Deprecite Later
       case StatusAPICode.GET_CHECK_EMPLOYEE_ID: {
@@ -275,7 +308,12 @@ export async function POST(req: any, res: any): Promise<any> {
             throw Error("No User Found.");
           }
 
-          return GetDownloadExcelEmployeeDetails();
+          if (typeof body.activeOnly !== "boolean") {
+            statusCode = 400;
+            throw Error("Choose active employees or all employees");
+          }
+
+          return GetDownloadExcelEmployeeDetails(body.activeOnly);
         }
 
         // case StatusAPICode.UPLOAD_UPDATE_EXCEL_EMPLOYEE_CREATE: {

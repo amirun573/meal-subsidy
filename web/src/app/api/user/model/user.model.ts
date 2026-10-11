@@ -52,7 +52,7 @@ export async function GetUserMany(
   }
 }
 
-export async function GetUserRawQuery() {
+export async function GetUserRawQuery(activeOnly: boolean = false) {
   try {
     let query = `
     SELECT 
@@ -61,22 +61,22 @@ export async function GetUserRawQuery() {
     u.employee_id AS "Employee Id",
     UPPER(ud.name) AS "Employee Name",
     ec.employee_category_code AS "Employee Category",
-    CASE 
-        WHEN s.subsidy_id IS NOT NULL THEN 'Yes' 
-        ELSE 'No' 
-    END AS "Eligible Subsidy (Yes/No)",
+    CASE WHEN EXISTS (
+        SELECT 1 FROM "Subsidy" s
+        JOIN "SubsidyType" st ON st.subsidy_type_id = s.subsidy_type_id
+        WHERE s.user_id = u.user_id AND s.active = TRUE AND st.subsidy_type_code = 'meal' AND s.applicable = TRUE
+    ) THEN 'Yes' ELSE 'No' END AS "Eligible Subsidy (Yes/No)",
     ud.access_card_no AS "Access Card Number",
-    u.uuid AS "UUID"
+    u.uuid AS "UUID",
+    CASE WHEN u.active THEN 'Active' ELSE 'Inactive' END AS "Status"
 FROM 
     "User" u
 LEFT JOIN "UserDetails" ud ON u.user_id = ud.user_id
 LEFT JOIN "EmployeeCategory" ec ON u.employee_category_id = ec.employee_category_id
 LEFT JOIN "Department" d ON u.department_id = d.department_id
 LEFT JOIN "CostCenter" cc ON u.cost_center_id = cc.cost_center_id
-LEFT JOIN "Subsidy" s ON u.user_id = s.user_id AND s.active = TRUE
-LEFT JOIN "AccessCard" ac ON u.user_id = ac.user_id AND ac.active = TRUE
 WHERE 
-    u.deleted_at IS NULL AND u.active = TRUE
+    u.deleted_at IS NULL ${activeOnly ? 'AND u.active = TRUE' : ''}
 ORDER BY 
     u.employee_id;
 `;

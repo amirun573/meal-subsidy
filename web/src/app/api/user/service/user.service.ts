@@ -13,6 +13,7 @@ import {
   UserPaginationValidation,
 } from "@/_Common/validation/user.validation";
 import { NextResponse } from "next/server";
+import { prisma } from "../../../../../libs/prisma";
 import {
   CreateUserNUserDetailsCascade,
   CreateUserNUserDetailsManyCascade,
@@ -87,9 +88,10 @@ const columns = {
   employee_id: "Employee Id",
   employee_name: "Employee Name",
   employee_category: "Employee  Category",
-  eligble_subsidy: "Eligble Subsidy (Yes/No)",
+  eligble_subsidy: "Eligible Subsidy (Yes/No)",
   access_card: "Access Card Number",
   uuid: "UUID",
+  status: "Status",
 };
 
 const headers = [
@@ -101,6 +103,7 @@ const headers = [
   columns.eligble_subsidy,
   columns.access_card,
   columns.uuid,
+  columns.status,
 ];
 
 export async function UserPaginationService(data: UserPaginationRequest) {
@@ -109,7 +112,7 @@ export async function UserPaginationService(data: UserPaginationRequest) {
   try {
     await UserPaginationValidation(data);
 
-    const { page, filter, activeFilter } = data;
+    const { page, filter, activeFilter = true } = data;
 
     let employees: any = [];
     let totalItems: number = 0;
@@ -118,9 +121,6 @@ export async function UserPaginationService(data: UserPaginationRequest) {
 
     const filterSubsidyTypeCodeMeal = {
       subsidies: {
-        every: {
-          active: true, // Ensure every subsidy is active
-        },
         some: {
           subsidy_type: {
             subsidy_type_code: SubsidyTypeCode.meal, // Check for meal subsidy type
@@ -170,17 +170,25 @@ export async function UserPaginationService(data: UserPaginationRequest) {
       conditionFilter = filterSubsidyTypeCodeMeal;
     }
 
-    // Apply activeFilter for Active / Inactive tab split
-    if (activeFilter !== null && activeFilter !== undefined) {
-      conditionFilter = {
-        AND: [
-          conditionFilter,
-          { active: activeFilter },
-        ],
-      };
-    }
-
-    console.log("conditionFilter===>", conditionFilter);
+    // Apply the same status/date scope to both the count and paginated rows.
+    conditionFilter = {
+      AND: [
+        conditionFilter,
+        {
+          OR: [
+            { active: activeFilter !== false },
+            {
+              subsidies: {
+                some: {
+                  subsidy_type: { subsidy_type_code: SubsidyTypeCode.meal },
+                  end_date: activeFilter === false ? { not: null } : null,
+                },
+              },
+            },
+          ],
+        },
+      ],
+    };
 
     const totalUser: number = await GetTotalUser({
       where: conditionFilter,
@@ -573,9 +581,12 @@ export async function CreateEmployeeBulkUpload(
     eligble_subsidy: string;
     access_card: string;
     uuid: string;
+    status: string;
   }
   let message: string = "";
   let status: number = 500;
+  const fileName = data.file?.name || "Unknown file";
+  const uploadedBy = user.employee_id || "Unknown user";
   try {
     const { file } = data;
 
@@ -586,7 +597,18 @@ export async function CreateEmployeeBulkUpload(
       throw Error("Workbook Cannot Generate");
     }
 
-    const dataExcel = ExtractExcelData(headers, workbook);
+    // Accept the older misspelled eligibility header and optional Status column.
+    for (const sheet of Object.values(workbook.Sheets)) {
+      const oldHeader = "Eligble Subsidy (Yes/No)";
+      if (sheet["!ref"]) {
+        const range = XLSX.utils.decode_range(sheet["!ref"]);
+        for (let column = range.s.c; column <= range.e.c; column++) {
+          const cell = sheet[XLSX.utils.encode_cell({ r: range.s.r, c: column })];
+          if (cell?.v === oldHeader) cell.v = columns.eligble_subsidy;
+        }
+      }
+    }
+    const dataExcel = ExtractExcelData(headers.filter(header => header !== columns.status), workbook);
 
     const users: Partial<User>[] = await GetUserMany({
       where: {},
@@ -596,6 +618,7 @@ export async function CreateEmployeeBulkUpload(
         uuid: true,
         role_id: true,
         deleted_at: true,
+        active: true,
         department_id: true,
         cost_center_id: true,
         employee_category_id: true,
@@ -678,6 +701,7 @@ export async function CreateEmployeeBulkUpload(
 
     const createUsers: CreateUserUserDetails[] = [];
     const updateUsers: UpdateUserUserDetails[] = [];
+    const seenEmployeeIds = new Set<string>();
 
     dataExcel.map((items) => {
       items.data.map((data) => {
@@ -695,22 +719,18 @@ export async function CreateEmployeeBulkUpload(
             .toLowerCase()
             .trim(),
           access_card: String(data[columns.access_card]).trim(),
-          uuid: String(data[columns.uuid]).trim(),
+          uuid: String(data[columns.uuid] ?? '').trim(),
+          status: String(data[columns.status] ?? '').toLowerCase().trim(),
         };
 
-        const checkDuplicate = createUsers.findIndex(
-          (users) => users.user.employee_id === employee.employee_id
-        );
-
-        if (checkDuplicate !== -1) {
+        if (seenEmployeeIds.has(employee.employee_id)) {
           status = 400;
-          throw new Error(
-            `Duplicate Employee ID ${employee.employee_id} in Excel. Please Check at row for Employee ID ${employee.employee_id}`
-          );
+          throw new Error(`Duplicate Employee ID ${employee.employee_id} in Excel.`);
         }
+        seenEmployeeIds.add(employee.employee_id);
 
         // Validate that no values are null or undefined
-        const skipKeys = ["access_card", "uuid"]; // Keys to skip validation
+        const skipKeys = ["access_card", "uuid", "status"]; // Keys to skip validation
 
         const isValid = Object.entries(employee).every(([key, value]) => {
           if (skipKeys.includes(key)) {
@@ -772,13 +792,18 @@ export async function CreateEmployeeBulkUpload(
           );
         }
 
+        if (employee.status && !["active", "inactive"].includes(employee.status)) {
+          status = 400;
+          throw new Error(`Invalid Status for Employee ID ${employee.employee_id}. Use Active or Inactive.`);
+        }
+
         const user: Partial<User> = {
           employee_id: employee.employee_id,
           role_id: role.role_id,
           department_id: department.department_id,
           is_email_verified: true,
           is_acc_verify: true,
-          active: true,
+          active: employee.status !== "inactive",
           employee_category_id: employeeCategory.employee_category_id,
           cost_center_id: costcenter.cost_center_id,
         };
@@ -810,8 +835,24 @@ export async function CreateEmployeeBulkUpload(
 
         //Compare by UUID
         const userIndex: number = users.findIndex(
-          (user) => user.uuid === employee.uuid
+          (user) => employee.uuid && user.uuid === employee.uuid
         );
+        const employeeIdIndex = users.findIndex(existing => existing.employee_id === employee.employee_id);
+        if (userIndex === -1 && employee.uuid) {
+          status = 400;
+          throw new Error(`UUID ${employee.uuid} for Employee ID ${employee.employee_id} was not found.`);
+        }
+        if (userIndex === -1 && employeeIdIndex !== -1) {
+          status = 400;
+          throw new Error(`Employee ID ${employee.employee_id} already exists with a different UUID. Download a fresh file before updating.`);
+        }
+        if (userIndex !== -1 && users[userIndex].employee_id !== employee.employee_id) {
+          status = 400;
+          throw new Error(`UUID does not match Employee ID ${employee.employee_id}.`);
+        }
+        if (userIndex !== -1 && !employee.status) {
+          user.active = users[userIndex].active;
+        }
 
         if (userIndex !== -1 && users[userIndex]?.user_id) {
           if (
@@ -886,6 +927,11 @@ export async function CreateEmployeeBulkUpload(
       });
     });
 
+    if (createUsers.length === 0 && updateUsers.length === 0) {
+      status = 400;
+      throw Error("No employees found in the uploaded file");
+    }
+
     const createUpdateUserCascade: boolean = await CreateUpdateUserCascade({
       create: createUsers,
       update: updateUsers,
@@ -898,11 +944,38 @@ export async function CreateEmployeeBulkUpload(
       throw Error("No User Being Created");
     }
 
+    try {
+      await prisma.employeeUploadLog.create({ data: {
+        file_name: fileName,
+        uploaded_by: uploadedBy,
+        status: "SUCCESS",
+        created: createUsers.length,
+        updated: updateUsers.length,
+        active: [...createUsers, ...updateUsers].filter(item => item.user.active).length,
+        inactive: [...createUsers, ...updateUsers].filter(item => !item.user.active).length,
+      } });
+    } catch (logError) {
+      console.error("Failed to record employee upload", logError);
+    }
+
     return NextResponse.json({
-      message: "Successfully Create All Employees",
+      message: "Employee upload completed",
+      created: createUsers.length,
+      updated: updateUsers.length,
+      active: [...createUsers, ...updateUsers].filter(item => item.user.active).length,
+      inactive: [...createUsers, ...updateUsers].filter(item => !item.user.active).length,
     });
   } catch (error: any) {
-    // logger.error("Failed at CreateEmployeeBulkUpload function ===>", { error });
+    try {
+      await prisma.employeeUploadLog.create({ data: {
+        file_name: fileName,
+        uploaded_by: uploadedBy,
+        status: "FAILED",
+        issue: error?.message || "Unknown upload error",
+      } });
+    } catch (logError) {
+      console.error("Failed to record employee upload error", logError);
+    }
 
     console.error(error);
     return NextResponse.json(
@@ -1903,15 +1976,13 @@ export async function ScanCheckEmployeeIDAuthSocketService(
   }
 }
 
-export async function GetDownloadExcelEmployeeDetails() {
+export async function GetDownloadExcelEmployeeDetails(activeOnly: boolean = false) {
   let message: string = "";
   let status: number = 500;
   try {
     const HEADER_ORDER_LIST: string[][] = [headers];
 
-    const users = await GetUserRawQuery();
-
-    console.log("users==>", users);
+    const users = await GetUserRawQuery(activeOnly);
 
     const writeExcel = ConvertExcel(HEADER_ORDER_LIST, users);
 
