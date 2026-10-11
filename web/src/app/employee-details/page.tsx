@@ -1722,6 +1722,38 @@ const EmployeeDetailsPage = () => {
     }
 
 
+    const HandleReactivateEmployee = async (employee: EmployeeDetails) => {
+        setLoading(true);
+        try {
+            const user = await GetLocalStorageDetails() as UserDetailsLocalStorage;
+            if (!user) {
+                await HandleUnAuthorized(null);
+                return;
+            }
+            await axios.put('/api/user', {
+                code: StatusAPICode.REACTIVATE_EMPLOYEE,
+                uuid: employee.uuid,
+            }, {
+                headers: { Authorization: `Bearer ${user.accessToken}` },
+            });
+
+            if (currentPage !== 1) setCurrentPage(1);
+            else await GetEmployee(false, 1);
+
+            if (inactiveEmployees.length === 1 && inactivePage > 1) {
+                setInactivePage(inactivePage - 1);
+            } else {
+                await GetEmployee(true, inactivePage);
+            }
+        } catch (error) {
+            console.error(error);
+            DisplayAlert(error);
+            await HandleUnAuthorized(error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const DownloadEmployeeDetails = async (activeOnly: boolean) => {
         try {
             setDownloadChoiceOpen(false);
@@ -1822,7 +1854,7 @@ const EmployeeDetailsPage = () => {
 
 
                 <div className="mt-7">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-3">Active employees (no end date)</h2>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-3">Employee lists</h2>
                     <div className="relative overflow-x-auto shadow-md sm:rounded-lg">
                         <table className="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
                             <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
@@ -1950,11 +1982,11 @@ const EmployeeDetailsPage = () => {
                     </div>
                 </div>
                 <section className="mt-10">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-3">Inactive employees or end date set</h2>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-3">Deactive Employees</h2>
                     <div className="overflow-x-auto rounded-lg border border-gray-200">
                         <table className="w-full text-sm text-left text-gray-600">
                             <thead className="bg-gray-100 text-xs uppercase text-gray-700">
-                                <tr>{['No.', 'Name', 'Employee ID', 'Department', 'Value Stream', 'Category', 'Credit (RM)', 'End Date', 'Status'].map(label => <th key={label} className="px-4 py-3">{label}</th>)}</tr>
+                                <tr>{['No.', 'Name', 'Employee ID', 'Department', 'Value Stream', 'Category', 'Credit (RM)', 'End Date', 'Status', 'Action'].map(label => <th key={label} className="px-4 py-3">{label}</th>)}</tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {inactiveEmployees.length ? inactiveEmployees.map((employee, index) => (
@@ -1968,8 +2000,18 @@ const EmployeeDetailsPage = () => {
                                         <td className="px-4 py-3">{employee.current_subsidy_value}</td>
                                         <td className="px-4 py-3 whitespace-nowrap">{employee.end_date ? new Date(employee.end_date).toLocaleDateString('en-MY', { timeZone: 'Asia/Kuala_Lumpur' }) : '—'}</td>
                                         <td className="px-4 py-3">{employee.end_date ? 'Ended' : 'Inactive'}</td>
+                                        <td className="px-4 py-3">
+                                            <button
+                                                type="button"
+                                                disabled={loading}
+                                                onClick={() => HandleReactivateEmployee(employee)}
+                                                className="rounded bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                                            >
+                                                Reactivate
+                                            </button>
+                                        </td>
                                     </tr>
-                                )) : <tr><td colSpan={9} className="px-4 py-6 text-center">No employees found.</td></tr>}
+                                )) : <tr><td colSpan={10} className="px-4 py-6 text-center">No employees found.</td></tr>}
                             </tbody>
                         </table>
                     </div>
@@ -1992,7 +2034,7 @@ const EmployeeDetailsPage = () => {
                         <div className="flex flex-col gap-2 mt-5">
                             <button className="bg-blue-600 text-white rounded px-4 py-2" onClick={() => DownloadEmployeeDetails(true)}>Active employees only</button>
                             <button className="bg-purple-600 text-white rounded px-4 py-2" onClick={() => DownloadEmployeeDetails(false)}>All employees</button>
-                            <button className="border rounded px-4 py-2" onClick={() => setDownloadChoiceOpen(false)}>Cancel</button>
+                            <button className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700" onClick={() => setDownloadChoiceOpen(false)}>Close</button>
                         </div>
                     </div>
                 </div>

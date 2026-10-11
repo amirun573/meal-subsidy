@@ -14,6 +14,7 @@ import {
 } from "@/_Common/validation/user.validation";
 import { NextResponse } from "next/server";
 import { LogApplicationError } from "@/_Common/server/application-log";
+import { prisma } from "../../../../../libs/prisma";
 import {
   CreateUserNUserDetailsCascade,
   CreateUserNUserDetailsManyCascade,
@@ -1987,4 +1988,37 @@ export async function GetDownloadExcelEmployeeDetails(activeOnly: boolean = fals
       status: error.statusCode || status,
     };
   }
+}
+
+export async function ReactivateEmployeeService(uuid: string) {
+  await prisma.$transaction(async (transaction) => {
+    const existing = await transaction.user.findFirst({
+      where: {
+        uuid,
+        deleted_at: null,
+        subsidies: {
+          some: { subsidy_type: { subsidy_type_code: SubsidyTypeCode.meal } },
+        },
+      },
+      select: { user_id: true },
+    });
+    if (!existing) {
+      throw Object.assign(new Error("Employee with a meal subsidy not found"), { statusCode: 404 });
+    }
+
+    await transaction.user.update({
+      where: { user_id: existing.user_id },
+      data: { active: true },
+    });
+    await transaction.subsidy.updateMany({
+      where: {
+        user_id: existing.user_id,
+        subsidy_type: { subsidy_type_code: SubsidyTypeCode.meal },
+        end_date: { not: null },
+      },
+      data: { end_date: null },
+    });
+  });
+
+  return NextResponse.json({ message: "Employee reactivated" });
 }

@@ -19,6 +19,7 @@ import {
   UpdateEmployee,
   UpdateStatusEmployeeService,
   UserPaginationService,
+  ReactivateEmployeeService,
   GetDownloadExcelEmployeeDetails,
 } from "./service/user.service";
 import {
@@ -39,6 +40,7 @@ const APIAuth: StatusAPICode[] = [
   StatusAPICode.CREATE_EMPLOYEE,
   StatusAPICode.UPLOAD_EXCEL_EMPLOYEE_CREATE,
   StatusAPICode.UPDATE_USER_ACTIVE_STATUS,
+  StatusAPICode.REACTIVATE_EMPLOYEE,
   StatusAPICode.GET_CHECK_EMPLOYEE_ID_AUTH,
   StatusAPICode.UPDATE_EMPLOYEE,
   StatusAPICode.UPDATE_USER_ACTIVE_STATUS,
@@ -389,6 +391,27 @@ export async function PUT(req: any, res: any) {
           return UpdateEmployee(data);
         }
 
+        case StatusAPICode.REACTIVATE_EMPLOYEE: {
+          if (!user) {
+            statusCode = 401;
+            throw Error("Unauthorized");
+          }
+          const checkFeature = await CheckFeatureAllowed({
+            user_features: (user as any)?.user_features as UserFeatures[],
+            action: ActionEnableFeature.WRITE,
+            feature_code: feature_code_employee_details,
+          });
+          if (!checkFeature) {
+            statusCode = 403;
+            throw Error("Not allowed to reactivate employees");
+          }
+          if (typeof body.uuid !== "string" || !body.uuid.trim()) {
+            statusCode = 400;
+            throw Error("Employee UUID required");
+          }
+          return ReactivateEmployeeService(body.uuid.trim());
+        }
+
         case StatusAPICode.UPDATE_USER_ACTIVE_STATUS: {
           const data: UpdateStatusRequest = body as UpdateStatusRequest;
 
@@ -433,7 +456,7 @@ export async function PUT(req: any, res: any) {
         message: error.message,
       },
       {
-        status: error.statusCode,
+        status: error.statusCode || statusCode,
       }
     );
   }
