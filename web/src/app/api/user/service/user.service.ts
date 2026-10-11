@@ -170,25 +170,27 @@ export async function UserPaginationService(data: UserPaginationRequest) {
       conditionFilter = filterSubsidyTypeCodeMeal;
     }
 
-    // Apply the same status/date scope to both the count and paginated rows.
-    conditionFilter = {
-      AND: [
-        conditionFilter,
-        {
-          OR: [
-            { active: activeFilter !== false },
-            {
-              subsidies: {
-                some: {
-                  subsidy_type: { subsidy_type_code: SubsidyTypeCode.meal },
-                  end_date: activeFilter === false ? { not: null } : null,
-                },
-              },
-            },
-          ],
-        },
-      ],
+    // Keep the two paginated tables disjoint. An ended meal subsidy moves
+    // the employee to the second table even if the user flag is still active.
+    const endedMealSubsidy = {
+      subsidy_type: { subsidy_type_code: SubsidyTypeCode.meal },
+      end_date: { not: null },
     };
+    const employeeScope = activeFilter !== false
+      ? {
+          AND: [
+            { active: true },
+            { subsidies: { none: endedMealSubsidy } },
+          ],
+        }
+      : {
+          OR: [
+            { active: false },
+            { subsidies: { some: endedMealSubsidy } },
+          ],
+        };
+
+    conditionFilter = { AND: [conditionFilter, employeeScope] };
 
     const totalUser: number = await GetTotalUser({
       where: conditionFilter,

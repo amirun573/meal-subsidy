@@ -136,7 +136,10 @@ const EmployeeDetailsPage = () => {
 
                 users.map(user => {
 
-                    const subsidies = ((user as any)?.subsidies as Subsidy[]).find(subsidy => (subsidy as any).subsidy_type?.subsidy_type_code === SubsidyTypeCode.meal);
+                    const mealSubsidies = ((user as any)?.subsidies as Subsidy[]).filter(subsidy => (subsidy as any).subsidy_type?.subsidy_type_code === SubsidyTypeCode.meal);
+                    const subsidies = inactive
+                        ? mealSubsidies.find(subsidy => subsidy.end_date != null) || mealSubsidies[0]
+                        : mealSubsidies.find(subsidy => subsidy.end_date == null) || mealSubsidies[0];
 
 
                     const employee: EmployeeDetails = {
@@ -1819,7 +1822,7 @@ const EmployeeDetailsPage = () => {
 
 
                 <div className="mt-7">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-3">Active employees or no end date</h2>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-3">Active employees (no end date)</h2>
                     <div className="relative overflow-x-auto shadow-md sm:rounded-lg">
                         <table className="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
                             <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
@@ -1964,7 +1967,7 @@ const EmployeeDetailsPage = () => {
                                         <td className="px-4 py-3">{employee.employee_category_code.toUpperCase()}</td>
                                         <td className="px-4 py-3">{employee.current_subsidy_value}</td>
                                         <td className="px-4 py-3 whitespace-nowrap">{employee.end_date ? new Date(employee.end_date).toLocaleDateString('en-MY', { timeZone: 'Asia/Kuala_Lumpur' }) : '—'}</td>
-                                        <td className="px-4 py-3">{employee.user_active ? 'Active' : 'Inactive'}</td>
+                                        <td className="px-4 py-3">{employee.end_date ? 'Ended' : 'Inactive'}</td>
                                     </tr>
                                 )) : <tr><td colSpan={9} className="px-4 py-6 text-center">No employees found.</td></tr>}
                             </tbody>
