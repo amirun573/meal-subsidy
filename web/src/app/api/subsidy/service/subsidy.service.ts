@@ -1125,20 +1125,39 @@ export async function UpdateSubsidyCreditRealTimeService(
         },
       });
 
-    if (!subsidyCredit) {
+    // New employees may not have received a scheduled credit yet.
+    // Resolve the subsidy through the employee so a missing credit can be created.
+    const subsidy = subsidyCredit
+      ? null
+      : await prisma.subsidy.findFirst({
+          where: {
+            uuid: subsidy_uuid,
+            user: { uuid: user_uuid },
+          },
+          select: { subsidy_id: true, user_id: true },
+        });
+
+    if (!subsidyCredit && !subsidy) {
       status = 400;
-      throw Error("Subsidy Credit not Found");
+      throw Error("Subsidy not Found");
     }
 
     const updateSubsidy: Partial<Subsidy> = {
-      subsidy_id: subsidyCredit.subsidy_id,
+      subsidy_id: subsidyCredit?.subsidy_id ?? subsidy!.subsidy_id,
       amount,
     };
 
-    const updateSubsidyCredit: Partial<SubsidyCredit> = {
-      subsidy_credit_id: subsidyCredit.subsidy_credit_id,
-      credit_amount: amount,
-    };
+    const updateSubsidyCredit: Partial<SubsidyCredit> = subsidyCredit
+      ? {
+          subsidy_credit_id: subsidyCredit.subsidy_credit_id,
+          credit_amount: amount,
+        }
+      : {
+          subsidy_id: subsidy!.subsidy_id,
+          user_id: subsidy!.user_id,
+          credit_amount: amount,
+          active: true,
+        };
 
     const updateSubsidyCascade = await SubsidyCreditCascade({
       subsidy: updateSubsidy as Subsidy,
